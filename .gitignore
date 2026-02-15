@@ -2,3 +2,5 @@
 data/logs/logs.db
 *.json
 __pycache__/
+data/logs/*.json
+data/logs/*.db
