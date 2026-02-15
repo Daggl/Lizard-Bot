@@ -1,7 +1,7 @@
 from discord.ext import commands
 import math
-from utils.database import Database
-from utils.level_config import *
+from cogs.leveling.utils.database import Database
+from cogs.leveling.utils.level_config import *
 
 def xp_for_level(level):
     return 100 * level ** 2
