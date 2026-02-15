@@ -187,6 +187,32 @@ class AdminHelpView(discord.ui.View):
 
         await interaction.response.edit_message(embed=embed)
 
+    # ======================================================
+    # TEST COMMANDS
+    # ======================================================
+
+    @discord.ui.button(label="🧪 Test Commands", style=discord.ButtonStyle.secondary)
+    async def test_commands(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        embed = discord.Embed(
+            title="🧪 Test Commands",
+            color=discord.Color.green()
+        )
+
+        embed.add_field(
+            name="*ping",
+            value="Ein einfacher Test Command um die Reaktionsfähigkeit des Bots zu prüfen.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="*testwelcome",
+            value="Testet das Willkommenssystem.",
+            inline=False
+        )
+
+        await interaction.response.edit_message(embed=embed)
+
 
 # ==========================================================
 # COG
