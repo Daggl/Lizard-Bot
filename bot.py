@@ -73,109 +73,92 @@ async def main():
         try:
             await bot.load_extension("cogs.birthdays")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.birthdays: {e}")
 
         try:
             await bot.load_extension("cogs.welcome.welcome")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.welcome.welcome: {e}")
 
         try:
             await bot.load_extension("cogs.poll")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.poll: {e}")
 
         try:
             await bot.load_extension("cogs.leveling.levels")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.leveling.levels: {e}")
 
         try:
             await bot.load_extension("cogs.leveling.rank")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.leveling.rank: {e}")
 
         try:
             await bot.load_extension("cogs.leveling.achievements")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.leveling.achievements: {e}")
 
         try:
             await bot.load_extension("cogs.leveling.rewards")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.leveling.rewards: {e}")
 
         try:
             await bot.load_extension("cogs.leveling.tracking")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.leveling.tracking: {e}")
 
         try:
             await bot.load_extension("cogs.help_tutorial")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.help_tutorial: {e}")
 
         try:
             await bot.load_extension("cogs.admin.admin_panel")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.admin.admin_panel: {e}")
 
         try:
             await bot.load_extension("cogs.admin.admin_tools")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.admin.admin_tools: {e}")
 
         try:
             await bot.load_extension("cogs.admin.admin_tutorial")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.admin.admin_tutorial: {e}")
 
         try:
             await bot.load_extension("cogs.count")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.count: {e}")
 
         try:
             await bot.load_extension("cogs.log.chat_log")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.log.chat_log: {e}")
 
         try:
             await bot.load_extension("cogs.log.mod_log")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.log.mod_log: {e}")
 
         try:
             await bot.load_extension("cogs.log.member_log")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.log.member_log: {e}")
 
         try:
             await bot.load_extension("cogs.log.voice_log")
         except Exception as e:
-            print(e)
-
+            print(f"Fehler beim Laden von cogs.log.voice_log: {e}")
 
         try:
             await bot.load_extension("cogs.log.server_log")
         except Exception as e:
-            print(e)
+            print(f"Fehler beim Laden von cogs.log.server_log: {e}")
 
 
         try:
