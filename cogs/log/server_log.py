@@ -1,10 +1,11 @@
 import discord
+import os
 
 from discord.ext import commands
 from datetime import datetime
 
-
 CHANNEL_ID = 1472016463207464981
+FILE = "data/logs/server_logs.json"
 
 
 class ServerLog(commands.Cog):
@@ -16,6 +17,50 @@ class ServerLog(commands.Cog):
     def __init__(self, bot):
 
         self.bot = bot
+
+        os.makedirs("data/logs", exist_ok=True)
+
+
+    # ==========================================================
+    # SAVE
+    # ==========================================================
+
+    def save(self, data):
+
+        import sqlite3
+        import os
+
+        os.makedirs("data/logs", exist_ok=True)
+
+        conn = sqlite3.connect("data/logs/logs.db")
+
+        c = conn.cursor()
+
+        table = FILE.split("/")[-1].replace(".json", "")
+
+        c.execute(f"""
+            CREATE TABLE IF NOT EXISTS {table} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT
+            )
+        """)
+
+        for key in data.keys():
+
+            try:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {key} TEXT")
+            except:
+                pass
+
+        columns = ", ".join(data.keys())
+        placeholders = ", ".join("?" for _ in data)
+
+        c.execute(
+            f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",
+            tuple(str(v) for v in data.values())
+        )
+
+        conn.commit()
+        conn.close()
 
     # ==========================================================
     # SEND
@@ -49,6 +94,12 @@ class ServerLog(commands.Cog):
 
         await self.send(channel.guild, embed)
 
+        self.save({
+            "type": "channel_create",
+            "channel": channel.id,
+            "time": str(datetime.utcnow())
+        })
+
     # ==========================================================
     # CHANNEL DELETE
     # ==========================================================
@@ -68,6 +119,12 @@ class ServerLog(commands.Cog):
         )
 
         await self.send(channel.guild, embed)
+
+        self.save({
+            "type": "channel_delete",
+            "channel": channel.id,
+            "time": str(datetime.utcnow())
+        })
 
     # ==========================================================
     # ROLE CREATE
@@ -89,6 +146,12 @@ class ServerLog(commands.Cog):
 
         await self.send(role.guild, embed)
 
+        self.save({
+            "type": "role_create",
+            "role": role.id,
+            "time": str(datetime.utcnow())
+        })
+
     # ==========================================================
     # ROLE DELETE
     # ==========================================================
@@ -109,14 +172,18 @@ class ServerLog(commands.Cog):
 
         await self.send(role.guild, embed)
 
+        self.save({
+            "type": "role_delete",
+            "role": role.id,
+            "time": str(datetime.utcnow())
+        })
+
     # ==========================================================
     # MEMBER UPDATE
     # ==========================================================
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
-
-        # Nickname
 
         if before.nick != after.nick:
 
@@ -143,7 +210,11 @@ class ServerLog(commands.Cog):
 
             await self.send(after.guild, embed)
 
-        # Role add
+            self.save({
+                "type": "nickname_change",
+                "user": after.id,
+                "time": str(datetime.utcnow())
+            })
 
         added_roles = [
             r for r in after.roles if r not in before.roles
@@ -169,7 +240,12 @@ class ServerLog(commands.Cog):
 
             await self.send(after.guild, embed)
 
-        # Role remove
+            self.save({
+                "type": "role_add",
+                "user": after.id,
+                "role": role.id,
+                "time": str(datetime.utcnow())
+            })
 
         removed_roles = [
             r for r in before.roles if r not in after.roles
@@ -194,6 +270,13 @@ class ServerLog(commands.Cog):
             )
 
             await self.send(after.guild, embed)
+
+            self.save({
+                "type": "role_remove",
+                "user": after.id,
+                "role": role.id,
+                "time": str(datetime.utcnow())
+            })
 
 
 # ==========================================================

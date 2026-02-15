@@ -1,6 +1,6 @@
 import discord
-import json
 import os
+import sqlite3
 
 from discord.ext import commands
 from datetime import datetime, timezone
@@ -21,26 +21,40 @@ class ModLog(commands.Cog):
 
         os.makedirs("data/logs", exist_ok=True)
 
-        if not os.path.exists(FILE):
-            json.dump([], open(FILE, "w"))
-
     # ==========================================================
-    # SAVE
+    # SAVE (SQLite)
     # ==========================================================
 
     def save(self, data):
 
-        try:
+        conn = sqlite3.connect("data/logs/logs.db")
+        c = conn.cursor()
 
-            logs = json.load(open(FILE))
+        table = FILE.split("/")[-1].replace(".json", "")
 
-            logs.append(data)
+        c.execute(f"""
+            CREATE TABLE IF NOT EXISTS {table} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT
+            )
+        """)
 
-            json.dump(logs, open(FILE, "w"), indent=4)
+        for key in data.keys():
 
-        except:
+            try:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {key} TEXT")
+            except:
+                pass
 
-            json.dump([], open(FILE, "w"))
+        columns = ", ".join(data.keys())
+        placeholders = ", ".join("?" for _ in data)
+
+        c.execute(
+            f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",
+            tuple(str(v) for v in data.values())
+        )
+
+        conn.commit()
+        conn.close()
 
     # ==========================================================
     # SEND
@@ -54,7 +68,7 @@ class ModLog(commands.Cog):
             await channel.send(embed=embed)
 
     # ==========================================================
-    # MEMBER BAN
+    # BAN
     # ==========================================================
 
     @commands.Cog.listener()
@@ -84,21 +98,21 @@ class ModLog(commands.Cog):
         )
 
         embed.add_field(
-            name="👤 User",
-            value=f"{user} (`{user.id}`)",
+            name="User",
+            value=f"{user} ({user.id})",
             inline=False
         )
 
         if executor:
 
             embed.add_field(
-                name="🛡 Moderator",
+                name="Moderator",
                 value=executor.mention,
                 inline=False
             )
 
         embed.add_field(
-            name="📄 Grund",
+            name="Grund",
             value=reason,
             inline=False
         )
@@ -116,7 +130,7 @@ class ModLog(commands.Cog):
         })
 
     # ==========================================================
-    # MEMBER KICK (FIXED)
+    # KICK
     # ==========================================================
 
     @commands.Cog.listener()
@@ -131,7 +145,6 @@ class ModLog(commands.Cog):
 
             if entry.target.id == member.id:
 
-                # ✅ FIX: Nur wenn Kick wirklich aktuell ist
                 now = datetime.now(timezone.utc)
                 diff = (now - entry.created_at).total_seconds()
 
@@ -145,25 +158,15 @@ class ModLog(commands.Cog):
                 )
 
                 embed.add_field(
-                    name="👤 User",
-                    value=f"{member} (`{member.id}`)",
+                    name="User",
+                    value=f"{member} ({member.id})",
                     inline=False
                 )
 
                 embed.add_field(
-                    name="🛡 Moderator",
+                    name="Moderator",
                     value=entry.user.mention,
                     inline=False
-                )
-
-                embed.add_field(
-                    name="🕒 Zeit",
-                    value=f"<t:{int(now.timestamp())}:F>",
-                    inline=False
-                )
-
-                embed.set_thumbnail(
-                    url=member.display_avatar.url
                 )
 
                 await self.send(guild, embed)
@@ -178,7 +181,7 @@ class ModLog(commands.Cog):
                 break
 
     # ==========================================================
-    # MEMBER TIMEOUT
+    # TIMEOUT
     # ==========================================================
 
     @commands.Cog.listener()
@@ -199,8 +202,6 @@ class ModLog(commands.Cog):
                 executor = entry.user
                 break
 
-        # Timeout gesetzt
-
         if after.timed_out_until:
 
             embed = discord.Embed(
@@ -210,20 +211,18 @@ class ModLog(commands.Cog):
             )
 
             embed.add_field(
-                name="👤 User",
-                value=f"{after} (`{after.id}`)",
+                name="User",
+                value=f"{after} ({after.id})",
                 inline=False
             )
 
             embed.add_field(
-                name="⏰ Bis",
+                name="Bis",
                 value=f"<t:{int(after.timed_out_until.timestamp())}:F>",
                 inline=False
             )
 
             log_type = "timeout"
-
-        # Timeout entfernt
 
         else:
 
@@ -234,8 +233,8 @@ class ModLog(commands.Cog):
             )
 
             embed.add_field(
-                name="👤 User",
-                value=f"{after} (`{after.id}`)",
+                name="User",
+                value=f"{after} ({after.id})",
                 inline=False
             )
 
@@ -244,14 +243,10 @@ class ModLog(commands.Cog):
         if executor:
 
             embed.add_field(
-                name="🛡 Moderator",
+                name="Moderator",
                 value=executor.mention,
                 inline=False
             )
-
-        embed.set_thumbnail(
-            url=after.display_avatar.url
-        )
 
         await self.send(after.guild, embed)
 

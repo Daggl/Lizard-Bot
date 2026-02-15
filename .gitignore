@@ -1,3 +1,4 @@
 .env
-logs.db
+data/logs/logs.db
 *.json
+__pycache__/
