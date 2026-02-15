@@ -1,9 +1,9 @@
 {
     "264145477258182687": {
-        "xp": 80,
-        "level": 1,
-        "messages": 4,
-        "voice_time": 125,
+        "xp": 85,
+        "level": 2,
+        "messages": 8,
+        "voice_time": 714,
         "achievements": []
     },
     "1403753309206220904": {
@@ -14,10 +14,10 @@
         "achievements": []
     },
     "830858427433222144": {
-        "xp": 0,
+        "xp": 95,
         "level": 1,
         "messages": 0,
-        "voice_time": 0,
+        "voice_time": 589,
         "achievements": []
     },
     "389086878433017857": {
@@ -28,19 +28,19 @@
         "achievements": []
     },
     "698959490506162208": {
-        "xp": 72.5,
+        "xp": 167.5,
         "level": 4,
         "messages": 12,
-        "voice_time": 3860,
+        "voice_time": 4449,
         "achievements": [
             "Voice Starter"
         ]
     },
     "311177141377040384": {
-        "xp": 268.1666666666667,
-        "level": 2,
+        "xp": 163.16666666666669,
+        "level": 3,
         "messages": 0,
-        "voice_time": 2209,
+        "voice_time": 2798,
         "achievements": []
     }
 }
