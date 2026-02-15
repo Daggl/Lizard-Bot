@@ -1,3 +1,7 @@
+# ==========================================================
+# IMPORTS
+# ==========================================================
+
 import asyncio
 import discord
 from discord.ext import commands
@@ -7,13 +11,26 @@ import os
 import datetime
 import json
 
+# eigene Datenbank für Logs
 from data.logs import database
 
 
+# ==========================================================
+# ENVIRONMENT / TOKEN LADEN
+# ==========================================================
+
+# lädt Variablen aus der .env Datei
 load_dotenv()
+
+# Discord Bot Token aus .env
 token = os.getenv("DISCORD_TOKEN")
 
 
+# ==========================================================
+# LOGGING SETUP
+# ==========================================================
+
+# erstellt Log Datei für Discord Events / Fehler
 handler = logging.FileHandler(
     filename="discord.log",
     encoding="utf-8",
@@ -21,42 +38,70 @@ handler = logging.FileHandler(
 )
 
 
+# ==========================================================
+# BOT SETUP
+# ==========================================================
+
+# aktiviert alle Intents (Mitglieder, Nachrichten etc.)
 intents = discord.Intents.all()
 
+# erstellt Bot Instanz mit Prefix *
 bot = commands.Bot(
     command_prefix="*",
     intents=intents
 )
 
-
+# Welcome Channel ID (aktuell ungenutzt in diesem Script)
 welcome_channel_id = 1266608956659470346
 
+
+# ==========================================================
+# READY EVENT
+# ==========================================================
 
 @bot.event
 async def on_ready():
 
+    # initialisiert Datenbank
     database.setup()
 
+    # zeigt an dass Bot online ist
     print(f"{bot.user.name} ist online!")
 
+
+# ==========================================================
+# TEST COMMAND
+# ==========================================================
 
 @bot.command()
 async def ping(ctx):
 
+    # einfacher Test Command um zu prüfen ob Bot reagiert
     await ctx.send("🏓 Pong! Alles Fit im Schritt!")
 
+
+# ==========================================================
+# MESSAGE EVENT
+# ==========================================================
 
 @bot.event
 async def on_message(message):
 
+    # verhindert dass Bot auf sich selbst reagiert
     if message.author == bot.user:
         return
 
+    # wichtig damit Commands weiterhin funktionieren
     await bot.process_commands(message)
 
 
+# ==========================================================
+# MAIN FUNCTION
+# ==========================================================
+
 async def main():
 
+    # prüft ob Token existiert
     if not token:
 
         print(
@@ -66,9 +111,12 @@ async def main():
 
         return
 
-
+    # startet Bot Kontext
     async with bot:
 
+        # ==================================================
+        # COGS LADEN
+        # ==================================================
 
         try:
             await bot.load_extension("cogs.birthdays")
@@ -160,9 +208,13 @@ async def main():
         except Exception as e:
             print(f"Fehler beim Laden von cogs.log.server_log: {e}")
 
+        # ==================================================
+        # BOT STARTEN
+        # ==================================================
 
         try:
 
+            # verbindet Bot mit Discord
             await bot.start(token)
 
         except asyncio.CancelledError:
@@ -175,13 +227,20 @@ async def main():
 
             import traceback
 
+            # zeigt vollständigen Fehler an
             traceback.print_exc()
 
+            # schließt Bot sauber
             await bot.close()
 
             raise
 
 
+# ==========================================================
+# SCRIPT START
+# ==========================================================
+
+# startet main Funktion
 if __name__ == "__main__":
 
     asyncio.run(main())
