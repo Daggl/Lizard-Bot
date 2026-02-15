@@ -1,3 +1,7 @@
+# ==========================================================
+# IMPORTS
+# ==========================================================
+
 import discord
 import aiohttp
 import io
@@ -9,7 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 # ==========================================================
-# CONFIG
+# CONFIGURATION
 # ==========================================================
 
 VERIFY_CHANNEL_ID = 1472473174313799803
@@ -25,10 +29,14 @@ FONT_USERNAME = "assets/fonts/Poppins-Regular.ttf"
 
 
 # ==========================================================
-# USERNAME CLEAN
+# USERNAME CLEAN FUNCTION
 # ==========================================================
 
 def clean_username(member: discord.Member):
+    """
+    Entfernt Zahlen und Unterstriche aus dem Anzeigenamen,
+    um einen sauberen Welcome‑Text zu erzeugen.
+    """
 
     name = member.display_name
 
@@ -44,21 +52,32 @@ def clean_username(member: discord.Member):
 
 
 # ==========================================================
-# COG
+# COG CLASS
 # ==========================================================
 
 class Welcome(commands.Cog):
+    """
+    Welcome System Cog
+
+    Funktionen:
+
+    - Banner erstellen
+    - Rolle vergeben
+    - Welcome Nachricht senden
+    - Test Command
+    """
 
     def __init__(self, bot):
-
         self.bot = bot
 
-
     # ======================================================
-    # BANNER CREATE
+    # BANNER CREATION
     # ======================================================
 
     async def create_banner(self, member):
+        """
+        Erstellt das Welcome Banner Bild
+        """
 
         try:
 
@@ -67,11 +86,8 @@ class Welcome(commands.Cog):
             print("[DEBUG] Lade Avatar...")
 
             async with aiohttp.ClientSession() as session:
-
                 async with session.get(member.display_avatar.url) as resp:
-
                     avatar_bytes = await resp.read()
-
 
             print("[DEBUG] Lade Banner Bild...")
 
@@ -85,111 +101,141 @@ class Welcome(commands.Cog):
 
                 width, height = 1400, 420
 
-                banner = Image.new("RGBA", (width, height), (18, 18, 18, 255))
+                banner = Image.new(
+                    "RGBA",
+                    (width, height),
+                    (18, 18, 18, 255)
+                )
 
-
-            avatar = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
-
+            avatar = Image.open(
+                io.BytesIO(avatar_bytes)
+            ).convert("RGBA")
 
             margin = 40
 
-            avatar_size = min(360, height - margin * 2)
+            avatar_size = min(
+                360,
+                height - margin * 2
+            )
 
-            avatar = avatar.resize((avatar_size, avatar_size))
+            avatar = avatar.resize(
+                (avatar_size, avatar_size)
+            )
 
-
-            mask = Image.new("L", (avatar_size, avatar_size), 0)
+            mask = Image.new(
+                "L",
+                (avatar_size, avatar_size),
+                0
+            )
 
             draw_mask = ImageDraw.Draw(mask)
 
-            draw_mask.ellipse((0, 0, avatar_size, avatar_size), fill=255)
+            draw_mask.ellipse(
+                (0, 0, avatar_size, avatar_size),
+                fill=255
+            )
 
             avatar.putalpha(mask)
 
-
             avatar_y = (height - avatar_size) // 2
-
 
             print("[DEBUG] Lade Fonts...")
 
-            font_welcome = ImageFont.truetype(FONT_WELCOME, 140)
+            font_welcome = ImageFont.truetype(
+                FONT_WELCOME,
+                140
+            )
 
-            font_user_bold = ImageFont.truetype(FONT_WELCOME, 64)
+            font_user_bold = ImageFont.truetype(
+                FONT_WELCOME,
+                64
+            )
 
             draw = ImageDraw.Draw(banner)
 
-
             welcome_text = "WELCOME"
 
-            bbox_w = draw.textbbox((0, 0), welcome_text, font=font_welcome)
+            bbox_w = draw.textbbox(
+                (0, 0),
+                welcome_text,
+                font=font_welcome
+            )
 
             w_width = bbox_w[2] - bbox_w[0]
 
-
             S = 40
 
-            avatar_x_calc = int((width - avatar_size - S + margin - w_width) / 3)
+            avatar_x_calc = int(
+                (width - avatar_size - S + margin - w_width) / 3
+            )
 
-            avatar_x = max(margin, avatar_x_calc)
-
+            avatar_x = max(
+                margin,
+                avatar_x_calc
+            )
 
             text_area_x = avatar_x + avatar_size + S
 
             text_area_width = width - text_area_x - margin
 
-
-            welcome_x = text_area_x + max(0, (text_area_width - w_width) // 2)
+            welcome_x = text_area_x + max(
+                0,
+                (text_area_width - w_width) // 2
+            )
 
             welcome_y = avatar_y + 40
 
-
             draw.text(
-
                 (welcome_x, welcome_y),
-
                 welcome_text,
-
                 font=font_welcome,
-
                 fill=(255, 255, 255)
-
             )
 
+            banner.paste(
+                avatar,
+                (avatar_x, avatar_y),
+                avatar
+            )
 
-            banner.paste(avatar, (avatar_x, avatar_y), avatar)
-
-
-            bbox_u = draw.textbbox((0, 0), username, font=font_user_bold)
+            bbox_u = draw.textbbox(
+                (0, 0),
+                username,
+                font=font_user_bold
+            )
 
             u_width = bbox_u[2] - bbox_u[0]
 
-            user_x = text_area_x + max(0, (text_area_width - u_width) // 2)
+            user_x = text_area_x + max(
+                0,
+                (text_area_width - u_width) // 2
+            )
 
             extra_spacing = 80
 
             user_y = welcome_y + (bbox_w[3] - bbox_w[1]) + extra_spacing
 
-
             draw.text(
-
                 (user_x, user_y),
-
                 username,
-
                 font=font_user_bold,
-
                 fill=(230, 230, 230)
-
             )
-
 
             if banner.mode == "RGBA":
 
-                background_rgb = Image.new("RGB", banner.size, (18, 18, 18))
+                background_rgb = Image.new(
+                    "RGB",
+                    banner.size,
+                    (18, 18, 18)
+                )
 
                 alpha = banner.split()[3]
 
-                background_rgb.paste(banner, mask=alpha)
+                background_rgb.paste(
+                    banner,
+                    mask=alpha
+                )
 
                 final_image = background_rgb
 
@@ -197,19 +243,21 @@ class Welcome(commands.Cog):
 
                 final_image = banner.convert("RGB")
 
-
             buffer = io.BytesIO()
 
-            final_image.save(buffer, "PNG")
+            final_image.save(
+                buffer,
+                "PNG"
+            )
 
             buffer.seek(0)
 
-
             print("[DEBUG] Banner fertig")
 
-
-            return discord.File(buffer, filename="welcome.png")
-
+            return discord.File(
+                buffer,
+                filename="welcome.png"
+            )
 
         except Exception as exc:
 
@@ -217,19 +265,23 @@ class Welcome(commands.Cog):
 
             raise exc
 
-
     # ======================================================
-    # JOIN EVENT
+    # MEMBER JOIN EVENT
     # ======================================================
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
+        """
+        Wird ausgelöst wenn ein User joint
+        """
 
         print(f"[DEBUG] Join erkannt: {member}")
 
         guild = member.guild
 
-        welcome_channel = guild.get_channel(WELCOME_CHANNEL_ID)
+        welcome_channel = guild.get_channel(
+            WELCOME_CHANNEL_ID
+        )
 
         if welcome_channel is None:
 
@@ -237,14 +289,10 @@ class Welcome(commands.Cog):
 
             return
 
-
         print(f"[DEBUG] Welcome Channel gefunden: {welcome_channel.name}")
 
-
         rules_channel = guild.get_channel(RULES_CHANNEL_ID)
-
         aboutme_channel = guild.get_channel(ABOUTME_CHANNEL_ID)
-
         verify_channel = guild.get_channel(VERIFY_CHANNEL_ID)
 
         role = guild.get_role(ROLE_ID)
@@ -255,11 +303,9 @@ class Welcome(commands.Cog):
 
             print("[DEBUG] Rolle vergeben")
 
-
         banner = await self.create_banner(member)
 
         print("[DEBUG] Banner erstellt")
-
 
         embed = discord.Embed(
 
@@ -292,24 +338,16 @@ f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! �
 
         )
 
-
         embed.set_image(url="attachment://welcome.png")
-
 
         print("[DEBUG] Sende Nachricht...")
 
-
         await welcome_channel.send(
-
             file=banner,
-
             embed=embed
-
         )
 
-
         print("[DEBUG] Nachricht gesendet")
-
 
     # ======================================================
     # TEST COMMAND
@@ -324,7 +362,7 @@ f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! �
 
 
 # ==========================================================
-# SETUP
+# SETUP FUNCTION
 # ==========================================================
 
 async def setup(bot):
