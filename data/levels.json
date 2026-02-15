@@ -17,24 +17,33 @@
         "achievements": []
     },
     "830858427433222144": {
-        "xp": 10,
+        "xp": 130,
         "level": 4,
-        "messages": 94,
+        "messages": 102,
         "voice_time": 0,
-        "achievements": []
+        "achievements": [
+            "Chatter I"
+        ]
     },
     "389086878433017857": {
-        "xp": 110,
+        "xp": 125,
         "level": 2,
-        "messages": 14,
+        "messages": 15,
         "voice_time": 0,
         "achievements": []
     },
     "698959490506162208": {
-        "xp": 20,
+        "xp": 61.333333333333314,
+        "level": 3,
+        "messages": 9,
+        "voice_time": 2558,
+        "achievements": []
+    },
+    "311177141377040384": {
+        "xp": 161.66666666666669,
         "level": 2,
-        "messages": 8,
-        "voice_time": 0,
+        "messages": 0,
+        "voice_time": 1570,
         "achievements": []
     }
 }
