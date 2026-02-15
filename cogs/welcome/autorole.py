@@ -9,12 +9,13 @@ import sqlite3
 VERIFY_CHANNEL_ID = 1472473174313799803
 RULES_CHANNEL_ID = 1266609104005103617
 
+STARTER_ROLE_ID = 1472417667670347817
 VERIFY_ROLE_ID = 1472489108969492654
 DEFAULT_ROLE_ID = 1269213126356897885
 
 VERIFY_MESSAGE_IDS = [
-    1472499927262433363,  # Deutsch
-    1472500000964413706   # Englisch
+    1472508232105853054,  # Deutsch
+    1472508428961189918   # Englisch
 ]
 
 RULES_MESSAGE_IDS = [
@@ -90,6 +91,7 @@ class AutoRole(commands.Cog):
                 await member.add_roles(role)
                 print(f"[RESTORE] Verify Role → {member}")
 
+        
         # Default Role
         cursor.execute(
             "SELECT user_id FROM rules_accepted WHERE user_id = ?",
@@ -150,6 +152,17 @@ class AutoRole(commands.Cog):
                 conn.commit()
 
                 print(f"[VERIFY ADD] {member}")
+
+                # REMOVE STARTER ROLE
+
+                starter_role = guild.get_role(STARTER_ROLE_ID)
+
+                if starter_role and starter_role in member.roles:
+
+                    await member.remove_roles(starter_role)
+
+                    print(f"[STARTER REMOVE] {member}")
+
 
         # DEFAULT ROLE
 
