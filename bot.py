@@ -77,7 +77,7 @@ async def main():
 
 
         try:
-            await bot.load_extension("cogs.welcome")
+            await bot.load_extension("cogs.welcome.welcome")
         except Exception as e:
             print(e)
 
