@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 import time
-from utils.level_config import LEVEL_REWARDS, ACHIEVEMENTS, ACHIEVEMENT_CHANNEL_ID
+from cogs.leveling.utils.level_config import LEVEL_REWARDS, ACHIEVEMENTS, ACHIEVEMENT_CHANNEL_ID
 
 
 class AdminPanelView(discord.ui.View):

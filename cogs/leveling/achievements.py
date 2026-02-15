@@ -1,5 +1,5 @@
 from discord.ext import commands
-from utils.level_config import *
+from cogs.leveling.utils.level_config import *
 
 class Achievements(commands.Cog):
 

@@ -1,6 +1,6 @@
 from discord.ext import commands
 import time
-from utils.level_config import *
+from cogs.leveling.utils.level_config import *
 
 class Tracking(commands.Cog):
 
