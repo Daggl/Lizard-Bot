@@ -1,26 +1,96 @@
 import discord
+import aiohttp
+import io
+
 from discord.ext import commands
 from datetime import datetime
+from PIL import Image, ImageDraw, ImageFont
+
+
+# ==========================================================
+# CONFIG
+# ==========================================================
 
 WELCOME_CHANNEL_ID = 1471979239367774248
 RULES_CHANNEL_ID = 1266609104005103617
 ABOUTME_CHANNEL_ID = 1266609208518774794
 ROLE_ID = 1472417667670347817
 
-BANNER_URL = "https://cdn.discordapp.com/attachments/1471998786006941828/1472416704725520537/360_F_691208506_9rYrPJctzmGP3C2sVQtM3iq1oXd9Vp2x.jpg?ex=69927e6a&is=69912cea&hm=fbd5961759eb7ea3088691880fd4f6ef396ac6e77c2739d5b6876abf228266c5&"
+BANNER_PATH = "assets/welcome.png"
+FONT_PATH = "assets/fonts/aubrey.ttf"
 
+
+# ==========================================================
+# COG
+# ==========================================================
 
 class Welcome(commands.Cog):
+    """Professional Welcome Banner System"""
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # ==========================================================
-    # MEMBER JOIN
-    # ==========================================================
+    # ======================================================
+    # Banner Generator
+    # ======================================================
+
+    async def create_banner(self, member: discord.Member) -> discord.File:
+
+        # Avatar herunterladen
+        async with aiohttp.ClientSession() as session:
+            async with session.get(member.display_avatar.url) as resp:
+                avatar_bytes = await resp.read()
+
+        # Banner laden
+        banner = Image.open(BANNER_PATH).convert("RGBA")
+
+        # Avatar laden
+        avatar = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
+
+        # Resize
+        banner = banner.resize((1000, 350))
+        avatar = avatar.resize((180, 180))
+
+        # Kreis Maske
+        mask = Image.new("L", avatar.size, 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.ellipse((0, 0, 180, 180), fill=255)
+
+        avatar.putalpha(mask)
+
+        # Avatar einfügen
+        banner.paste(avatar, (60, 85), avatar)
+
+        # Text
+        draw = ImageDraw.Draw(banner)
+
+        try:
+            font = ImageFont.truetype(FONT_PATH, 60)
+        except Exception:
+            font = ImageFont.load_default()
+
+        draw.text(
+            (260, 140),
+            member.name,
+            font=font,
+            fill=(255, 255, 255)
+        )
+
+        # In Memory speichern
+        buffer = io.BytesIO()
+        banner.save(buffer, "PNG")
+        buffer.seek(0)
+
+        return discord.File(buffer, filename="welcome.png")
+
+    # ======================================================
+    # MEMBER JOIN EVENT
+    # ======================================================
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
+
+        print(f"[WELCOME] {member} joined")
 
         guild = member.guild
 
@@ -30,44 +100,43 @@ class Welcome(commands.Cog):
 
         role = guild.get_role(ROLE_ID)
 
-        # ======================================================
-        # ROLE ADD
-        # ======================================================
+        # ==================================================
+        # ROLE
+        # ==================================================
 
         if role:
-
             try:
-                await member.add_roles(
-                    role,
-                    reason="AutoRole Welcome System"
-                )
-            except Exception as e:
-                print(f"Role error: {e}")
+                await member.add_roles(role)
+            except Exception as error:
+                print(f"Role Error: {error}")
 
-        # ======================================================
+        # ==================================================
+        # Banner erstellen
+        # ==================================================
+
+        try:
+            banner = await self.create_banner(member)
+        except Exception as error:
+            print(f"Banner Error: {error}")
+            return
+
+        # ==================================================
         # EMBED
-        # ======================================================
+        # ==================================================
 
         embed = discord.Embed(
 
             description=(
 
-                f"## Welcome {member.mention} ♡\n\n"
-
-                f"you made it to our lovely community\n"
-                f"before you float around the server,\n"
-                f"take a sec to read the rules\n\n"
+                f"{member.mention} just checked in!\n\n"
 
                 f"❀ **verify yourself** ❀\n"
-                f"head to {rules_channel.mention}\n"
-                f"so you can unlock the whole server\n\n"
+                f"{rules_channel.mention}\n\n"
 
                 f"❀ **introduce yourself** ❀\n"
-                f"visit {aboutme_channel.mention}\n"
-                f"and tell us more about you!\n\n"
+                f"{aboutme_channel.mention}\n\n"
 
-                f"❀ **after you finished everything** ❀\n"
-                f"grab snacks, get comfy and enjoy the vibes ♡"
+                f"❀ grab snacks and enjoy the vibes ❀"
 
             ),
 
@@ -76,42 +145,43 @@ class Welcome(commands.Cog):
 
         )
 
-        # Banner
         embed.set_image(
-            url=BANNER_URL
+            url="attachment://welcome.png"
         )
 
-        # Profilbild + Username
-        embed.set_author(
-            name=f"{member.name}",
-            icon_url=member.display_avatar.url
-        )
-
-        # Thumbnail
-        embed.set_thumbnail(
-            url=member.display_avatar.url
-        )
-
-        # Footer
         embed.set_footer(
-            text=f"{guild.name}",
+            text=guild.name,
             icon_url=guild.icon.url if guild.icon else None
         )
 
-        # Send
+        # ==================================================
+        # SEND
+        # ==================================================
 
         if welcome_channel:
 
             await welcome_channel.send(
-                content=f"{member.mention}",
+
+                file=banner,
                 embed=embed
+
             )
+
+            print("Welcome message sent")
+
+        else:
+
+            print("Welcome channel not found")
 
 
 # ==========================================================
 # SETUP
 # ==========================================================
 
-async def setup(bot):
-    await bot.add_cog(Welcome(bot))
+async def setup(bot: commands.Bot):
 
+    await bot.add_cog(
+
+        Welcome(bot)
+
+    )
