@@ -1,8 +1,8 @@
 {
     "264145477258182687": {
-        "xp": 1164.0,
+        "xp": 1209.0,
         "level": 5,
-        "messages": 84,
+        "messages": 87,
         "voice_time": 24,
         "achievements": [
             "Level 5"
@@ -16,16 +16,16 @@
         "achievements": []
     },
     "830858427433222144": {
-        "xp": 355,
+        "xp": 415,
         "level": 3,
-        "messages": 57,
+        "messages": 61,
         "voice_time": 0,
         "achievements": []
     },
     "389086878433017857": {
-        "xp": 90,
-        "level": 1,
-        "messages": 6,
+        "xp": 5,
+        "level": 2,
+        "messages": 7,
         "voice_time": 0,
         "achievements": []
     },
