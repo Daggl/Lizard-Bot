@@ -73,6 +73,17 @@ class AdminHelpView(discord.ui.View):
         )
 
         embed.add_field(
+            name="*say",
+            value=(
+             "Lässt den Bot eine Nachricht senden.\n"
+            "Syntax: *say #channel Nachricht\n"
+            "Bild anhängen: |link am Ende der Nachricht\n"
+             "Beispiel: *say Hallo Welt!"
+),
+            inline=False
+        )
+
+        embed.add_field(
             name="*adminpanel",
             value=(
                 "Öffnet das Statuspanel.\n\n"
