@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 # CONFIG
 # ==========================================================
 
+VERIFY_CHANNEL_ID = 1472473174313799803
 WELCOME_CHANNEL_ID = 1471979239367774248
 RULES_CHANNEL_ID = 1266609104005103617
 ABOUTME_CHANNEL_ID = 1266609208518774794
@@ -28,21 +29,15 @@ FONT_USERNAME = "assets/fonts/Poppins-Regular.ttf"
 # ==========================================================
 
 def clean_username(member: discord.Member):
-    """Return a cleaned display name for the welcome banner.
 
-    Removes digits and underscores, collapses whitespace and falls back
-    to `member.name` if the result is empty.
-    """
-    name = getattr(member, "display_name", None) or member.name
+    name = member.display_name
 
-    # remove digits
     name = re.sub(r"\d+", "", name)
-    # remove any underscores (single or multiple)
     name = re.sub(r"_+", "", name)
-    # collapse any repeated whitespace
-    name = " ".join(name.split())
 
-    if not name:
+    name = name.strip()
+
+    if name == "":
         name = member.name
 
     return name
@@ -55,6 +50,7 @@ def clean_username(member: discord.Member):
 class Welcome(commands.Cog):
 
     def __init__(self, bot):
+
         self.bot = bot
 
 
@@ -63,116 +59,167 @@ class Welcome(commands.Cog):
     # ======================================================
 
     async def create_banner(self, member):
+
         try:
+
             username = clean_username(member)
 
             print("[DEBUG] Lade Avatar...")
 
             async with aiohttp.ClientSession() as session:
+
                 async with session.get(member.display_avatar.url) as resp:
+
                     avatar_bytes = await resp.read()
+
 
             print("[DEBUG] Lade Banner Bild...")
 
-            # Lade Hintergrund, fallback zu neutralem Banner
             try:
+
                 banner = Image.open(BANNER_PATH).convert("RGBA")
+
                 width, height = banner.size
+
             except Exception:
+
                 width, height = 1400, 420
+
                 banner = Image.new("RGBA", (width, height), (18, 18, 18, 255))
+
 
             avatar = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
 
-            # Avatar (Größe berechnen, aber noch nicht pasten) — wir
-            # berechnen die x-Position nachdem wir die Textbreiten
-            # kennen, damit linke und rechte Abstände symmetrisch sind.
+
             margin = 40
+
             avatar_size = min(360, height - margin * 2)
+
             avatar = avatar.resize((avatar_size, avatar_size))
 
+
             mask = Image.new("L", (avatar_size, avatar_size), 0)
+
             draw_mask = ImageDraw.Draw(mask)
+
             draw_mask.ellipse((0, 0, avatar_size, avatar_size), fill=255)
+
             avatar.putalpha(mask)
 
+
             avatar_y = (height - avatar_size) // 2
+
 
             print("[DEBUG] Lade Fonts...")
 
             font_welcome = ImageFont.truetype(FONT_WELCOME, 140)
-            # kleinere, reguläre Schrift (falls benötigt)
-            font_user_reg = ImageFont.truetype(FONT_USERNAME, 56)
-            # fette Variante für den Username: benutze die Bold-Font
+
             font_user_bold = ImageFont.truetype(FONT_WELCOME, 64)
+
             draw = ImageDraw.Draw(banner)
 
-            # Berechne Text-Metriken
+
             welcome_text = "WELCOME"
+
             bbox_w = draw.textbbox((0, 0), welcome_text, font=font_welcome)
+
             w_width = bbox_w[2] - bbox_w[0]
 
-            # Wir wollen: left_margin_to_avatar == right_margin_after_welcome
-            # Lasse Abstand zwischen Avatar und Text als S
+
             S = 40
-            # Lösen der Gleichung (siehe Kommentar) ergibt:
-            # avatar_x = (width - avatar_size - S + margin - w_width) / 3
+
             avatar_x_calc = int((width - avatar_size - S + margin - w_width) / 3)
-            # mindestabstand nach links ist margin
+
             avatar_x = max(margin, avatar_x_calc)
 
-            # Jetzt, wo avatar_x bekannt ist, bestimme Textbereich
+
             text_area_x = avatar_x + avatar_size + S
+
             text_area_width = width - text_area_x - margin
 
-            # Zentriere "WELCOME" innerhalb des Textbereichs
-            welcome_x = text_area_x + max(0, (text_area_width - w_width) // 2)
-            # Etwas oberhalb der Mitte der Avatarhöhe
-            welcome_y = avatar_y + 10
-            draw.text((welcome_x, welcome_y), welcome_text,
-                      font=font_welcome, fill=(255, 255, 255))
 
-            # Paste das Avatar nachdem wir avatar_x berechnet haben
+            welcome_x = text_area_x + max(0, (text_area_width - w_width) // 2)
+
+            welcome_y = avatar_y + 40
+
+
+            draw.text(
+
+                (welcome_x, welcome_y),
+
+                welcome_text,
+
+                font=font_welcome,
+
+                fill=(255, 255, 255)
+
+            )
+
+
             banner.paste(avatar, (avatar_x, avatar_y), avatar)
 
-            # Username unterhalb von WELCOME (Punkte in deiner Skizze
-            # repräsentieren den Username). Abstand deutlich erhöht,
-            # damit der Username weiter unten sitzt. Zeichne in Fettschrift.
-            bbox_u = draw.textbbox((0, 0), username, font=font_user_bold)
-            u_width = bbox_u[2] - bbox_u[0]
-            user_x = text_area_x + max(0, (text_area_width - u_width) // 2)
-            # weiter nach unten verschieben
-            extra_spacing = 80
-            user_y = welcome_y + (bbox_w[3] - bbox_w[1]) + extra_spacing
-            draw.text((user_x, user_y), username, font=font_user_bold,
-                      fill=(230, 230, 230))
 
-            # Composite auf undurchsichtigen Hintergrund, damit keine
-            # Transparenz ("Kästchen") im finalen PNG sichtbar bleibt.
+            bbox_u = draw.textbbox((0, 0), username, font=font_user_bold)
+
+            u_width = bbox_u[2] - bbox_u[0]
+
+            user_x = text_area_x + max(0, (text_area_width - u_width) // 2)
+
+            extra_spacing = 80
+
+            user_y = welcome_y + (bbox_w[3] - bbox_w[1]) + extra_spacing
+
+
+            draw.text(
+
+                (user_x, user_y),
+
+                username,
+
+                font=font_user_bold,
+
+                fill=(230, 230, 230)
+
+            )
+
+
             if banner.mode == "RGBA":
+
                 background_rgb = Image.new("RGB", banner.size, (18, 18, 18))
+
                 alpha = banner.split()[3]
+
                 background_rgb.paste(banner, mask=alpha)
+
                 final_image = background_rgb
+
             else:
+
                 final_image = banner.convert("RGB")
 
+
             buffer = io.BytesIO()
+
             final_image.save(buffer, "PNG")
+
             buffer.seek(0)
+
 
             print("[DEBUG] Banner fertig")
 
+
             return discord.File(buffer, filename="welcome.png")
 
-        except Exception as exc:  # pragma: no cover - bubble up
+
+        except Exception as exc:
+
             print("[ERROR] Banner Fehler:", exc)
+
             raise exc
 
 
-
     # ======================================================
-    # JOIN EVENT WITH DEBUG
+    # JOIN EVENT
     # ======================================================
 
     @commands.Cog.listener()
@@ -181,7 +228,6 @@ class Welcome(commands.Cog):
         print(f"[DEBUG] Join erkannt: {member}")
 
         guild = member.guild
-
 
         welcome_channel = guild.get_channel(WELCOME_CHANNEL_ID)
 
@@ -196,8 +242,10 @@ class Welcome(commands.Cog):
 
 
         rules_channel = guild.get_channel(RULES_CHANNEL_ID)
+
         aboutme_channel = guild.get_channel(ABOUTME_CHANNEL_ID)
 
+        verify_channel = guild.get_channel(VERIFY_CHANNEL_ID)
 
         role = guild.get_role(ROLE_ID)
 
@@ -213,20 +261,19 @@ class Welcome(commands.Cog):
         print("[DEBUG] Banner erstellt")
 
 
-        # ==================================================
-        # EMBED ERSTELLEN (DAS HAT GEFEHLT)
-        # ==================================================
-
         embed = discord.Embed(
+
             description=(
-                f"""{member.mention} 𝗃𝗎𝗌𝗍 𝖼𝗁𝖾𝖼𝗄𝖾𝖽 𝗂𝗇!
+
+f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! 🎔
 𝗒𝗈𝗎 𝗆𝖺𝖽𝖾 𝗂𝗍 𝗍𝗈 𝗈𝗎𝗋 𝗅𝗈𝗏𝖾𝗅𝗒 𝖼𝗈𝗆𝗆𝗎𝗇𝗂𝗍𝗒!
-𝖻𝖾𝖿𝗈𝗋𝖾 𝗒𝗈𝗎 𝖿𝗅𝗈𝖺𝗍 𝖺𝗋𝗈𝗎𝗇𝖽 𝗍𝗁𝖾 𝗌𝖾𝗋𝗏𝖾𝗋, 𝗍𝖺𝗄𝖾 𝖺 𝗌𝖾𝖼 𝗍𝗈 𝗋𝖾𝖺𝖽 𝗍𝗁𝖾 {rules_channel.mention}
+𝖻𝖾𝖿𝗈𝗋𝖾 𝗒𝗈𝗎 𝖿𝗅𝗈𝖺𝗍 𝖺𝗋𝗈𝗎𝗇𝖽 𝗍𝗁𝖾 𝗌𝖾𝗋𝗏𝖾𝗋,
+𝗍𝖺𝗄𝖾 𝖺 𝗌𝖾𝖼 𝗍𝗈 𝗋𝖾𝖺𝖽 𝗍𝗁𝖾 {rules_channel.mention}
 
 ˚◟𝗼𝗻𝗰𝗲 𝘆𝗼𝘂 𝗿𝗲𝗮𝗱 𝘁𝗵𝗲 𝗿𝘂𝗹𝗲𝘀◞˚
 
 ❀ 𝘃𝗲𝗿𝗶𝗳𝘆 𝘆𝗼𝘂𝗿𝘀𝗲𝗹𝗳 ❀
-𝗁𝖾𝖺𝖽 𝗍𝗈 {rules_channel.mention} 𝗌𝗈 𝗒𝗈𝗎 𝖼𝖺𝗇 𝗎𝗇𝗅𝗈𝖼𝗄 𝗍𝗁𝖾 𝗐𝗁𝗈𝗅𝖾 𝗌𝖾𝗋𝗏𝖾𝗋
+𝗁𝖾𝖺𝖽 𝗍𝗈 {verify_channel.mention} 𝗌𝗈 𝗒𝗈𝗎 𝖼𝖺𝗇 𝗎𝗇𝗅𝗈𝖼𝗄 𝗍𝗁𝖾 𝗐𝗁𝗈𝗅𝖾 𝗌𝖾𝗋𝗏𝖾𝗋
 (𝗒𝖾𝗌, 𝖺𝗅𝗅 𝗍𝗁𝖾 𝖼𝗈𝗓𝗒 & 𝖼𝗁𝖺𝗈𝗍𝗂𝖼 𝗉𝖺𝗋𝗍𝗌)
 
 ❀ 𝗶𝗻𝘁𝗿𝗼𝗱𝘂𝗰𝗲 𝘆𝗼𝘂𝗿𝘀𝗲𝗹𝗳 ❀
@@ -236,9 +283,13 @@ class Welcome(commands.Cog):
 ❀ 𝗮𝗳𝘁𝗲𝗿 𝘆𝗼𝘂 𝗵𝗮𝘃𝗲 𝗰𝗼𝗺𝗽𝗹𝗲𝘁𝗲𝗱 𝗮𝗹𝗹 𝘁𝗵𝗲 𝗳𝗼𝗿𝗺𝗮𝗹𝗶𝘁𝗶𝗲𝘀 ❀
 𝗀𝗈, 𝗀𝗋𝖺𝖻 𝗒𝗈𝗎𝗋 𝗌𝗇𝖺𝖼𝗄𝗌, 𝗀𝖾𝗍 𝖼𝗈𝗆𝖿𝗒 𝖺𝗇𝖽 𝖾𝗇𝗃𝗈𝗒 𝗍𝗁𝖾 𝗀𝗈𝗈𝖽 𝗏𝗂𝖻𝖾𝗌!
 """
+
             ),
+
             color=discord.Color.from_rgb(140, 110, 255),
-            timestamp=datetime.utcnow(),
+
+            timestamp=datetime.utcnow()
+
         )
 
 
@@ -258,6 +309,18 @@ class Welcome(commands.Cog):
 
 
         print("[DEBUG] Nachricht gesendet")
+
+
+    # ======================================================
+    # TEST COMMAND
+    # ======================================================
+
+    @commands.command()
+    async def testwelcome(self, ctx):
+
+        print("[DEBUG] Test Command benutzt")
+
+        await self.on_member_join(ctx.author)
 
 
 # ==========================================================
