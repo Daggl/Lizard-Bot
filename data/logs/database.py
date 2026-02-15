@@ -1,91 +1,62 @@
 import sqlite3
 import os
-import json
+from datetime import datetime
 
-DB = "data/logs/logs.db"
+DB_PATH = "data/logs/logs.db"
+
+os.makedirs("data/logs", exist_ok=True)
 
 
 def connect():
-    os.makedirs("data/logs", exist_ok=True)
-    return sqlite3.connect(DB)
+    return sqlite3.connect(DB_PATH)
 
 
 def setup():
+    con = connect()
+    cur = con.cursor()
 
-    conn = connect()
-    c = conn.cursor()
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS chat_logs(
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        data TEXT
+        category TEXT,
+        type TEXT,
+        user_id INTEGER,
+        moderator_id INTEGER,
+        channel_id INTEGER,
+        message TEXT,
+        extra TEXT,
+        timestamp TEXT
     )
     """)
 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS member_logs(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        data TEXT
-    )
-    """)
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS mod_logs(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        data TEXT
-    )
-    """)
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS voice_logs(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        data TEXT
-    )
-    """)
-
-    conn.commit()
-    conn.close()
+    con.commit()
+    con.close()
 
 
-def save_chat(data):
+def save_log(category, data):
 
-    conn = connect()
-    conn.execute(
-        "INSERT INTO chat_logs(data) VALUES(?)",
-        (json.dumps(data),)
-    )
-    conn.commit()
-    conn.close()
+    con = connect()
+    cur = con.cursor()
 
+    cur.execute("""
+        INSERT INTO logs
+        (category, type, user_id, moderator_id, channel_id, message, extra, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
 
-def save_member(data):
+        category,
+        data.get("type"),
+        data.get("user"),
+        data.get("by"),
+        data.get("channel"),
+        data.get("message"),
+        str(data),
+        str(datetime.utcnow())
 
-    conn = connect()
-    conn.execute(
-        "INSERT INTO member_logs(data) VALUES(?)",
-        (json.dumps(data),)
-    )
-    conn.commit()
-    conn.close()
+    ))
 
-
-def save_mod(data):
-
-    conn = connect()
-    conn.execute(
-        "INSERT INTO mod_logs(data) VALUES(?)",
-        (json.dumps(data),)
-    )
-    conn.commit()
-    conn.close()
+    con.commit()
+    con.close()
 
 
-def save_voice(data):
-
-    conn = connect()
-    conn.execute(
-        "INSERT INTO voice_logs(data) VALUES(?)",
-        (json.dumps(data),)
-    )
-    conn.commit()
-    conn.close()
+setup()

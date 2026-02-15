@@ -1,5 +1,4 @@
 import discord
-import json
 import os
 
 from discord.ext import commands
@@ -22,26 +21,50 @@ class VoiceLog(commands.Cog):
 
         os.makedirs("data/logs", exist_ok=True)
 
-        if not os.path.exists(FILE):
-            json.dump([], open(FILE, "w"))
 
-    # ==========================================================
-    # SAVE
-    # ==========================================================
+# ==========================================================
+# SAVE
+# ==========================================================
 
     def save(self, data):
 
-        try:
+        import sqlite3
+        import os
 
-            logs = json.load(open(FILE))
+        os.makedirs("data/logs", exist_ok=True)
 
-            logs.append(data)
+        conn = sqlite3.connect("data/logs/logs.db")
 
-            json.dump(logs, open(FILE, "w"), indent=4)
+        c = conn.cursor()
 
-        except:
+        table = FILE.split("/")[-1].replace(".json", "")
 
-            json.dump([], open(FILE, "w"))
+        # Tabelle erstellen falls nicht existiert
+        c.execute(f"""
+            CREATE TABLE IF NOT EXISTS {table} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT
+            )
+        """)
+
+        # Spalten erstellen falls nicht existieren
+        for key in data.keys():
+
+            try:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {key} TEXT")
+            except:
+                pass
+
+        columns = ", ".join(data.keys())
+        placeholders = ", ".join("?" for _ in data)
+
+        c.execute(
+            f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",
+            tuple(str(v) for v in data.values())
+        )
+
+        conn.commit()
+
+        conn.close()
 
     # ==========================================================
     # SEND
