@@ -107,7 +107,7 @@ class Rank(commands.Cog):
 
         draw.text(
             (260, 50),
-            member.name,
+            member.display_name,
             font=font_big,
             fill=(255, 255, 255)
         )
