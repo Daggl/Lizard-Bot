@@ -112,13 +112,38 @@ class AdminHelpView(discord.ui.View):
         )
 
         embed.add_field(
-            name="*removexp",
-            value="Entfernt XP. Führt keine negativen Level unter 0 aus.",
+            name="*removexp @user menge",
+            value=(
+                "Manuelles Entfernen von XP.\n"
+                "Nützlich für Korrekturen oder Strafen.\n\n"
+                "Führt keine negativen Level unter 0 aus."
+            ),
+
             inline=False
         )
 
         embed.add_field(
-            name="*resetuser",
+            name="*giveachievement @user achievementname",
+            value=(
+                "Vergibt ein Achievement an einen Benutzer.\n"
+                "Nützlich für besondere Anlässe oder Belohnungen.\n\n"
+                "Beispiel: *giveachievement @user Erster Kill"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="*removeachievement @user achievementname",
+            value=(
+                "Entfernt ein Achievement von einem Benutzer.\n"
+                "Nützlich für Korrekturen oder Strafen.\n\n"
+                "Beispiel: *removeachievement @user Erster Kill"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="*reset @user",
             value="Setzt XP, Level & Achievements vollständig zurück.",
             inline=False
         )
