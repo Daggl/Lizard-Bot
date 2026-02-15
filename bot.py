@@ -208,6 +208,16 @@ async def main():
         except Exception as e:
             print(f"Fehler beim Laden von cogs.log.server_log: {e}")
 
+        try:
+            await bot.load_extension("cogs.welcome.autorole")
+        except Exception as e:
+            print(f"Fehler beim Laden von cogs.welcome.autorole: {e}")
+
+        try:
+            await bot.load_extension("cogs.say")
+        except Exception as e:
+            print(f"Fehler beim Laden von cogs.say: {e}")
+            
         # ==================================================
         # BOT STARTEN
         # ==================================================
