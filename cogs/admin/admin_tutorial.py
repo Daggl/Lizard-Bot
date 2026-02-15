@@ -123,6 +123,12 @@ class AdminHelpView(discord.ui.View):
             inline=False
         )
 
+        embed.add_field(
+            name="*rankuser @user",
+            value="Zeigt den Rang eines Benutzers an.",
+            inline=False
+        )
+
         await interaction.response.edit_message(embed=embed)
 
  
