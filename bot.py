@@ -3,6 +3,7 @@
 # ==========================================================
 
 import asyncio
+import wavelink
 import discord
 from discord.ext import commands
 import logging
@@ -51,10 +52,6 @@ bot = commands.Bot(
     intents=intents
 )
 
-# Welcome Channel ID (aktuell ungenutzt in diesem Script)
-welcome_channel_id = 1266608956659470346
-
-
 # ==========================================================
 # READY EVENT
 # ==========================================================
@@ -66,7 +63,7 @@ async def on_ready():
     database.setup()
 
     # zeigt an dass Bot online ist
-    print(f"{bot.user.name} ist online!")
+    print(f"{bot.user.name} is online!")
 
 
 # ==========================================================
@@ -77,7 +74,7 @@ async def on_ready():
 async def ping(ctx):
 
     # einfacher Test Command um zu prüfen ob Bot reagiert
-    await ctx.send("🏓 Pong! Alles Fit im Schritt!")
+    await ctx.send("🏓 Pong! all is good in the hood!")
 
 
 # ==========================================================
@@ -217,6 +214,11 @@ async def main():
             await bot.load_extension("cogs.say")
         except Exception as e:
             print(f"Fehler beim Laden von cogs.say: {e}")
+
+        #try:
+            #await bot.load_extension("cogs.music.music")
+        #except Exception as e:
+            #print(f"Fehler beim Laden von cogs.music.music: {e}")
             
         # ==================================================
         # BOT STARTEN
@@ -254,3 +256,15 @@ async def main():
 if __name__ == "__main__":
 
     asyncio.run(main())
+
+ # ======================================================
+ # AUTO RESTART SCHUTZ
+ # ======================================================
+
+    while True:
+        try:
+            asyncio.run(main())
+        except Exception as e:
+            print(f"Crash: {e}")
+            import time
+            time.sleep(5)

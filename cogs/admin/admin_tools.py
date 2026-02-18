@@ -15,7 +15,7 @@ class AdminTools(commands.Cog):
         user["xp"] += amount
         self.bot.db.save()
 
-        await ctx.send(f"✅ {member.mention} hat {amount} XP erhalten.")
+        await ctx.send(f"✅ {member.mention} got {amount} XP.")
 
     # XP SETZEN
     @commands.command()
@@ -26,7 +26,7 @@ class AdminTools(commands.Cog):
         user["xp"] = amount
         self.bot.db.save()
 
-        await ctx.send(f"🛠 XP von {member.mention} auf {amount} gesetzt.")
+        await ctx.send(f"🛠 XP of {member.mention} set to {amount}.")
 
     # LEVEL SETZEN
     @commands.command()
@@ -37,7 +37,7 @@ class AdminTools(commands.Cog):
         user["level"] = level
         self.bot.db.save()
 
-        await ctx.send(f"⭐ Level von {member.mention} auf {level} gesetzt.")
+        await ctx.send(f"⭐ Level of {member.mention} set to {level}.")
 
     # ACHIEVEMENT TEST
     @commands.command()
@@ -47,13 +47,13 @@ class AdminTools(commands.Cog):
         user = self.bot.db.get_user(member.id)
 
         if name in user["achievements"]:
-            await ctx.send("❌ Achievement existiert bereits.")
+            await ctx.send("❌ Achievement already exists.")
             return
 
         user["achievements"].append(name)
         self.bot.db.save()
 
-        await ctx.send(f"🏆 Achievement '{name}' wurde {member.mention} gegeben.")
+        await ctx.send(f"🏆 Achievement '{name}' was given to {member.mention}.")
 
 
 async def setup(bot):
