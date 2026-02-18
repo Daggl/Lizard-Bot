@@ -216,6 +216,11 @@ async def main():
         except Exception as e:
             print(f"Error loading cogs.say: {e}")
 
+        try:
+            await bot.load_extension("cogs.tickets.ticket")
+        except Exception as e:
+            print(f"Error loading cogs.tickets.ticket: {e}")
+
         # ==================================================
         # START BOT
         # ==================================================
