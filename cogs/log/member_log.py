@@ -26,44 +26,10 @@ class MemberLog(commands.Cog):
 # ==========================================================
 
     def save(self, data):
+        from data.logs import database as db
 
-        import sqlite3
-        import os
-
-        os.makedirs("data/logs", exist_ok=True)
-
-        conn = sqlite3.connect("data/logs/logs.db")
-
-        c = conn.cursor()
-
-        table = FILE.split("/")[-1].replace(".json", "")
-
-        # Tabelle erstellen falls nicht existiert
-        c.execute(f"""
-            CREATE TABLE IF NOT EXISTS {table} (
-                id INTEGER PRIMARY KEY AUTOINCREMENT
-            )
-        """)
-
-        # Spalten erstellen falls nicht existieren
-        for key in data.keys():
-
-            try:
-                c.execute(f"ALTER TABLE {table} ADD COLUMN {key} TEXT")
-            except:
-                pass
-
-        columns = ", ".join(data.keys())
-        placeholders = ", ".join("?" for _ in data)
-
-        c.execute(
-            f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",
-            tuple(str(v) for v in data.values())
-        )
-
-        conn.commit()
-
-        conn.close()
+        # Persist using central logs DB
+        db.save_log("member", data)
 
 
     # ==========================================================
@@ -117,7 +83,10 @@ class MemberLog(commands.Cog):
         self.save({
             "type": "join",
             "user": member.id,
-            "time": str(datetime.utcnow())
+            "user_name": str(member),
+            "created_at": member.created_at.isoformat(),
+            "guild": member.guild.id,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
     # ==========================================================
@@ -154,7 +123,9 @@ class MemberLog(commands.Cog):
         self.save({
             "type": "leave",
             "user": member.id,
-            "time": str(datetime.utcnow())
+            "user_name": str(member),
+            "guild": member.guild.id,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
 

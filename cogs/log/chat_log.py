@@ -26,45 +26,10 @@ class ChatLog(commands.Cog):
     # ==========================================================
 
     def save(self, data):
+        from data.logs import database as db
 
-        import sqlite3
-        import os
-
-        os.makedirs("data/logs", exist_ok=True)
-
-        conn = sqlite3.connect("data/logs/logs.db")
-        c = conn.cursor()
-
-        table = FILE.split("/")[-1].replace(".json", "")
-
-        # Tabelle erstellen falls nicht existiert
-        c.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {table} (
-                id INTEGER PRIMARY KEY AUTOINCREMENT
-            )
-            """
-        )
-
-        # Spalten erstellen falls nicht existieren
-        for key in data.keys():
-
-            try:
-                c.execute(f"ALTER TABLE {table} ADD COLUMN {key} TEXT")
-
-            except:
-                pass
-
-        columns = ", ".join(data.keys())
-        placeholders = ", ".join("?" for _ in data)
-
-        c.execute(
-            f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",
-            tuple(str(v) for v in data.values())
-        )
-
-        conn.commit()
-        conn.close()
+        # Use central logs DB; db.save_log will store the raw dict
+        db.save_log("chat", data)
 
     # ==========================================================
     # SEND
@@ -112,7 +77,15 @@ class ChatLog(commands.Cog):
 
         self.save({
             "type": "send",
-            "user": msg.author.id
+            "user": msg.author.id,
+            "user_name": str(msg.author),
+            "channel": msg.channel.id,
+            "channel_name": getattr(msg.channel, "name", None),
+            "message": msg.content,
+            "message_id": msg.id,
+            "attachments": [a.url for a in msg.attachments],
+            "guild": msg.guild.id if msg.guild else None,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
     # ==========================================================
@@ -158,7 +131,15 @@ class ChatLog(commands.Cog):
         await self.send(msg.guild, embed)
 
         self.save({
-            "type": "delete"
+            "type": "delete",
+            "user": msg.author.id,
+            "user_name": str(msg.author),
+            "channel": msg.channel.id if msg.channel else None,
+            "message": msg.content,
+            "message_id": msg.id,
+            "deleted_by": deleter.id if deleter else None,
+            "guild": msg.guild.id if msg.guild else None,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
     # ==========================================================
@@ -193,7 +174,15 @@ class ChatLog(commands.Cog):
         await self.send(before.guild, embed)
 
         self.save({
-            "type": "edit"
+            "type": "edit",
+            "user": before.author.id,
+            "user_name": str(before.author),
+            "channel": before.channel.id,
+            "message_id": before.id,
+            "before": before.content,
+            "after": after.content,
+            "guild": before.guild.id if before.guild else None,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
 

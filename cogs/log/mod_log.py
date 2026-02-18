@@ -26,35 +26,10 @@ class ModLog(commands.Cog):
     # ==========================================================
 
     def save(self, data):
+        from data.logs import database as db
 
-        conn = sqlite3.connect("data/logs/logs.db")
-        c = conn.cursor()
-
-        table = FILE.split("/")[-1].replace(".json", "")
-
-        c.execute(f"""
-            CREATE TABLE IF NOT EXISTS {table} (
-                id INTEGER PRIMARY KEY AUTOINCREMENT
-            )
-        """)
-
-        for key in data.keys():
-
-            try:
-                c.execute(f"ALTER TABLE {table} ADD COLUMN {key} TEXT")
-            except:
-                pass
-
-        columns = ", ".join(data.keys())
-        placeholders = ", ".join("?" for _ in data)
-
-        c.execute(
-            f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",
-            tuple(str(v) for v in data.values())
-        )
-
-        conn.commit()
-        conn.close()
+        # Use central logs DB for mod events
+        db.save_log("mod", data)
 
     # ==========================================================
     # SEND
@@ -124,9 +99,12 @@ class ModLog(commands.Cog):
         self.save({
             "type": "ban",
             "user": user.id,
+            "user_name": str(user),
             "by": executor.id if executor else None,
+            "by_name": str(executor) if executor else None,
             "reason": reason,
-            "time": str(datetime.utcnow())
+            "guild": guild.id,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
     # ==========================================================
@@ -174,8 +152,11 @@ class ModLog(commands.Cog):
                 self.save({
                     "type": "kick",
                     "user": member.id,
+                    "user_name": str(member),
                     "by": entry.user.id,
-                    "time": str(datetime.utcnow())
+                    "by_name": str(entry.user),
+                    "guild": guild.id,
+                    "timestamp": datetime.utcnow().isoformat()
                 })
 
                 break
@@ -253,8 +234,11 @@ class ModLog(commands.Cog):
         self.save({
             "type": log_type,
             "user": after.id,
+            "user_name": str(after),
             "by": executor.id if executor else None,
-            "time": str(datetime.utcnow())
+            "by_name": str(executor) if executor else None,
+            "guild": after.guild.id,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
 

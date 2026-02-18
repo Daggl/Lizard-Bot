@@ -26,41 +26,10 @@ class ServerLog(commands.Cog):
     # ==========================================================
 
     def save(self, data):
+        from data.logs import database as db
 
-        import sqlite3
-        import os
-
-        os.makedirs("data/logs", exist_ok=True)
-
-        conn = sqlite3.connect("data/logs/logs.db")
-
-        c = conn.cursor()
-
-        table = FILE.split("/")[-1].replace(".json", "")
-
-        c.execute(f"""
-            CREATE TABLE IF NOT EXISTS {table} (
-                id INTEGER PRIMARY KEY AUTOINCREMENT
-            )
-        """)
-
-        for key in data.keys():
-
-            try:
-                c.execute(f"ALTER TABLE {table} ADD COLUMN {key} TEXT")
-            except:
-                pass
-
-        columns = ", ".join(data.keys())
-        placeholders = ", ".join("?" for _ in data)
-
-        c.execute(
-            f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",
-            tuple(str(v) for v in data.values())
-        )
-
-        conn.commit()
-        conn.close()
+        # Centralized log saving
+        db.save_log("server", data)
 
     # ==========================================================
     # SEND
@@ -93,11 +62,12 @@ class ServerLog(commands.Cog):
         )
 
         await self.send(channel.guild, embed)
-
         self.save({
             "type": "channel_create",
             "channel": channel.id,
-            "time": str(datetime.utcnow())
+            "channel_name": channel.name,
+            "guild": channel.guild.id,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
     # ==========================================================
@@ -119,11 +89,12 @@ class ServerLog(commands.Cog):
         )
 
         await self.send(channel.guild, embed)
-
         self.save({
             "type": "channel_delete",
             "channel": channel.id,
-            "time": str(datetime.utcnow())
+            "channel_name": channel.name,
+            "guild": channel.guild.id,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
     # ==========================================================
@@ -145,11 +116,12 @@ class ServerLog(commands.Cog):
         )
 
         await self.send(role.guild, embed)
-
         self.save({
             "type": "role_create",
             "role": role.id,
-            "time": str(datetime.utcnow())
+            "role_name": role.name,
+            "guild": role.guild.id,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
     # ==========================================================
@@ -171,11 +143,12 @@ class ServerLog(commands.Cog):
         )
 
         await self.send(role.guild, embed)
-
         self.save({
             "type": "role_delete",
             "role": role.id,
-            "time": str(datetime.utcnow())
+            "role_name": role.name,
+            "guild": role.guild.id,
+            "timestamp": datetime.utcnow().isoformat()
         })
 
     # ==========================================================
@@ -209,11 +182,14 @@ class ServerLog(commands.Cog):
             )
 
             await self.send(after.guild, embed)
-
             self.save({
                 "type": "nickname_change",
                 "user": after.id,
-                "time": str(datetime.utcnow())
+                "user_name": str(after),
+                "before": before.nick or before.name,
+                "after": after.nick or after.name,
+                "guild": after.guild.id,
+                "timestamp": datetime.utcnow().isoformat()
             })
 
         added_roles = [
@@ -239,12 +215,14 @@ class ServerLog(commands.Cog):
             )
 
             await self.send(after.guild, embed)
-
             self.save({
                 "type": "role_add",
                 "user": after.id,
+                "user_name": str(after),
                 "role": role.id,
-                "time": str(datetime.utcnow())
+                "role_name": role.name,
+                "guild": after.guild.id,
+                "timestamp": datetime.utcnow().isoformat()
             })
 
         removed_roles = [
@@ -270,12 +248,14 @@ class ServerLog(commands.Cog):
             )
 
             await self.send(after.guild, embed)
-
             self.save({
                 "type": "role_remove",
                 "user": after.id,
+                "user_name": str(after),
                 "role": role.id,
-                "time": str(datetime.utcnow())
+                "role_name": role.name,
+                "guild": after.guild.id,
+                "timestamp": datetime.utcnow().isoformat()
             })
 
 
