@@ -27,44 +27,10 @@ class VoiceLog(commands.Cog):
 # ==========================================================
 
     def save(self, data):
+        from data.logs import database as db
 
-        import sqlite3
-        import os
-
-        os.makedirs("data/logs", exist_ok=True)
-
-        conn = sqlite3.connect("data/logs/logs.db")
-
-        c = conn.cursor()
-
-        table = FILE.split("/")[-1].replace(".json", "")
-
-        # Tabelle erstellen falls nicht existiert
-        c.execute(f"""
-            CREATE TABLE IF NOT EXISTS {table} (
-                id INTEGER PRIMARY KEY AUTOINCREMENT
-            )
-        """)
-
-        # Spalten erstellen falls nicht existieren
-        for key in data.keys():
-
-            try:
-                c.execute(f"ALTER TABLE {table} ADD COLUMN {key} TEXT")
-            except:
-                pass
-
-        columns = ", ".join(data.keys())
-        placeholders = ", ".join("?" for _ in data)
-
-        c.execute(
-            f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",
-            tuple(str(v) for v in data.values())
-        )
-
-        conn.commit()
-
-        conn.close()
+        # Persist voice logs centrally
+        db.save_log("voice", data)
 
     # ==========================================================
     # SEND
@@ -129,12 +95,13 @@ class VoiceLog(commands.Cog):
             await self.send(member.guild, embed)
 
             self.save({
-
                 "type": "join",
                 "user": member.id,
+                "user_name": str(member),
                 "channel": after.channel.id,
-                "time": str(timestamp)
-
+                "channel_name": after.channel.name,
+                "guild": member.guild.id,
+                "timestamp": timestamp.isoformat()
             })
 
         # ======================================================
@@ -180,12 +147,13 @@ class VoiceLog(commands.Cog):
             await self.send(member.guild, embed)
 
             self.save({
-
                 "type": "leave",
                 "user": member.id,
+                "user_name": str(member),
                 "channel": before.channel.id,
-                "time": str(timestamp)
-
+                "channel_name": before.channel.name,
+                "guild": member.guild.id,
+                "timestamp": timestamp.isoformat()
             })
 
         # ======================================================
@@ -237,13 +205,15 @@ class VoiceLog(commands.Cog):
             await self.send(member.guild, embed)
 
             self.save({
-
                 "type": "switch",
                 "user": member.id,
+                "user_name": str(member),
                 "from": before.channel.id,
+                "from_name": before.channel.name,
                 "to": after.channel.id,
-                "time": str(timestamp)
-
+                "to_name": after.channel.name,
+                "guild": member.guild.id,
+                "timestamp": timestamp.isoformat()
             })
 
 
