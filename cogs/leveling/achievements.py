@@ -28,7 +28,7 @@ class Achievements(commands.Cog):
                 channel = self.bot.get_channel(ACHIEVEMENT_CHANNEL_ID)
                 if channel:
                     await channel.send(
-                        f"🏆 {member.mention} hat Achievement **{name}** erhalten!"
+                        f"🏆 {member.mention} got Achievement **{name}**"
                     )
 
         db.save()

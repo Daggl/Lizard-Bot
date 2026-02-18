@@ -9,7 +9,7 @@ class AdminPanelView(discord.ui.View):
         super().__init__(timeout=120)
         self.cog = cog
 
-    @discord.ui.button(label="🔄 Aktualisieren", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="🔄 Refresh", style=discord.ButtonStyle.green)
     async def refresh(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = await self.cog.create_panel_embed(interaction.guild)
         await interaction.response.edit_message(embed=embed, view=self)
@@ -60,7 +60,7 @@ class AdminPanel(commands.Cog):
             value=(
                 f"Ping: {round(self.bot.latency * 1000)}ms\n"
                 f"Uptime: {uptime}\n"
-                f"Geladene Cogs: {len(self.bot.cogs)}\n"
+                f"Loaded Cogs: {len(self.bot.cogs)}\n"
                 f"Server: {len(self.bot.guilds)}"
             ),
             inline=False
@@ -70,8 +70,8 @@ class AdminPanel(commands.Cog):
         embed.add_field(
             name="🏆 Level System",
             value=(
-                f"Gespeicherte User: {total_users}\n"
-                f"Höchstes Level: {highest_level}"
+                f"Saved User: {total_users}\n"
+                f"Highest Level: {highest_level}"
             ),
             inline=False
         )
@@ -80,8 +80,8 @@ class AdminPanel(commands.Cog):
         embed.add_field(
             name="🏅 Achievements",
             value=(
-                f"Definiert: {len(ACHIEVEMENTS)}\n"
-                f"Vergeben: {total_achievements_given}\n"
+                f"Defined: {len(ACHIEVEMENTS)}\n"
+                f"Given: {total_achievements_given}\n"
                 f"Channel ID: {ACHIEVEMENT_CHANNEL_ID}"
             ),
             inline=False
@@ -90,7 +90,7 @@ class AdminPanel(commands.Cog):
         # REWARDS CHECK
         embed.add_field(
             name="🎁 Rewards Check",
-            value=reward_status or "Keine Rewards definiert",
+            value=reward_status or "No Rewards defined",
             inline=False
         )
 

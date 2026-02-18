@@ -205,7 +205,7 @@ class Rank(commands.Cog):
             await achievements.check_achievements(member)
 
         await ctx.send(
-            f"✅ {amount} XP zu {member.mention} hinzugefügt"
+            f"✅ {amount} XP added to {member.mention}"
         )
 
     @commands.command()
@@ -227,7 +227,7 @@ class Rank(commands.Cog):
         self.bot.db.save()
 
         await ctx.send(
-            f"🗑 {amount} XP entfernt"
+            f"🗑 {amount} XP removed from {member.mention}"
         )
 
     @commands.command()
@@ -249,7 +249,7 @@ class Rank(commands.Cog):
         self.bot.db.save()
 
         await ctx.send(
-            "♻ User wurde zurückgesetzt"
+            "♻ User was reset to level 1 with 0 XP, messages, voice time and achievements."
         )
 
 

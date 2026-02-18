@@ -1,6 +1,8 @@
 from discord.ext import commands
 from cogs.leveling.utils.database import Database
 from cogs.leveling.utils.level_config import *
+import discord
+from PIL import Image, ImageDraw, ImageFont
 
 # ======================================================
 # XP FORMULA
@@ -59,9 +61,22 @@ class Levels(commands.Cog):
 
             if channel:
 
-                await channel.send(
-                    f"🎉 {member.mention} ist jetzt Level {user['level']}!"
+                embed = discord.Embed(
+                    description=(
+                        f"<:gg_wp:1473709030839943189> "
+                        f"{member.mention}\n"
+                        f"you just reached level {user['level']}!\n "
+                        f"keep it up, cutie! "
+                        f"<a:AP_scribbleheart:1472809672946745519>"
+                    ),
+                    color=0x5865F2
                 )
+
+                embed.set_thumbnail(url=member.display_avatar.url)
+
+                await channel.send(embed=embed)
+
+
 
         # ==================================================
         # REWARDS
