@@ -85,7 +85,7 @@ class MemberLog(commands.Cog):
     async def on_member_join(self, member):
 
         embed = discord.Embed(
-            title="🟢 Member beigetreten",
+            title="🟢 Member joined",
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
@@ -97,13 +97,13 @@ class MemberLog(commands.Cog):
         )
 
         embed.add_field(
-            name="📅 Account erstellt",
+            name="📅 Account created",
             value=f"<t:{int(member.created_at.timestamp())}:F>",
             inline=False
         )
 
         embed.add_field(
-            name="🕒 Zeitpunkt",
+            name="🕒 Time",
             value=f"<t:{int(datetime.utcnow().timestamp())}:F>",
             inline=False
         )
@@ -128,7 +128,7 @@ class MemberLog(commands.Cog):
     async def on_member_remove(self, member):
 
         embed = discord.Embed(
-            title="📤 Member verlassen",
+            title="📤 Member left",
             color=discord.Color.orange(),
             timestamp=datetime.utcnow()
         )
@@ -140,7 +140,7 @@ class MemberLog(commands.Cog):
         )
 
         embed.add_field(
-            name="🕒 Zeitpunkt",
+            name="🕒 Time",
             value=f"<t:{int(datetime.utcnow().timestamp())}:F>",
             inline=False
         )

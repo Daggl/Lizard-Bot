@@ -75,7 +75,7 @@ class ModLog(commands.Cog):
     async def on_member_ban(self, guild, user):
 
         executor = None
-        reason = "Kein Grund angegeben"
+        reason = "No reason provided"
 
         async for entry in guild.audit_logs(
             limit=5,
@@ -92,7 +92,7 @@ class ModLog(commands.Cog):
                 break
 
         embed = discord.Embed(
-            title="🔨 Member gebannt",
+            title="🔨 Member banned",
             color=discord.Color.dark_red(),
             timestamp=datetime.utcnow()
         )
@@ -112,7 +112,7 @@ class ModLog(commands.Cog):
             )
 
         embed.add_field(
-            name="Grund",
+            name="Reason",
             value=reason,
             inline=False
         )
@@ -152,7 +152,7 @@ class ModLog(commands.Cog):
                     return
 
                 embed = discord.Embed(
-                    title="👢 Member gekickt",
+                    title="👢 Member kicked",
                     color=discord.Color.red(),
                     timestamp=datetime.utcnow()
                 )
@@ -205,7 +205,7 @@ class ModLog(commands.Cog):
         if after.timed_out_until:
 
             embed = discord.Embed(
-                title="⏱ Member Timeout",
+                title="⏱ Member timeout",
                 color=discord.Color.orange(),
                 timestamp=datetime.utcnow()
             )
@@ -217,7 +217,7 @@ class ModLog(commands.Cog):
             )
 
             embed.add_field(
-                name="Bis",
+                name="Until",
                 value=f"<t:{int(after.timed_out_until.timestamp())}:F>",
                 inline=False
             )
@@ -227,7 +227,7 @@ class ModLog(commands.Cog):
         else:
 
             embed = discord.Embed(
-                title="✅ Timeout entfernt",
+                title="✅ Timeout removed",
                 color=discord.Color.green(),
                 timestamp=datetime.utcnow()
             )

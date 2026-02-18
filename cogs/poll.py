@@ -46,7 +46,7 @@ class PollView(discord.ui.View):
             self.add_item(button)
 
         close_button = discord.ui.Button(
-            label="🔒 Schließen",
+            label="🔒 Close",
             style=discord.ButtonStyle.danger,
             custom_id=f"close_{self.poll_id}"
         )
@@ -60,17 +60,17 @@ class PollView(discord.ui.View):
             user_id = str(interaction.user.id)
 
             if poll["closed"]:
-                await interaction.response.send_message("❌ Diese Umfrage ist geschlossen.", ephemeral=True)
+                await interaction.response.send_message("❌ This poll is closed.", ephemeral=True)
                 return
 
             if user_id in poll["votes"]:
-                await interaction.response.send_message("❌ Du hast bereits abgestimmt!", ephemeral=True)
+                await interaction.response.send_message("❌ You have already voted!", ephemeral=True)
                 return
 
             poll["votes"][user_id] = index
             save_polls(polls)
 
-            await interaction.response.send_message("✅ Stimme gezählt!", ephemeral=True)
+            await interaction.response.send_message("✅ Vote counted!", ephemeral=True)
             await self.update_message(interaction.message)
 
         return callback
@@ -81,7 +81,7 @@ class PollView(discord.ui.View):
         poll["closed"] = True
         save_polls(polls)
 
-        await interaction.response.send_message("🔒 Umfrage wurde geschlossen.", ephemeral=True)
+        await interaction.response.send_message("🔒 Poll has been closed.", ephemeral=True)
         await self.update_message(interaction.message)
 
     async def update_message(self, message):
@@ -103,7 +103,7 @@ class PollView(discord.ui.View):
             description += f"**{option}**\n{bar} {percentage:.1f}% ({count})\n\n"
 
         if poll["closed"]:
-            description += "\n🔒 **Geschlossen**"
+            description += "\n🔒 **Closed**"
 
         embed = discord.Embed(
             title=f"📊 {poll['question']}",
@@ -120,37 +120,37 @@ class Poll(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="umfrage")
-    async def umfrage(self, ctx):
+    @commands.command(name="poll")
+    async def poll(self, ctx):
 
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel
 
-        await ctx.send("📝 Wie lautet die Frage?")
+        await ctx.send("📝 What is the question?")
         try:
             question_msg = await self.bot.wait_for("message", timeout=60, check=check)
         except asyncio.TimeoutError:
-            return await ctx.send("❌ Zeit abgelaufen.")
+            return await ctx.send("❌ Time's up.")
 
         question = question_msg.content
 
-        await ctx.send("⏳ Wie viele Sekunden soll die Umfrage laufen?")
+        await ctx.send("⏳ How many seconds should the poll run?")
         try:
             time_msg = await self.bot.wait_for("message", timeout=60, check=check)
             duration = int(time_msg.content)
         except:
-            return await ctx.send("❌ Ungültige Zeitangabe.")
+            return await ctx.send("❌ Invalid time.")
 
-        await ctx.send("📊 Bitte sende die Antwortmöglichkeiten mit `,` getrennt.")
+        await ctx.send("📊 Please send the answer options separated by `,`.")
         try:
             options_msg = await self.bot.wait_for("message", timeout=60, check=check)
         except asyncio.TimeoutError:
-            return await ctx.send("❌ Zeit abgelaufen.")
+            return await ctx.send("❌ Time's up.")
 
         options = [o.strip() for o in options_msg.content.split(",") if o.strip()]
 
         if len(options) < 2:
-            return await ctx.send("❌ Mindestens 2 Antwortmöglichkeiten nötig.")
+            return await ctx.send("❌ At least 2 options are required.")
 
         poll_id = str(uuid.uuid4())
         polls = load_polls()
@@ -166,7 +166,7 @@ class Poll(commands.Cog):
 
         embed = discord.Embed(
             title=f"📊 {question}",
-            description="Noch keine Stimmen.",
+            description="No votes yet.",
             color=discord.Color.green()
         )
 
@@ -181,18 +181,18 @@ class Poll(commands.Cog):
             save_polls(polls)
             await view.update_message(message)
 
-    @commands.command(name="umfrage_löschen")
+    @commands.command(name="delete_poll")
     @commands.has_permissions(administrator=True)
     async def delete_poll(self, ctx, poll_id: str):
         polls = load_polls()
 
         if poll_id not in polls:
-            return await ctx.send("❌ Poll-ID nicht gefunden.")
+            return await ctx.send("❌ Poll ID not found.")
 
         del polls[poll_id]
         save_polls(polls)
 
-        await ctx.send("🗑 Umfrage aus Datenbank gelöscht.")
+        await ctx.send("🗑 Poll removed from database.")
 
     async def cog_load(self):
         polls = load_polls()

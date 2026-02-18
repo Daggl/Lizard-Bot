@@ -1,20 +1,23 @@
 import discord
-from discord.ext import commands
 import json
 import os
-from datetime import datetime
+
+from discord.ext import commands
+
 
 MIN_COUNT_FOR_RECORD = 150
 
 COUNT_CHANNEL_ID = 1472258616164614266
 
 DATA_FOLDER = "data"
+
 DATA_FILE = os.path.join(DATA_FOLDER, "count.json")
 
 
 # ---------- DATA ----------
 
 def default_data():
+
     return {
         "current": 0,
         "last_user": None,
@@ -34,14 +37,19 @@ def load():
         save(default_data())
 
     try:
+
         with open(DATA_FILE, "r") as f:
             return json.load(f)
-    except:
+
+    except Exception:
+
         save(default_data())
+
         return default_data()
 
 
 def save(data):
+
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
@@ -51,6 +59,7 @@ def save(data):
 class Count(commands.Cog):
 
     def __init__(self, bot):
+
         self.bot = bot
 
     # ---------- COUNT SYSTEM ----------
@@ -67,43 +76,50 @@ class Count(commands.Cog):
         data = load()
 
         try:
+
             number = int(message.content)
-        except:
+
+        except Exception:
             return
 
         expected = data["current"] + 1
 
         # SAME USER
+
         if str(message.author.id) == data["last_user"]:
 
             await message.add_reaction("❌")
+
             return
 
-
         # WRONG NUMBER
+
         if number != expected:
 
             await message.add_reaction("❌")
 
             await message.reply(
-                f"💥 Fehler! Richtige Zahl wäre **{expected}** gewesen\n"
-                f"🔄 Counter wurde zurückgesetzt\n"
-                f"🏆 Rekord: **{data['record']}**"
+                f"💥 Error! Correct number would have been **{expected}**\n"
+                f"🔄 Counter has been reset\n"
+                f"🏆 Record: **{data['record']}**"
             )
 
             data["current"] = 0
+
             data["last_user"] = None
+
             data["fails"] += 1
 
             save(data)
-            return
 
+            return
 
         # CORRECT
 
         await message.add_reaction("✅")
 
         data["current"] = number
+
         data["last_user"] = str(message.author.id)
 
         # USER STATS
@@ -115,23 +131,20 @@ class Count(commands.Cog):
 
         data["total_counts"][user] += 1
 
-
         # RECORD
 
         if number > data["record"] and number >= MIN_COUNT_FOR_RECORD:
 
-
             data["record"] = number
+
             data["record_holder"] = str(message.author.id)
 
             await message.channel.send(
-                f"🏆 **NEUER REKORD: {number}!**\n"
-                f"👑 von {message.author.mention}"
+                f"🏆 **NEW RECORD: {number}!**\n"
+                f"👑 by {message.author.mention}"
             )
 
-
         save(data)
-
 
     # ---------- STATS ----------
 
@@ -141,27 +154,26 @@ class Count(commands.Cog):
         data = load()
 
         embed = discord.Embed(
-            title="📊 Count Statistik",
+            title="📊 Count Statistics",
             color=discord.Color.blue()
         )
 
         embed.add_field(
-            name="Aktuell",
+            name="Current",
             value=data["current"]
         )
 
         embed.add_field(
-            name="Rekord",
+            name="Record",
             value=data["record"]
         )
 
         embed.add_field(
-            name="Fehler",
+            name="Fails",
             value=data["fails"]
         )
 
         await ctx.send(embed=embed)
-
 
     # ---------- LEADERBOARD ----------
 
@@ -191,11 +203,9 @@ class Count(commands.Cog):
 
             text += f"{i}. {name} — {amount}\n"
 
-
         embed.description = text
 
         await ctx.send(embed=embed)
-
 
     # ---------- ADMIN RESET ----------
 
@@ -205,8 +215,9 @@ class Count(commands.Cog):
 
         save(default_data())
 
-        await ctx.send("✅ Counter wurde zurückgesetzt")
+        await ctx.send("✅ Counter has been reset")
 
 
 async def setup(bot):
+
     await bot.add_cog(Count(bot))
