@@ -152,11 +152,10 @@ class TicketCog(commands.Cog):
         support_role = self._support_role(guild)
         if support_role:
             overwrites[support_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
-        else:
-            # fallback: allow administrators
-            for role in guild.roles:
-                if role.permissions.administrator:
-                    overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+        # Always ensure administrators can view the ticket as well
+        for role in guild.roles:
+            if role.permissions.administrator:
+                overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
 
         channel = await guild.create_text_channel(name, overwrites=overwrites, category=category, topic=f"Ticket for {user.id} • created {now}")
 
@@ -242,6 +241,22 @@ class TicketCog(commands.Cog):
             topic = topic.split("claimed_by=")[0]
         topic = topic.strip() + (" • " + claimed_tag)
         await channel.edit(topic=topic)
+        # Prefix channel name with [Claimed] if not already
+        try:
+            if not channel.name.startswith("[Claimed]"):
+                new_name = f"[Claimed] {channel.name}"
+                await channel.edit(name=new_name)
+                # update DB channel_name
+                try:
+                    await self._db_execute(
+                        "UPDATE tickets SET channel_name = ? WHERE channel_id = ?",
+                        (new_name, channel.id),
+                    )
+                except Exception as exc:
+                    print("[TICKET][DB] Failed to update channel_name on claim:", exc)
+        except Exception:
+            pass
+
         await channel.send(f"👑 Ticket claimed by {by.mention}")
         await self._log_action(channel.guild, f"Ticket {channel.name} claimed by {by}")
         # Update DB claimed_by
