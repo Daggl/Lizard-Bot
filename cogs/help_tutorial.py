@@ -136,6 +136,18 @@ class HelpTutorial(commands.Cog):
             inline=False
         )
 
+        # ---------------------------
+        # TICKETS
+        # ---------------------------
+
+        embed.add_field(
+            name="🎫 Tickets",
+            value=(
+                "`*ticket` — Open a private support ticket (or use the ticket panel posted by staff)"
+            ),
+            inline=False
+        )
+
         embed.set_footer(
             text="More features coming later 👀"
         )

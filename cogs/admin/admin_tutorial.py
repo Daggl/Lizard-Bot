@@ -208,6 +208,33 @@ class AdminHelpView(discord.ui.View):
             inline=False
         )
 
+        embed.add_field(
+            name="*ticketpanel",
+            value=(
+                "Posts the ticket creation panel for users to open support tickets.\n"
+                "Requires admin privileges."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="*transcript <#channel>",
+            value=(
+                "Saves and returns a transcript for the specified ticket channel.\n"
+                "Requires admin privileges."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="*close_ticket <#channel>",
+            value=(
+                "Force-close and archive a ticket channel.\n"
+                "Requires admin privileges."
+            ),
+            inline=False
+        )
+
         await interaction.response.edit_message(embed=embed)
 
  
