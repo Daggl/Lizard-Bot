@@ -82,7 +82,7 @@ class ServerLog(commands.Cog):
     async def on_guild_channel_create(self, channel):
 
         embed = discord.Embed(
-            title="📁 Channel erstellt",
+            title="📁 Channel created",
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
@@ -108,7 +108,7 @@ class ServerLog(commands.Cog):
     async def on_guild_channel_delete(self, channel):
 
         embed = discord.Embed(
-            title="🗑 Channel gelöscht",
+            title="🗑 Channel deleted",
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
@@ -134,13 +134,13 @@ class ServerLog(commands.Cog):
     async def on_guild_role_create(self, role):
 
         embed = discord.Embed(
-            title="🛡 Rolle erstellt",
+            title="🛡 Role created",
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
 
         embed.add_field(
-            name="🛡 Rolle",
+            name="🛡 Role",
             value=role.mention
         )
 
@@ -160,13 +160,13 @@ class ServerLog(commands.Cog):
     async def on_guild_role_delete(self, role):
 
         embed = discord.Embed(
-            title="🗑 Rolle gelöscht",
+            title="🗑 Role deleted",
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
 
         embed.add_field(
-            name="🛡 Rolle",
+            name="🛡 Role",
             value=role.name
         )
 
@@ -188,7 +188,7 @@ class ServerLog(commands.Cog):
         if before.nick != after.nick:
 
             embed = discord.Embed(
-                title="✏ Nickname geändert",
+                title="✏ Nickname changed",
                 color=discord.Color.orange(),
                 timestamp=datetime.utcnow()
             )
@@ -199,12 +199,12 @@ class ServerLog(commands.Cog):
             )
 
             embed.add_field(
-                name="Vorher",
+                name="Before",
                 value=before.nick or before.name
             )
 
             embed.add_field(
-                name="Nachher",
+                name="After",
                 value=after.nick or after.name
             )
 
@@ -223,7 +223,7 @@ class ServerLog(commands.Cog):
         for role in added_roles:
 
             embed = discord.Embed(
-                title="✅ Rolle hinzugefügt",
+                title="✅ Role added",
                 color=discord.Color.green(),
                 timestamp=datetime.utcnow()
             )
@@ -234,7 +234,7 @@ class ServerLog(commands.Cog):
             )
 
             embed.add_field(
-                name="Rolle",
+                name="Role",
                 value=role.mention
             )
 
@@ -254,7 +254,7 @@ class ServerLog(commands.Cog):
         for role in removed_roles:
 
             embed = discord.Embed(
-                title="❌ Rolle entfernt",
+                title="❌ Role removed",
                 color=discord.Color.red(),
                 timestamp=datetime.utcnow()
             )
@@ -265,7 +265,7 @@ class ServerLog(commands.Cog):
             )
 
             embed.add_field(
-                name="Rolle",
+                name="Role",
                 value=role.name
             )
 

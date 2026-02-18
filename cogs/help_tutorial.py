@@ -1,76 +1,82 @@
-from discord.ext import commands
 import discord
+
+from discord.ext import commands
 
 
 class HelpTutorial(commands.Cog):
 
     def __init__(self, bot):
+
         self.bot = bot
-        bot.remove_command("help")  # Standard Help entfernen
+
+        bot.remove_command("help")
 
     @commands.command(name="help")
     async def h(self, ctx):
 
         embed = discord.Embed(
-            title="🤖 Bot Hilfe & Tutorials",
-            description="Hier findest du alle Funktionen erklärt",
+            title="🤖 Bot Help & Tutorials",
+            description="Here you can find all features explained",
             color=discord.Color.blurple()
         )
 
         # ---------------------------
         # LEVEL SYSTEM
         # ---------------------------
+
         embed.add_field(
             name="🏆 Level System",
             value=(
-                "**Wie funktioniert es?**\n"
-                "• Du bekommst XP durch Schreiben und Voice Chat\n"
-                "• Höhere Level geben Rollen & Belohnungen\n\n"
-
+                "**How does it work?**\n"
+                "• You gain XP by chatting and voice chat\n"
+                "• Higher levels give roles & rewards\n\n"
                 "**Commands:**\n"
-                "`*rank` → Zeigt deinen Fortschritt\n"
-                "`*leaderboard` → Server Rangliste"
+                "`*rank` → Shows your progress\n"
+                "`*leaderboard` → Server leaderboard"
             ),
             inline=False
         )
 
         # ---------------------------
-        # UMFRAGEN
+        # POLLS
         # ---------------------------
+
         embed.add_field(
-            name="📊 Umfragen",
+            name="📊 Polls",
             value=(
-                "**Erstellt Abstimmungen für den Server**\n\n"
-                "`*umfrage <Frage>`\n"
-                "➡ Beispiel:\n"
-                "`*umfrage Mögt ihr Pizza?`"
+                "**Create polls for the server**\n\n"
+                "`*poll <question>`\n"
+                "➡ Example:\n"
+                "`*poll Do you like pizza?`"
             ),
             inline=False
         )
 
         # ---------------------------
-        # GEBURTSTAGE
+        # BIRTHDAYS
         # ---------------------------
+
         embed.add_field(
-            name="🎂 Geburtstage",
+            name="🎂 Birthdays",
             value=(
-                "**Speichert deinen Geburtstag**\n\n"
-                "`*geburtstag <TT.MM>`\n"
-                "➡ Der Bot erinnert automatisch"
+                "**Save your birthday**\n\n"
+                "`*birthday <DD.MM>`\n"
+                "➡ The bot will remind automatically"
             ),
             inline=False
         )
 
         # ---------------------------
-        # XP SYSTEM ERKLÄRUNG
+        # XP SYSTEM
         # ---------------------------
+
         embed.add_field(
-            name="⭐ XP verdienen",
+            name="⭐ Earn XP",
             value=(
-                "Du bekommst XP durch:\n"
-                "• Nachrichten schreiben\n"
-                "• Voice Chat Zeit\n"
-                "• Achievements freischalten"
+                "You gain XP by:\n"
+                "• Sending messages\n"
+                "• Voice chat time\n"
+                "• Unlocking achievements"
             ),
             inline=False
         )
@@ -78,34 +84,65 @@ class HelpTutorial(commands.Cog):
         # ---------------------------
         # ACHIEVEMENTS
         # ---------------------------
+
         embed.add_field(
             name="🏅 Achievements",
             value=(
-                "Achievements sind Erfolge die du freischalten kannst.\n\n"
-                "Beispiele:\n"
-                "• Viele Nachrichten schreiben\n"
-                "• Lange im Voice bleiben\n"
-                "• Hohe Level erreichen"
+                "Achievements are milestones you can unlock.\n\n"
+                "Examples:\n"
+                "• Sending many messages\n"
+                "• Staying long in voice chat\n"
+                "• Reaching high levels"
             ),
             inline=False
         )
 
         # ---------------------------
-        # ALLGEMEIN
+        # GENERAL
         # ---------------------------
+
         embed.add_field(
-            name="⚙ Allgemein",
+            name="⚙ General",
             value=(
-                "`*ping` → Testet ob der Bot online ist\n"
-                "`*hilfe` → Zeigt dieses Menü"
+                "`*ping` → Tests if the bot is online\n"
+                "`*help` → Shows this menu"
             ),
             inline=False
         )
 
-        embed.set_footer(text="Mehr Features folgen später 👀")
+        # ---------------------------
+        # MISC & FUN
+        # ---------------------------
+
+        embed.add_field(
+            name="🧪 Misc & Fun",
+            value=(
+                "`*insult <name>` → Fun: insult someone\n"
+                "`*secretinsult <name>` → Send an insult but replies ephemeral"
+            ),
+            inline=False
+        )
+
+        # ---------------------------
+        # COUNTING
+        # ---------------------------
+
+        embed.add_field(
+            name="🔢 Counting",
+            value=(
+                "`*countstats` → Show counting channel statistics\n"
+                "`*counttop` → Show counting leaderboard"
+            ),
+            inline=False
+        )
+
+        embed.set_footer(
+            text="More features coming later 👀"
+        )
 
         await ctx.send(embed=embed)
 
 
 async def setup(bot):
+
     await bot.add_cog(HelpTutorial(bot))

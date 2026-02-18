@@ -94,7 +94,7 @@ class VoiceLog(commands.Cog):
 
             embed = discord.Embed(
 
-                title="🔊 Voice Channel beigetreten",
+                title="🔊 Voice Channel joined",
                 color=discord.Color.green(),
                 timestamp=timestamp
 
@@ -113,7 +113,7 @@ class VoiceLog(commands.Cog):
             )
 
             embed.add_field(
-                name="🕒 Zeitpunkt",
+                name="🕒 Time",
                 value=f"<t:{int(timestamp.timestamp())}:F>",
                 inline=False
             )
@@ -145,7 +145,7 @@ class VoiceLog(commands.Cog):
 
             embed = discord.Embed(
 
-                title="🔇 Voice Channel verlassen",
+                title="🔇 Voice Channel left",
                 color=discord.Color.red(),
                 timestamp=timestamp
 
@@ -164,7 +164,7 @@ class VoiceLog(commands.Cog):
             )
 
             embed.add_field(
-                name="🕒 Zeitpunkt",
+                name="🕒 Time",
                 value=f"<t:{int(timestamp.timestamp())}:F>",
                 inline=False
             )
@@ -196,7 +196,7 @@ class VoiceLog(commands.Cog):
 
             embed = discord.Embed(
 
-                title="🔄 Voice Channel gewechselt",
+                title="🔄 Voice Channel switched",
                 color=discord.Color.orange(),
                 timestamp=timestamp
 
@@ -215,13 +215,13 @@ class VoiceLog(commands.Cog):
             )
 
             embed.add_field(
-                name="📥 Zu",
+                name="📥 To",
                 value=after.channel.mention,
                 inline=True
             )
 
             embed.add_field(
-                name="🕒 Zeitpunkt",
+                name="🕒 Time",
                 value=f"<t:{int(timestamp.timestamp())}:F>",
                 inline=False
             )

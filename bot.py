@@ -12,18 +12,18 @@ import os
 import datetime
 import json
 
-# eigene Datenbank für Logs
+# custom database for logs
 from data.logs import database
 
 
 # ==========================================================
-# ENVIRONMENT / TOKEN LADEN
+# LOAD ENVIRONMENT / TOKEN
 # ==========================================================
 
-# lädt Variablen aus der .env Datei
+# loads variables from .env file
 load_dotenv()
 
-# Discord Bot Token aus .env
+# Discord bot token from .env
 token = os.getenv("DISCORD_TOKEN")
 
 
@@ -31,7 +31,7 @@ token = os.getenv("DISCORD_TOKEN")
 # LOGGING SETUP
 # ==========================================================
 
-# erstellt Log Datei für Discord Events / Fehler
+# create log file for Discord events / errors
 handler = logging.FileHandler(
     filename="discord.log",
     encoding="utf-8",
@@ -43,14 +43,15 @@ handler = logging.FileHandler(
 # BOT SETUP
 # ==========================================================
 
-# aktiviert alle Intents (Mitglieder, Nachrichten etc.)
+# enable all intents (members, messages, etc.)
 intents = discord.Intents.all()
 
-# erstellt Bot Instanz mit Prefix *
+# create bot instance with prefix *
 bot = commands.Bot(
     command_prefix="*",
     intents=intents
 )
+
 
 # ==========================================================
 # READY EVENT
@@ -59,10 +60,10 @@ bot = commands.Bot(
 @bot.event
 async def on_ready():
 
-    # initialisiert Datenbank
+    # initialize database
     database.setup()
 
-    # zeigt an dass Bot online ist
+    # show that bot is online
     print(f"{bot.user.name} is online!")
 
 
@@ -73,7 +74,7 @@ async def on_ready():
 @bot.command()
 async def ping(ctx):
 
-    # einfacher Test Command um zu prüfen ob Bot reagiert
+    # simple test command to check if bot responds
     await ctx.send("🏓 Pong! all is good in the hood!")
 
 
@@ -84,11 +85,11 @@ async def ping(ctx):
 @bot.event
 async def on_message(message):
 
-    # verhindert dass Bot auf sich selbst reagiert
+    # prevent bot from responding to itself
     if message.author == bot.user:
         return
 
-    # wichtig damit Commands weiterhin funktionieren
+    # required so commands still work
     await bot.process_commands(message)
 
 
@@ -98,151 +99,145 @@ async def on_message(message):
 
 async def main():
 
-    # prüft ob Token existiert
+    # check if token exists
     if not token:
 
         print(
-            "DISCORD_TOKEN nicht gesetzt. "
-            "Lege eine .env mit DISCORD_TOKEN=... an."
+            "DISCORD_TOKEN not set. "
+            "Create a .env file with DISCORD_TOKEN=..."
         )
 
         return
 
-    # startet Bot Kontext
+    # start bot context
     async with bot:
 
         # ==================================================
-        # COGS LADEN
+        # LOAD COGS
         # ==================================================
 
         try:
             await bot.load_extension("cogs.birthdays")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.birthdays: {e}")
+            print(f"Error loading cogs.birthdays: {e}")
 
         try:
             await bot.load_extension("cogs.welcome.welcome")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.welcome.welcome: {e}")
+            print(f"Error loading cogs.welcome.welcome: {e}")
 
         try:
             await bot.load_extension("cogs.poll")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.poll: {e}")
+            print(f"Error loading cogs.poll: {e}")
 
         try:
             await bot.load_extension("cogs.leveling.levels")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.leveling.levels: {e}")
+            print(f"Error loading cogs.leveling.levels: {e}")
 
         try:
             await bot.load_extension("cogs.leveling.rank")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.leveling.rank: {e}")
+            print(f"Error loading cogs.leveling.rank: {e}")
 
         try:
             await bot.load_extension("cogs.leveling.achievements")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.leveling.achievements: {e}")
+            print(f"Error loading cogs.leveling.achievements: {e}")
 
         try:
             await bot.load_extension("cogs.leveling.rewards")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.leveling.rewards: {e}")
+            print(f"Error loading cogs.leveling.rewards: {e}")
 
         try:
             await bot.load_extension("cogs.leveling.tracking")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.leveling.tracking: {e}")
+            print(f"Error loading cogs.leveling.tracking: {e}")
 
         try:
             await bot.load_extension("cogs.help_tutorial")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.help_tutorial: {e}")
+            print(f"Error loading cogs.help_tutorial: {e}")
 
         try:
             await bot.load_extension("cogs.admin.admin_panel")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.admin.admin_panel: {e}")
+            print(f"Error loading cogs.admin.admin_panel: {e}")
 
         try:
             await bot.load_extension("cogs.admin.admin_tools")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.admin.admin_tools: {e}")
+            print(f"Error loading cogs.admin.admin_tools: {e}")
 
         try:
             await bot.load_extension("cogs.admin.admin_tutorial")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.admin.admin_tutorial: {e}")
+            print(f"Error loading cogs.admin.admin_tutorial: {e}")
 
         try:
             await bot.load_extension("cogs.count")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.count: {e}")
+            print(f"Error loading cogs.count: {e}")
 
         try:
             await bot.load_extension("cogs.log.chat_log")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.log.chat_log: {e}")
+            print(f"Error loading cogs.log.chat_log: {e}")
 
         try:
             await bot.load_extension("cogs.log.mod_log")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.log.mod_log: {e}")
+            print(f"Error loading cogs.log.mod_log: {e}")
 
         try:
             await bot.load_extension("cogs.log.member_log")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.log.member_log: {e}")
+            print(f"Error loading cogs.log.member_log: {e}")
 
         try:
             await bot.load_extension("cogs.log.voice_log")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.log.voice_log: {e}")
+            print(f"Error loading cogs.log.voice_log: {e}")
 
         try:
             await bot.load_extension("cogs.log.server_log")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.log.server_log: {e}")
+            print(f"Error loading cogs.log.server_log: {e}")
 
         try:
             await bot.load_extension("cogs.welcome.autorole")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.welcome.autorole: {e}")
+            print(f"Error loading cogs.welcome.autorole: {e}")
 
         try:
             await bot.load_extension("cogs.say")
         except Exception as e:
-            print(f"Fehler beim Laden von cogs.say: {e}")
+            print(f"Error loading cogs.say: {e}")
 
-        #try:
-            #await bot.load_extension("cogs.music.music")
-        #except Exception as e:
-            #print(f"Fehler beim Laden von cogs.music.music: {e}")
-            
         # ==================================================
-        # BOT STARTEN
+        # START BOT
         # ==================================================
 
         try:
 
-            # verbindet Bot mit Discord
+            # connect bot to Discord
             await bot.start(token)
 
         except asyncio.CancelledError:
 
             print("Cancelled")
-
             raise
 
         except Exception:
 
             import traceback
 
-            # zeigt vollständigen Fehler an
+            # print full error
             traceback.print_exc()
 
-            # schließt Bot sauber
+            # close bot cleanly
             await bot.close()
 
             raise
@@ -252,19 +247,24 @@ async def main():
 # SCRIPT START
 # ==========================================================
 
-# startet main Funktion
 if __name__ == "__main__":
 
     asyncio.run(main())
 
- # ======================================================
- # AUTO RESTART SCHUTZ
- # ======================================================
+    # ======================================================
+    # AUTO RESTART PROTECTION
+    # ======================================================
 
     while True:
+
         try:
+
             asyncio.run(main())
+
         except Exception as e:
+
             print(f"Crash: {e}")
+
             import time
+
             time.sleep(5)

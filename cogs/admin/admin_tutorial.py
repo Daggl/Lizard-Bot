@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 # ==========================================================
-# ADMIN VIEW (NUR ADMINS)
+# ADMIN VIEW (ADMINS ONLY)
 # ==========================================================
 
 class AdminHelpView(discord.ui.View):
@@ -14,14 +14,14 @@ class AdminHelpView(discord.ui.View):
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.user != self.author:
             await interaction.response.send_message(
-                "❌ Dieses Menü gehört nicht dir.",
+                "❌ This menu does not belong to you.",
                 ephemeral=True
             )
             return False
 
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
-                "❌ Nur Administratoren dürfen dieses Menü nutzen.",
+                "❌ Only administrators may use this menu.",
                 ephemeral=True
             )
             return False
@@ -29,31 +29,31 @@ class AdminHelpView(discord.ui.View):
         return True
 
     # ======================================================
-    # HAUPTMENÜ
+    # MAIN MENU
     # ======================================================
 
-    @discord.ui.button(label="🏠 Hauptmenü", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="🏠 Main Menu", style=discord.ButtonStyle.primary)
     async def main_menu(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         embed = discord.Embed(
-            title="🛠 Administrator Kontrollzentrum",
+            title="🛠 Administrator Control Center",
             description=(
-                "Dieses Menü bietet dir eine vollständige Übersicht\n"
-                "über alle Admin Funktionen des Bots.\n\n"
-                "Nutze die Buttons, um detaillierte Erklärungen zu öffnen."
+                "This menu gives you a complete overview\n"
+                "of all admin features of the bot.\n\n"
+                "Use the buttons to open detailed explanations."
             ),
             color=discord.Color.blue()
         )
 
         embed.add_field(
             name="📊 Admin Tools",
-            value="Bot Kontrolle & manuelle Eingriffe",
+            value="Bot control & manual interventions",
             inline=False
         )
 
         embed.add_field(
             name="📁 Log System",
-            value="Serverüberwachung & Audit Tracking",
+            value="Server monitoring & audit tracking",
             inline=False
         )
 
@@ -68,17 +68,17 @@ class AdminHelpView(discord.ui.View):
     async def admin_tools(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         embed = discord.Embed(
-            title="📊 Admin Kontrollbefehle",
+            title="📊 Admin Control Commands",
             color=discord.Color.red()
         )
 
         embed.add_field(
             name="*say",
             value=(
-             "Lässt den Bot eine Nachricht senden.\n"
-            "Syntax: *say #channel Nachricht\n"
-            "Bild anhängen: |link am Ende der Nachricht\n"
-             "Beispiel: *say Hallo Welt!"
+             "Makes the bot send a message.\n"
+            "Syntax: *say #channel Message\n"
+            "Attach image: add |link at the end of the message\n"
+             "Example: *say Hello world!"
 ),
             inline=False
         )
@@ -86,37 +86,37 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="*adminpanel",
             value=(
-                "Öffnet das Statuspanel.\n\n"
-                "Zeigt:\n"
-                "• Bot Ping & Uptime\n"
-                "• Geladene Cogs\n"
-                "• Server Anzahl\n"
-                "• Level System Status\n"
-                "• Achievement Status\n"
-                "• Reward Rollen Kontrolle\n"
+                "Opens the status panel.\n\n"
+                "Shows:\n"
+                "• Bot ping & uptime\n"
+                "• Loaded cogs\n"
+                "• Server count\n"
+                "• Level system status\n"
+                "• Achievement status\n"
+                "• Reward roles control\n"
             ),
             inline=False
         )
 
         embed.add_field(
-            name="*addxp @user menge",
+            name="*addxp @user amount",
             value=(
-                "Manuelle XP Vergabe.\n"
-                "Wird genutzt für Tests oder Events.\n\n"
-                "Löst automatisch:\n"
-                "• Level Up Check\n"
-                "• Achievement Check\n"
-                "• Reward Rollen Check"
+                "Manually add XP to a user.\n"
+                "Used for tests or events.\n\n"
+                "Automatically triggers:\n"
+                "• Level up check\n"
+                "• Achievement check\n"
+                "• Reward roles check"
             ),
             inline=False
         )
 
         embed.add_field(
-            name="*removexp @user menge",
+            name="*removexp @user amount",
             value=(
-                "Manuelles Entfernen von XP.\n"
-                "Nützlich für Korrekturen oder Strafen.\n\n"
-                "Führt keine negativen Level unter 0 aus."
+                "Manually remove XP from a user.\n"
+                "Useful for corrections or penalties.\n\n"
+                "Will not reduce levels below 0."
             ),
 
             inline=False
@@ -125,9 +125,9 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="*giveachievement @user achievementname",
             value=(
-                "Vergibt ein Achievement an einen Benutzer.\n"
-                "Nützlich für besondere Anlässe oder Belohnungen.\n\n"
-                "Beispiel: *giveachievement @user Erster Kill"
+                "Grants an achievement to a user.\n"
+                "Useful for special occasions or rewards.\n\n"
+                "Example: *giveachievement @user First Kill"
             ),
             inline=False
         )
@@ -135,22 +135,76 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="*removeachievement @user achievementname",
             value=(
-                "Entfernt ein Achievement von einem Benutzer.\n"
-                "Nützlich für Korrekturen oder Strafen.\n\n"
-                "Beispiel: *removeachievement @user Erster Kill"
+                "Removes an achievement from a user.\n"
+                "Useful for corrections or penalties.\n\n"
+                "Example: *removeachievement @user First Kill"
             ),
             inline=False
         )
 
         embed.add_field(
             name="*reset @user",
-            value="Setzt XP, Level & Achievements vollständig zurück.",
+            value="Resets a user's XP, level & achievements completely.",
             inline=False
         )
 
         embed.add_field(
             name="*rankuser @user",
-            value="Zeigt den Rang eines Benutzers an.",
+            value="Displays a user's rank.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="*delete_poll <poll_id>",
+            value=(
+                "Deletes a poll from the database by its ID.\n"
+                "Requires admin privileges."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="*countreset",
+            value=(
+                "Resets the counting channel data and statistics.\n"
+                "Requires admin privileges."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="*givexp @user amount",
+            value=(
+                "Add XP to a user (alternative admin XP command).\n"
+                "Useful for events and manual adjustments."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="*setxp @user amount",
+            value=(
+                "Set a user's XP to a specific value.\n"
+                "Requires admin privileges."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="*setlevel @user level",
+            value=(
+                "Set a user's level to a specific value.\n"
+                "Requires admin privileges."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="*testachievement @user name",
+            value=(
+                "Grant a named achievement to a user for testing.\n"
+                "Requires admin privileges."
+            ),
             inline=False
         )
 
@@ -172,10 +226,10 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="Chat Log Channel",
             value=(
-                "• Nachricht gesendet\n"
-                "• Nachricht gelöscht\n"
-                "• Nachricht bearbeitet\n"
-                "• Audit Log Erkennung"
+                "• Message sent\n"
+                "• Message deleted\n"
+                "• Message edited\n"
+                "• Audit log detection"
             ),
             inline=False
         )
@@ -193,8 +247,8 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="Voice Log Channel",
             value=(
-            "• Voice Join\n"
-            "• Voice Leave"
+            "• Voice join\n"
+            "• Voice leave"
             ),
             inline=False
         )
@@ -202,9 +256,9 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="Server Log Channel",
             value=(
-                "• Channel erstellt / gelöscht\n"
-                "• Rollen Änderungen\n"
-                "• Nickname geändert"
+                "• Channel created / deleted\n"
+                "• Role changes\n"
+                "• Nickname changed"
             ),
             inline=False
         )
@@ -212,17 +266,17 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="Member Log Channel",
             value=(
-                "• Member beigetreten\n"
-                "• Member verlassen"
+                "• Member joined\n"
+                "• Member left"
             ),
             inline=False
         )
 
         embed.add_field(
-            name="Speicherung",
+            name="Storage",
             value=(
-                "Alle Logs werden zusätzlich in logs.json gespeichert.\n"
-                "Automatische Rotation verhindert Überlastung."
+                "All logs are additionally saved to logs.json.\n"
+                "Automatic rotation prevents overload."
             ),
             inline=False
         )
@@ -243,13 +297,13 @@ class AdminHelpView(discord.ui.View):
 
         embed.add_field(
             name="*ping",
-            value="Ein einfacher Test Command um die Reaktionsfähigkeit des Bots zu prüfen.",
+            value="A simple test command to check the bot's responsiveness.",
             inline=False
         )
 
         embed.add_field(
             name="*testwelcome",
-            value="Testet das Willkommenssystem.",
+            value="Tests the welcome system.",
             inline=False
         )
 
@@ -265,15 +319,15 @@ class AdminHelp(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="adminhilfe")
+    @commands.command(name="admin_help")
     @commands.has_permissions(administrator=True)
     async def admin_help(self, ctx):
 
         embed = discord.Embed(
-            title="🛠 Administrator Kontrollzentrum",
+            title="🛠 Administrator Control Center",
             description=(
-                "Dieses Menü ist ausschließlich für Administratoren.\n\n"
-                "Hier erhältst du eine vollständige Systemübersicht."
+                "This menu is for administrators only.\n\n"
+                "Here you get a full system overview."
             ),
             color=discord.Color.blue()
         )

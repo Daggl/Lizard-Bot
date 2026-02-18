@@ -47,7 +47,7 @@ class AdminPanel(commands.Cog):
             if role:
                 reward_status += f"Level {lvl} → {role_name} ✅\n"
             else:
-                reward_status += f"Level {lvl} → {role_name} ❌ (Fehlt!)\n"
+                reward_status += f"Level {lvl} → {role_name} ❌ (Missing!)\n"
 
         embed = discord.Embed(
             title="🛠 Admin Status Panel",

@@ -34,8 +34,8 @@ FONT_USERNAME = "assets/fonts/Poppins-Regular.ttf"
 
 def clean_username(member: discord.Member):
     """
-    Entfernt Zahlen und Unterstriche aus dem Anzeigenamen,
-    um einen sauberen Welcome‑Text zu erzeugen.
+    Removes numbers and underscores from the display name
+    to generate a clean welcome text.
     """
 
     name = member.display_name
@@ -59,12 +59,12 @@ class Welcome(commands.Cog):
     """
     Welcome System Cog
 
-    Funktionen:
+    Functions:
 
-    - Banner erstellen
-    - Rolle vergeben
-    - Welcome Nachricht senden
-    - Test Command
+    - Create banner
+    - Assign role
+    - Send welcome message
+    - Test command
     """
 
     def __init__(self, bot):
@@ -76,20 +76,20 @@ class Welcome(commands.Cog):
 
     async def create_banner(self, member):
         """
-        Erstellt das Welcome Banner Bild
+            Creates the welcome banner image
         """
 
         try:
 
             username = clean_username(member)
 
-            print("[DEBUG] Lade Avatar...")
+            print("[DEBUG] Loading avatar...")
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(member.display_avatar.url) as resp:
                     avatar_bytes = await resp.read()
 
-            print("[DEBUG] Lade Banner Bild...")
+            print("[DEBUG] Loading banner image...")
 
             try:
 
@@ -139,7 +139,7 @@ class Welcome(commands.Cog):
 
             avatar_y = (height - avatar_size) // 2
 
-            print("[DEBUG] Lade Fonts...")
+            print("[DEBUG] Loading fonts...")
 
             font_welcome = ImageFont.truetype(
                 FONT_WELCOME,
@@ -252,7 +252,7 @@ class Welcome(commands.Cog):
 
             buffer.seek(0)
 
-            print("[DEBUG] Banner fertig")
+            print("[DEBUG] Banner ready")
 
             return discord.File(
                 buffer,
@@ -272,7 +272,7 @@ class Welcome(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member):
         """
-        Wird ausgelöst wenn ein User joint
+        Triggered when a user joins
         """
 
         print(f"[DEBUG] Join erkannt: {member}")
@@ -301,7 +301,7 @@ class Welcome(commands.Cog):
 
             await member.add_roles(role)
 
-            print("[DEBUG] Rolle vergeben")
+            print("[DEBUG] Role assigned")
 
         banner = await self.create_banner(member)
 
@@ -340,20 +340,21 @@ f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! �
 
         embed.set_image(url="attachment://welcome.png")
 
-        print("[DEBUG] Sende Nachricht...")
+        print("[DEBUG] Sending message...")
 
         await welcome_channel.send(
             file=banner,
             embed=embed
         )
 
-        print("[DEBUG] Nachricht gesendet")
+        print("[DEBUG] Message sent")
 
     # ======================================================
     # TEST COMMAND
     # ======================================================
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def testwelcome(self, ctx):
 
         print("[DEBUG] Test Command benutzt")
