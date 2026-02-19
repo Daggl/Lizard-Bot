@@ -66,6 +66,42 @@ Project layout (important files)
 - `config/` — per-cog JSON settings (missing files are auto-generated from `config.example.json`).
 - `tools/` — small helper scripts (e.g., `tools/query_logs.py`).
 
+Music features
+--------------
+The bot includes a `music` cog which can play YouTube tracks and import Spotify tracks/playlists.
+
+- Requirements: `ffmpeg` installed and available on `PATH`, and `yt-dlp` (added to `requirements.txt`).
+- Spotify playlist/track import uses Spotify's Web API (Client Credentials). Provide credentials in `.env` as shown below.
+
+Examples:
+
+```powershell
+# Play/search a YouTube track or search term (prefix commands)
+*play Never Gonna Give You Up
+
+# Play a YouTube URL
+*play https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+# Import a Spotify track or playlist into the queue (requires SPOTIFY_CLIENT_ID/SECRET)
+*spotify https://open.spotify.com/playlist/xxxxx  # optional: max_tracks
+```
+
+Progress & cancel
+------------------
+When importing a Spotify playlist the bot posts a progress embed which is updated during import. The requester (and server admins) can cancel the import via the "Abbrechen" button.
+
+Environment variables
+---------------------
+Add the following to `.env` in the project root (example values):
+
+```
+DISCORD_TOKEN=your_bot_token_here
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+```
+
+Security note: keep `.env` private and never commit it to a public repository.
+
 Quick smoke tests
 -----------------
 - After starting, try `*ping` in a server where the bot is invited.

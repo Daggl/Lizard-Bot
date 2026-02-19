@@ -112,6 +112,21 @@ class HelpTutorial(commands.Cog):
             inline=False
         )
 
+        embed.add_field(
+            name="🎵 Music",
+            value=(
+                "Play music from YouTube or import Spotify tracks/playlists.\n\n"
+                "`*join` → Bot joins your voice channel\n"
+                "`*play <query|YouTube URL>` → Play or search YouTube\n"
+                "`*skip` → Skip current track\n"
+                "`*queue` → Show queue\n"
+                "`*now` → Show now playing\n"
+                "`*stop` → Stop and clear queue\n"
+                "`*spotify <url> [max_tracks]` → Import Spotify track or playlist into the queue."
+            ),
+            inline=False
+        )
+
         embed.set_footer(
             text="More features coming later 👀"
         )
