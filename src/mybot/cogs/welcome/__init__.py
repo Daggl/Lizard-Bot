@@ -1,0 +1,1 @@
+# mybot.cogs.welcome package

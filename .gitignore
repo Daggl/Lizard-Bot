@@ -1,6 +1,14 @@
 .env
 data/logs/logs.db
-*.json
 __pycache__/
 data/logs/*.json
 data/logs/*.db
+
+# Ignore local per-cog configuration folder
+config/
+config/*.json
+
+# New data layout
+data/db/
+data/tickets/transcripts/
+data/tickets/*.txt
