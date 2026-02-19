@@ -1,0 +1,35 @@
+{
+  "welcome": {
+    "VERIFY_CHANNEL_ID": 0,
+    "WELCOME_CHANNEL_ID": 0,
+    "RULES_CHANNEL_ID": 0,
+    "ABOUTME_CHANNEL_ID": 0,
+    "ROLE_ID": 0,
+    "BANNER_PATH": "assets/welcome.png",
+    "FONT_WELCOME": "assets/fonts/Poppins-Bold.ttf",
+    "FONT_USERNAME": "assets/fonts/Poppins-Regular.ttf"
+  },
+  "autorole": {
+    "VERIFY_CHANNEL_ID": 0,
+    "RULES_CHANNEL_ID": 0,
+    "STARTER_ROLE_ID": 0,
+    "VERIFY_ROLE_ID": 0,
+    "DEFAULT_ROLE_ID": 0,
+    "VERIFY_MESSAGE_IDS": [],
+    "RULES_MESSAGE_IDS": [],
+    "EMOJI": "✅",
+    "DB_PATH": "data/autorole.db"
+  },
+  "tickets": {
+    "TICKET_CATEGORY_ID": 0,
+    "SUPPORT_ROLE_ID": 0,
+    "TICKET_LOG_CHANNEL_ID": 0
+  },
+  "log_chat": { "CHANNEL_ID": 0 },
+  "log_mod": { "CHANNEL_ID": 0 },
+  "log_member": { "CHANNEL_ID": 0 },
+  "log_voice": { "CHANNEL_ID": 0 },
+  "log_server": { "CHANNEL_ID": 0 },
+  "leveling": { "ACHIEVEMENT_CHANNEL_ID": 0 },
+  "count": { "COUNT_CHANNEL_ID": 0 }
+}

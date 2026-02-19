@@ -2,12 +2,19 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_PATH = "data/logs/logs.db"
+from mybot.utils.paths import get_db_path, migrate_old_paths, ensure_dirs
 
-os.makedirs("data/logs", exist_ok=True)
+# migrate old files if present, ensure new dirs
+try:
+    migrate_old_paths()
+except Exception:
+    pass
+
+DB_PATH = get_db_path("logs")
 
 
 def connect():
+    ensure_dirs()
     return sqlite3.connect(DB_PATH)
 
 

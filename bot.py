@@ -12,8 +12,19 @@ import os
 import datetime
 import json
 
+import sys
+
+# make `src/` importable so `mybot` package works when present
+_root = os.path.dirname(os.path.abspath(__file__))
+_src = os.path.join(_root, "src")
+if os.path.isdir(_src) and _src not in sys.path:
+    sys.path.insert(0, _src)
+
 # custom database for logs
 from data.logs import database
+
+# ensure per-cog config files exist before loading cogs
+from utils.config import ensure_configs_from_example
 
 
 # ==========================================================
@@ -112,114 +123,70 @@ async def main():
     # start bot context
     async with bot:
 
+        # Ensure per-cog config files exist (created from config.example.json)
+        created = ensure_configs_from_example()
+        if created:
+            print("Created missing config files:", ", ".join(created))
+
         # ==================================================
         # LOAD COGS
         # ==================================================
 
-        try:
-            await bot.load_extension("cogs.birthdays")
-        except Exception as e:
-            print(f"Error loading cogs.birthdays: {e}")
+        extensions = [
+            "mybot.cogs.birthdays",
+            "mybot.cogs.welcome.welcome",
+            "mybot.cogs.poll",
+            "mybot.cogs.leveling.levels",
+            "mybot.cogs.leveling.rank",
+            "mybot.cogs.leveling.achievements",
+            "mybot.cogs.leveling.rewards",
+            "mybot.cogs.leveling.tracking",
+            "mybot.cogs.help_tutorial",
+            "mybot.cogs.admin.admin_panel",
+            "mybot.cogs.admin.admin_tools",
+            "mybot.cogs.admin.admin_tutorial",
+            "mybot.cogs.count",
+            "mybot.cogs.log.chat_log",
+            "mybot.cogs.log.mod_log",
+            "mybot.cogs.log.member_log",
+            "mybot.cogs.log.voice_log",
+            "mybot.cogs.log.server_log",
+            "mybot.cogs.welcome.autorole",
+            "mybot.cogs.say",
+            "mybot.cogs.tickets.ticket",
+        ]
 
-        try:
-            await bot.load_extension("cogs.welcome.welcome")
-        except Exception as e:
-            print(f"Error loading cogs.welcome.welcome: {e}")
+        import traceback
+        import importlib
 
-        try:
-            await bot.load_extension("cogs.poll")
-        except Exception as e:
-            print(f"Error loading cogs.poll: {e}")
+        for ext in extensions:
 
-        try:
-            await bot.load_extension("cogs.leveling.levels")
-        except Exception as e:
-            print(f"Error loading cogs.leveling.levels: {e}")
+            try:
 
-        try:
-            await bot.load_extension("cogs.leveling.rank")
-        except Exception as e:
-            print(f"Error loading cogs.leveling.rank: {e}")
+                # Import the module directly so we can call its setup()
+                module = importlib.import_module(ext)
 
-        try:
-            await bot.load_extension("cogs.leveling.achievements")
-        except Exception as e:
-            print(f"Error loading cogs.leveling.achievements: {e}")
+                # If module provides setup(), call it (await if coroutine)
+                if hasattr(module, "setup"):
 
-        try:
-            await bot.load_extension("cogs.leveling.rewards")
-        except Exception as e:
-            print(f"Error loading cogs.leveling.rewards: {e}")
+                    try:
 
-        try:
-            await bot.load_extension("cogs.leveling.tracking")
-        except Exception as e:
-            print(f"Error loading cogs.leveling.tracking: {e}")
+                        result = module.setup(bot)
 
-        try:
-            await bot.load_extension("cogs.help_tutorial")
-        except Exception as e:
-            print(f"Error loading cogs.help_tutorial: {e}")
+                        if asyncio.iscoroutine(result):
+                            await result
 
-        try:
-            await bot.load_extension("cogs.admin.admin_panel")
-        except Exception as e:
-            print(f"Error loading cogs.admin.admin_panel: {e}")
+                    except Exception:
 
-        try:
-            await bot.load_extension("cogs.admin.admin_tools")
-        except Exception as e:
-            print(f"Error loading cogs.admin.admin_tools: {e}")
+                        print(f"[COG][ERROR] setup() failed for {ext}:")
+                        traceback.print_exc()
 
-        try:
-            await bot.load_extension("cogs.admin.admin_tutorial")
-        except Exception as e:
-            print(f"Error loading cogs.admin.admin_tutorial: {e}")
+                # If there's no setup(), do nothing (silent success)
 
-        try:
-            await bot.load_extension("cogs.count")
-        except Exception as e:
-            print(f"Error loading cogs.count: {e}")
+            except Exception:
 
-        try:
-            await bot.load_extension("cogs.log.chat_log")
-        except Exception as e:
-            print(f"Error loading cogs.log.chat_log: {e}")
-
-        try:
-            await bot.load_extension("cogs.log.mod_log")
-        except Exception as e:
-            print(f"Error loading cogs.log.mod_log: {e}")
-
-        try:
-            await bot.load_extension("cogs.log.member_log")
-        except Exception as e:
-            print(f"Error loading cogs.log.member_log: {e}")
-
-        try:
-            await bot.load_extension("cogs.log.voice_log")
-        except Exception as e:
-            print(f"Error loading cogs.log.voice_log: {e}")
-
-        try:
-            await bot.load_extension("cogs.log.server_log")
-        except Exception as e:
-            print(f"Error loading cogs.log.server_log: {e}")
-
-        try:
-            await bot.load_extension("cogs.welcome.autorole")
-        except Exception as e:
-            print(f"Error loading cogs.welcome.autorole: {e}")
-
-        try:
-            await bot.load_extension("cogs.say")
-        except Exception as e:
-            print(f"Error loading cogs.say: {e}")
-
-        try:
-            await bot.load_extension("cogs.tickets.ticket")
-        except Exception as e:
-            print(f"Error loading cogs.tickets.ticket: {e}")
+                print(f"[COG][FAILED] Could not import {ext}:")
+                traceback.print_exc()
 
         # ==================================================
         # START BOT

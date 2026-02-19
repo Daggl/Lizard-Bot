@@ -3,7 +3,7 @@ Query Logs - README
 
 Kurzbeschreibung
 ---------------
-Dieses kleine Tool hilft beim Durchsuchen und Exportieren der Log‑Datenbank `data/logs/logs.db`.
+Dieses kleine Tool hilft beim Durchsuchen und Exportieren der Log‑Datenbank `data/db/logs.db`.
 
 Datei
 -----
@@ -12,88 +12,71 @@ Datei
 Voraussetzungen
 ---------------
 - Python 3.8+ installiert
-- Die Datei `data/logs/logs.db` existiert und wird vom Bot beschrieben
+- Die Datei `data/db/logs.db` existiert und wird vom Bot beschrieben
 
 Beispiele
 ---------
 - Zeige die 20 neuesten Logs:
 
+```markdown
+# tools/query_logs.py — Quick Beginner Guide
+
+This tool helps you inspect and export the bot's centralized log database (`data/db/logs.db`). Use the prebuilt commands if you are unsure; only use `raw` SQL when you know what you are doing.
+
+Prerequisites
+-------------
+- Python 3.8+ installed
+- The bot has previously created `data/db/logs.db` (run the bot at least once)
+
+Basic usage (PowerShell)
+------------------------
+Open PowerShell in the project folder (or run `cd "C:\Users\mahoe\Documents\DC Bot"`) and then:
+
+Show the 20 newest logs:
+
 ```powershell
 python tools\query_logs.py recent
 ```
 
-- Logs der Kategorie `chat` (max 50):
+Show logs from category `chat` (max 50):
 
 ```powershell
 python tools\query_logs.py by-category chat -n 50
 ```
 
-- Logs eines Nutzers (ID):
+Show logs for a specific user (replace ID):
 
 ```powershell
 python tools\query_logs.py by-user 123456789012345678
 ```
 
-- Zähle Ereignisse gruppiert nach Typ:
+Count events grouped by type:
 
 ```powershell
 python tools\query_logs.py count-by-type
 ```
 
-- Suche Nachrichten nach Begriff (z.B. "password"):
+Search for a text term (e.g. "password"):
 
 ```powershell
 python tools\query_logs.py search "password" -n 100
 ```
 
-- Raw SQL ausführen und als CSV exportieren:
+Run a raw SQL query (advanced) and export as CSV:
 
 ```powershell
 python tools\query_logs.py raw "SELECT * FROM logs WHERE category='chat' ORDER BY id DESC LIMIT 100" --export out.csv
 ```
 
-Hinweis
-------
-Das Skript ist bewusst einfach gehalten. Falls du vordefinierte Abfragen (z. B. Bans der letzten 30 Tage) möchtest, sag mir kurz welche, dann ergänze ich sie.
+Notes for beginners
+-------------------
+- Use the built-in commands (`recent`, `by-category`, `by-user`, `search`) if you are not comfortable with SQL.
+- `raw` runs the SQL you provide directly against the database — it is for advanced users only.
+- Exported CSV files appear in the current folder and can be opened in Excel.
 
-Für absolute Anfänger (sehr einfach erklärt)
------------------------------------------
+Extra help
+----------
+If you want, I can add custom convenience commands (for example `bans-30d`) so you don't need to type raw SQL. Tell me which frequently-used queries you want and I'll add them.
 
-Wenn du mit Computern und Terminals fast gar keine Erfahrung hast, hier eine Schritt‑für‑Schritt‑Anleitung:
-
-1. Öffne das Programm "PowerShell" auf Windows (oder Terminal auf Mac/Linux).
-2. Tippe genau diese Zeile ein und drücke Enter, damit du in den Ordner mit dem Bot wechselst:
-
-```powershell
-cd "C:\Users\mahoe\Documents\DC Bot"
 ```
 
-3. Um eine Liste der neuesten Log‑Einträge zu sehen, kopiere diese Zeile und drücke Enter:
-
-```powershell
-python tools\query_logs.py recent
-```
-
-4. Wenn du eine bestimmte Suche möchtest (z. B. alle Bans der letzten 30 Tage), benutze das hier:
-
-```powershell
-python tools\query_logs.py raw "SELECT * FROM logs WHERE category='mod' AND type='ban' AND timestamp >= datetime('now','-30 days') ORDER BY id DESC"
-```
-
-	- Erklärung: Das Programm fragt die Log‑Datenbank ab und zeigt dir alle Ban‑Einträge der letzten 30 Tage.
-	- Keine Sorge, das ändert nichts in der Datenbank – es zeigt nur Ergebnisse an.
-
-5. Wenn du die Ergebnisse in einer Datei haben möchtest (z. B. `bans_30d.csv`), füge `--export` hinzu:
-
-```powershell
-python tools\query_logs.py raw "SELECT * FROM logs WHERE category='mod' AND type='ban' AND timestamp >= datetime('now','-30 days') ORDER BY id DESC" --export bans_30d.csv
-```
-
-	- Danach findest du die Datei `bans_30d.csv` im selben Ordner, die du mit Excel öffnen kannst.
-
-Sicherheitshinweis für Anfänger
--------------------------------
-- Nutze die vorgefertigten Befehle (`recent`, `by-category`, `search`) wenn du unsicher bist.
-- Verwende `raw` nur, wenn du genau den SQL‑Text aus einer vertrauenswürdigen Quelle kopierst (wie hier oben).
-
-Wenn du möchtest, kann ich die Abfrage "Bans der letzten 30 Tage" direkt als eigenen Befehl in `query_logs.py` hinzufügen, sodass du nur `python tools\query_logs.py bans-30d` tippen musst. Soll ich das machen?

@@ -9,7 +9,7 @@ import sqlite3
 import sys
 from typing import List, Tuple
 
-DB = "data/logs/logs.db"
+DB = "data/db/logs.db"
 
 PRETTY_COLS = [
     "id",
