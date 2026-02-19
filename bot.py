@@ -88,6 +88,12 @@ async def ping(ctx):
     # simple test command to check if bot responds
     await ctx.send("🏓 Pong! all is good in the hood!")
 
+@bot.event
+async def on_command_error(ctx, error):
+    import traceback
+    print(f"[CMD ERROR] Error running command {getattr(ctx, 'command', None)}: {error}")
+    traceback.print_exception(type(error), error, error.__traceback__)
+
 
 # ==========================================================
 # MESSAGE EVENT
@@ -154,6 +160,7 @@ async def main():
             "mybot.cogs.welcome.autorole",
             "mybot.cogs.say",
             "mybot.cogs.tickets.ticket",
+            "mybot.cogs.music",
         ]
 
         import traceback
@@ -187,6 +194,10 @@ async def main():
 
                 print(f"[COG][FAILED] Could not import {ext}:")
                 traceback.print_exc()
+
+        # ==================================================
+        # START BOT
+        # ==================================================
 
         # ==================================================
         # START BOT

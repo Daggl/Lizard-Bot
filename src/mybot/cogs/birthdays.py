@@ -2,6 +2,7 @@ import json
 import os
 import datetime
 import discord
+from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
 from discord.ext import commands, tasks
 
@@ -11,16 +12,11 @@ BIRTHDAY_FILE = os.path.join(DATA_FOLDER, "birthdays.json")
 
 
 def load_birthdays():
-    try:
-        with open(BIRTHDAY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+    return safe_load_json(BIRTHDAY_FILE, default={})
 
 
 def save_birthdays(data):
-    with open(BIRTHDAY_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    safe_save_json(BIRTHDAY_FILE, data)
 
 
 class Birthdays(commands.Cog):

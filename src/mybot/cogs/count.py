@@ -1,6 +1,7 @@
 import discord
 import json
 import os
+from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
 from discord.ext import commands
 from mybot.utils.config import load_cog_config
@@ -35,23 +36,11 @@ def load():
 
     if not os.path.exists(DATA_FILE):
         save(default_data())
-
-    try:
-
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-
-    except Exception:
-
-        save(default_data())
-
-        return default_data()
+    return safe_load_json(DATA_FILE, default=default_data())
 
 
 def save(data):
-
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    safe_save_json(DATA_FILE, data)
 
 
 class Count(commands.Cog):
