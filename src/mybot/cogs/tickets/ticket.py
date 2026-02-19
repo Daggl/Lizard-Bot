@@ -117,19 +117,48 @@ class TicketCog(commands.Cog):
                 return role
         return None
 
-    def _ticket_category(self, guild: discord.Guild) -> Optional[discord.CategoryChannel]:
+    async def _ticket_category(self, guild: discord.Guild) -> Optional[discord.CategoryChannel]:
+        # If a category ID is configured, try to resolve it. Accept either a
+        # category ID or a channel ID (channel's parent category will be used).
         if TICKET_CATEGORY_ID:
-            return guild.get_channel(TICKET_CATEGORY_ID)  # type: ignore[arg-type]
+            try:
+                cid = int(TICKET_CATEGORY_ID)
+            except Exception:
+                cid = TICKET_CATEGORY_ID
+
+            # Try cache first
+            ch = guild.get_channel(cid)
+            # If it's already a CategoryChannel, return it
+            if isinstance(ch, discord.CategoryChannel):
+                return ch
+            # If it's a Text/Voice channel inside a category, return its category
+            if isinstance(ch, (discord.TextChannel, discord.VoiceChannel)) and ch.category:
+                return ch.category
+
+            # Not in cache — try fetching from API
+            try:
+                fetched = await self.bot.fetch_channel(cid)
+                if isinstance(fetched, discord.CategoryChannel):
+                    return fetched
+                if isinstance(fetched, (discord.TextChannel, discord.VoiceChannel)) and fetched.category:
+                    return fetched.category
+            except Exception:
+                pass
+
+        # fallback: try to find a category by name hints
         for category in guild.categories:
             if "ticket" in category.name.lower() or "support" in category.name.lower():
                 return category
+
         return None
 
     async def _create_ticket_for_user(self, guild: discord.Guild, user: discord.Member, origin_channel: Optional[discord.TextChannel]) -> discord.TextChannel:
         now = datetime.utcnow().strftime("%y%m%d-%H%M")
         short = uuid4().hex[:6]
         name = f"ticket-{user.display_name.lower().replace(' ', '-')}-{short}"
-        category = self._ticket_category(guild)
+        category = await self._ticket_category(guild)
+
+        # (debug instrumentation removed)
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),

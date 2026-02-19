@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 import aiohttp
+from urllib.parse import quote
 import discord
 from discord.ext import commands
 
@@ -52,6 +53,10 @@ class Music(commands.Cog, name="music"):
         # map guild_id -> asyncio.Event used to cancel ongoing imports
         self._import_cancel_events: Dict[int, asyncio.Event] = {}
 
+    async def cog_load(self):
+        # called when cog is loaded
+        return
+
     # --- Spotify helpers ---
     async def _get_spotify_token(self) -> Optional[str]:
         client_id = os.getenv('SPOTIFY_CLIENT_ID')
@@ -82,9 +87,13 @@ class Music(commands.Cog, name="music"):
             raise RuntimeError('SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not configured')
 
         headers = {'Authorization': f'Bearer {token}'}
-        # detect track or playlist id
-        m_track = re.search(r'open.spotify.com/track/([A-Za-z0-9_-]+)', url)
-        m_playlist = re.search(r'open.spotify.com/playlist/([A-Za-z0-9_-]+)', url)
+        # detect track or playlist id (support both URL and URI forms and optional locale segments)
+        m_track = re.search(r'open\.spotify\.com(?:/[^/]+)?/track/([A-Za-z0-9_-]+)', url)
+        m_playlist = re.search(r'open\.spotify\.com(?:/[^/]+)?/playlist/([A-Za-z0-9_-]+)', url)
+        if not m_track:
+            m_track = re.search(r'spotify:track:([A-Za-z0-9_-]+)', url)
+        if not m_playlist:
+            m_playlist = re.search(r'spotify:playlist:([A-Za-z0-9_-]+)', url)
         queries: List[str] = []
 
         async with aiohttp.ClientSession() as session:
@@ -93,7 +102,20 @@ class Music(commands.Cog, name="music"):
                 api = f'https://api.spotify.com/v1/tracks/{track_id}'
                 async with session.get(api, headers=headers) as resp:
                     if resp.status != 200:
-                        return []
+                        # try oEmbed fallback for public Spotify pages
+                        try:
+                            oembed_url = f"https://open.spotify.com/oembed?url={quote(url, safe='')}"
+                            async with session.get(oembed_url) as oresp:
+                                if oresp.status == 200:
+                                    oj = await oresp.json()
+                                    title = oj.get('title')
+                                    if title:
+                                        queries.append(title)
+                                        return queries
+                        except Exception:
+                            pass
+                        text = await resp.text()
+                        raise RuntimeError(f"Spotify API error {resp.status}: {text}")
                     j = await resp.json()
                 name = j.get('name')
                 artists = ', '.join([a['name'] for a in j.get('artists', [])])
@@ -108,7 +130,20 @@ class Music(commands.Cog, name="music"):
                     params = {'limit': min(100, limit - len(queries)), 'offset': offset}
                     async with session.get(api, headers=headers, params=params) as resp:
                         if resp.status != 200:
-                            break
+                            # try oEmbed fallback for playlist page
+                            try:
+                                oembed_url = f"https://open.spotify.com/oembed?url={quote(url, safe='')}"
+                                async with session.get(oembed_url) as oresp:
+                                    if oresp.status == 200:
+                                        oj = await oresp.json()
+                                        title = oj.get('title')
+                                        if title:
+                                            queries.append(title)
+                                            return queries
+                            except Exception:
+                                pass
+                            text = await resp.text()
+                            raise RuntimeError(f"Spotify API error {resp.status}: {text}")
                         j = await resp.json()
                     items = j.get('items', [])
                     for it in items:
@@ -126,32 +161,13 @@ class Music(commands.Cog, name="music"):
                     offset += len(items)
                 return queries
 
+        # If we reached here, spotify api didn't match (or returned no items).
+        # Try a lightweight page-title fallback for public Spotify links.
+        title = await self._fetch_spotify_title(url)
+        if title:
+            return [title]
+
         return queries
-
-
-class ImportCancelView(discord.ui.View):
-    def __init__(self, event: asyncio.Event, owner_id: int):
-        super().__init__(timeout=None)
-        self._event = event
-        self._owner_id = owner_id
-
-    @discord.ui.button(label="Abbrechen", style=discord.ButtonStyle.danger)
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # allow the requester or server admins (administrator / manage_guild / manage_messages)
-        if interaction.user.id != self._owner_id:
-            perms = None
-            if interaction.guild and hasattr(interaction.user, 'guild_permissions'):
-                perms = interaction.user.guild_permissions
-            if not (perms and (perms.administrator or perms.manage_guild or perms.manage_messages)):
-                await interaction.response.send_message("Only the requester or an admin can cancel the import.", ephemeral=True)
-                return
-        self._event.set()
-        for item in self.children:
-            item.disabled = True
-        try:
-            await interaction.response.edit_message(content="Import abgebrochen.", view=self)
-        except Exception:
-            pass
 
     # --- existing helpers ---
     async def _fetch_spotify_title(self, url: str) -> Optional[str]:
@@ -180,12 +196,44 @@ class ImportCancelView(discord.ui.View):
         return await asyncio.to_thread(run)
 
     async def _ensure_voice(self, ctx: commands.Context):
+        # already connected
         if ctx.voice_client and ctx.voice_client.is_connected():
             return ctx.voice_client
-        if ctx.author.voice and ctx.author.voice.channel:
-            return await ctx.author.voice.channel.connect()
-        await ctx.send("You are not connected to a voice channel.")
-        return None
+
+        # ensure author is in a voice channel
+        author_vc = getattr(ctx.author, 'voice', None)
+        if not author_vc or not author_vc.channel:
+            await ctx.send("You are not connected to a voice channel.")
+            return None
+
+        channel = author_vc.channel
+
+        # check bot permissions in that channel
+        me = ctx.guild.me if ctx.guild else None
+        if me is None:
+            await ctx.send("Unable to determine bot member in this guild.")
+            return None
+
+        perms = channel.permissions_for(me)
+        if not perms.connect:
+            await ctx.send("I don't have permission to connect to your voice channel (Connect permission missing).")
+            return None
+        if not perms.speak:
+            await ctx.send("I don't have permission to speak in your voice channel (Speak permission missing).")
+            return None
+
+        # Stage channels require special handling
+        if getattr(channel, 'stage_instance', None) is not None:
+            await ctx.send("Stage channels are not supported by this bot.")
+            return None
+
+        # attempt to connect
+        try:
+            vc = await channel.connect()
+            return vc
+        except Exception as e:
+            await ctx.send(f"Failed to join voice channel: {e}")
+            return None
 
     async def _play_next(self, guild_id: int):
         async with self.players_lock:
@@ -222,6 +270,11 @@ class ImportCancelView(discord.ui.View):
         if vc:
             await ctx.send(f"Connected to {vc.channel.mention}")
 
+    @commands.command(name="mjoin")
+    async def mjoin(self, ctx: commands.Context):
+        """Alias for join to test prefix command dispatch."""
+        await self.join(ctx)
+
     @commands.hybrid_command(name="leave", description="Leave voice channel and clear queue")
     async def leave(self, ctx: commands.Context):
         guild_id = ctx.guild.id
@@ -248,7 +301,14 @@ class ImportCancelView(discord.ui.View):
         else:
             query = original_query
 
-        await ctx.defer()
+        # defer only for interactions; for prefix commands use typing indicator
+        try:
+            if isinstance(ctx, discord.Interaction):
+                await ctx.response.defer()
+            else:
+                await ctx.trigger_typing()
+        except Exception:
+            pass
         try:
             info = await self._resolve_query(query)
         except Exception as e:
@@ -273,16 +333,45 @@ class ImportCancelView(discord.ui.View):
             await self._play_next(guild_id)
 
     @commands.hybrid_command(name="spotify", description="Import Spotify track or playlist into the queue")
-    async def spotify(self, ctx: commands.Context, url: str, max_tracks: int = 25):
+    async def spotify(self, ctx: commands.Context, url: str, max_tracks: Optional[str] = None):
         """Import a Spotify track or playlist into the queue (uses Spotify Web API).
 
         Requires environment variables `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`.
         """
+        # normalize max_tracks: accept ints or strings like "[20]" and clamp to [1,200]
         try:
-            queries = await self._fetch_spotify_tracks(url, limit=max_tracks)
+            if max_tracks is None:
+                max_t = 25
+            else:
+                # already an int-like string or numeric
+                if isinstance(max_tracks, int):
+                    max_t = max_tracks
+                else:
+                    m = re.search(r"(\d+)", str(max_tracks))
+                    if m:
+                        max_t = int(m.group(1))
+                    else:
+                        try:
+                            max_t = int(max_tracks)
+                        except Exception:
+                            max_t = 25
+            # clamp limits
+            max_t = max(1, min(200, int(max_t)))
+
+            queries = await self._fetch_spotify_tracks(url, limit=max_t)
         except Exception as e:
-            await ctx.send(f"Spotify error: {e}")
-            return
+            # If Spotify API forbids access (403) or similar, try a fallback
+            msg = str(e)
+            if '403' in msg or 'forbidden' in msg.lower() or 'spotify api error' in msg.lower():
+                title = await self._fetch_spotify_title(url)
+                if title:
+                    queries = [title]
+                else:
+                    await ctx.send(f"Spotify error: {e}")
+                    return
+            else:
+                await ctx.send(f"Spotify error: {e}")
+                return
 
         if not queries:
             await ctx.send("No tracks found or failed to fetch from Spotify.")
@@ -395,6 +484,35 @@ class ImportCancelView(discord.ui.View):
         self.queues[guild_id] = []
         self.now_playing[guild_id] = None
         await ctx.send("Stopped and cleared the queue.")
+
+
+class ImportCancelView(discord.ui.View):
+    def __init__(self, event: asyncio.Event, owner_id: int):
+        super().__init__(timeout=None)
+        self._event = event
+        self._owner_id = owner_id
+
+    @discord.ui.button(label="Abbrechen", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # allow the requester or server admins (administrator / manage_guild / manage_messages)
+        if interaction.user.id != self._owner_id:
+            perms = None
+            if interaction.guild and hasattr(interaction.user, 'guild_permissions'):
+                perms = interaction.user.guild_permissions
+            if not (perms and (perms.administrator or perms.manage_guild or perms.manage_messages)):
+                await interaction.response.send_message("Only the requester or an admin can cancel the import.", ephemeral=True)
+                return
+        self._event.set()
+        for item in self.children:
+            item.disabled = True
+        try:
+            await interaction.response.edit_message(content="Import abgebrochen.", view=self)
+        except Exception:
+            pass
+
+    # Note: other helpers and command methods belong to the `Music` cog and
+    # were intentionally implemented as methods of `Music` so they can access
+    # cog state (`self.queues`, `self.now_playing`, etc.).
 
 
 async def setup(bot: commands.Bot):

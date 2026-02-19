@@ -63,6 +63,7 @@ class Levels(commands.Cog):
 
                 embed = discord.Embed(
                     description=(
+                        f" \n\n"
                         f"<:gg_wp:1473709030839943189> "
                         f"{member.mention}\n"
                         f"you just reached level {user['level']}!\n "

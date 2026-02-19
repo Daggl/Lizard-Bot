@@ -4,26 +4,18 @@ import json
 import os
 import uuid
 import asyncio
+from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
 DATA_FOLDER = "data"
 DATA_FILE = os.path.join(DATA_FOLDER, "polls.json")
 
-if not os.path.exists(DATA_FOLDER):
-    os.makedirs(DATA_FOLDER)
-
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-        json.dump({}, f)
-
 
 def load_polls():
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
+    return safe_load_json(DATA_FILE, default={})
 
 
 def save_polls(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    safe_save_json(DATA_FILE, data)
 
 
 class PollView(discord.ui.View):
