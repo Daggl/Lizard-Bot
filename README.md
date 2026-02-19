@@ -1,68 +1,12 @@
-DC Bot
-======
-
-A Discord bot built by Leutnant Brause with discord.py. This repository contains modular cogs for moderation, leveling, tickets, logging and more. It uses SQLite for local persistence and provides a small CLI to query stored logs.
-
-Quick start
------------
-
-1. Create a Python 3.11+ virtual environment and activate it.
-
-Windows (PowerShell):
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-2. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-3. Create a `.env` file in the project root with your bot token:
-
-```
-DISCORD_TOKEN=your_token_here
-```
-
-4. (Optional) Set configuration constants inside `cogs/tickets/ticket.py`:
-- `TICKET_CATEGORY_ID` — category where ticket channels will be created (channel ID integer)
-- `SUPPORT_ROLE_ID` — role ID for staff/support who should see tickets
-- `TICKET_LOG_CHANNEL_ID` — channel ID for logging ticket events
-
-You may prefer to move these into a small central config file later. See the file header comments in `cogs/tickets/ticket.py` for guidance.
-
-Run the bot
------------
-
-Start the bot from the project root:
-
-```powershell
-python bot.py
-```
-
-Start scripts
--------------
-
-Two convenience scripts are included in the project root. They will create a `.venv` (if missing), activate it, install `requirements.txt` (if present) and start the bot.
-
-- PowerShell (`start.ps1`):
-
-```powershell
-# run in foreground
-.\start.ps1
 ```markdown
-# DC Bot — Beginner Guide
+# Lizard Bot — Beginner Guide
 
-This is a Discord bot (built with discord.py) that provides moderation, leveling, tickets, logging and small admin tools. The project stores data locally (SQLite) and includes helper scripts for starting the bot.
-
-This README shows a minimal, step-by-step setup for beginners.
+Lizard Bot is a Discord bot (built with discord.py) that provides moderation, leveling, tickets, logging and admin helpers. This guide helps beginners set up and run the bot locally.
 
 Prerequisites
 -------------
-- Python 3.10 or newer installed. Download from https://www.python.org if needed.
-- A Discord bot token (create a bot at https://discord.com/developers/applications).
+- Python 3.10 or newer installed: https://www.python.org
+- A Discord bot token from the Discord Developer Portal: https://discord.com/developers/applications
 
 1) Open a terminal (PowerShell on Windows)
 ---------------------------------------
@@ -101,38 +45,38 @@ DISCORD_TOKEN=your_bot_token_here
 
 5) Start the bot
 ----------------
-Simple foreground start (good for debugging):
+Foreground (recommended while testing):
 
 ```powershell
 python bot.py
 ```
 
-Convenience PowerShell script (creates/activates `.venv` and installs requirements automatically):
+Use the bundled PowerShell helper to create a venv and run the bot automatically:
 
 ```powershell
 .\start.ps1         # foreground
-.\start.ps1 -Detach # background
+.\start.ps1 -Detach # run in background
 ```
 
-What the project layout contains
+Project layout (important files)
 --------------------------------
-- `bot.py` — main runner.
+- `bot.py` — main entry point.
 - `src/mybot/` — packaged bot code (cogs and utils).
 - `data/` — databases, logs and ticket transcripts (created at runtime).
-- `config/` — per-cog JSON settings (the bot auto-generates missing files from `config.example.json`).
-- `tools/` — small helper scripts (e.g., log query CLI).
+- `config/` — per-cog JSON settings (missing files are auto-generated from `config.example.json`).
+- `tools/` — small helper scripts (e.g., `tools/query_logs.py`).
 
-Quick tests after start
------------------------
-- In any server where your bot is invited, try `*ping` to check the bot responds.
-- Check `discord.log` in the project root if the bot exits or shows errors.
+Quick smoke tests
+-----------------
+- After starting, try `*ping` in a server where the bot is invited.
+- Check `discord.log` in the project root for stack traces if the bot exits.
 
-Common problems & fixes
------------------------
+Troubleshooting
+---------------
 - "DISCORD_TOKEN not set": Create `.env` with the token.
-- Import errors: Ensure you activated the `.venv` and ran `pip install -r requirements.txt`.
-- Permission errors writing `data/`: Give the running user write permissions to the project folder.
+- Import errors: Make sure you activated the `.venv` and ran `pip install -r requirements.txt`.
+- Permission errors writing `data/`: Ensure the user running the bot has write permissions to the project folder.
 
-If you want me to: I can run the bot, tail logs for you, or add step-by-step screenshots to this README.
+If you want, I can run the bot, tail logs, or add screenshots to this README.
 
 ```
