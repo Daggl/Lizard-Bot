@@ -10,6 +10,7 @@ remains unchanged while allowing a package-style invocation.
 import asyncio
 import os
 import sys
+import importlib
 
 # Ensure repository root is on sys.path so top-level modules (bot.py) are importable
 # __file__ is .../src/mybot/__main__.py; climb up three levels to reach the repo root
@@ -34,9 +35,12 @@ except Exception:
 
 if main is None:
     try:
-        from bot import main as top_main
-
-        main = top_main
+        # Import top-level runner dynamically to avoid static import errors
+        # in editor/linters when `bot.py` is not present.
+        mod = importlib.import_module("bot")
+        top_main = getattr(mod, "main", None)
+        if callable(top_main):
+            main = top_main
     except Exception:
         pass
 
