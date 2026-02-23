@@ -4,6 +4,8 @@ __pycache__/
 data/logs/*.json
 data/logs/*.db
 
+.flake8
+
 # Ignore local per-cog configuration folder
 config/
 config/*.json

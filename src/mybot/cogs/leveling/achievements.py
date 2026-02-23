@@ -1,9 +1,7 @@
 from discord.ext import commands
 
-from mybot.cogs.leveling.utils.level_config import (
-    ACHIEVEMENT_CHANNEL_ID,
-    ACHIEVEMENTS,
-)
+from mybot.cogs.leveling.utils.level_config import (ACHIEVEMENT_CHANNEL_ID,
+                                                    ACHIEVEMENTS)
 
 
 class Achievements(commands.Cog):
