@@ -79,8 +79,7 @@ class HelpTutorial(commands.Cog):
         embed.add_field(
             name="⚙ General",
             value=(
-                "`*ping` → Tests if the bot is online\n"
-                "`*help` → Shows this menu"
+                "`*ping` → Tests if the bot is online\n" "`*help` → Shows this menu"
             ),
             inline=False,
         )

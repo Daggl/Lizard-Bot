@@ -1,8 +1,8 @@
-import sqlite3
 import os
+import sqlite3
 from datetime import datetime
 
-from mybot.utils.paths import get_db_path, migrate_old_paths, ensure_dirs
+from mybot.utils.paths import ensure_dirs, get_db_path, migrate_old_paths
 
 # migrate old files if present, ensure new dirs
 try:
@@ -45,22 +45,23 @@ def save_log(category, data):
     con = connect()
     cur = con.cursor()
 
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO logs
         (category, type, user_id, moderator_id, channel_id, message, extra, timestamp)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-
-        category,
-        data.get("type"),
-        data.get("user"),
-        data.get("by"),
-        data.get("channel"),
-        data.get("message"),
-        str(data),
-        str(datetime.utcnow())
-
-    ))
+    """,
+        (
+            category,
+            data.get("type"),
+            data.get("user"),
+            data.get("by"),
+            data.get("channel"),
+            data.get("message"),
+            str(data),
+            str(datetime.utcnow()),
+        ),
+    )
 
     con.commit()
     con.close()

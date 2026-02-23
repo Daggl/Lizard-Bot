@@ -37,36 +37,89 @@ With the virtual environment active:
 pip install -r requirements.txt
 ```
 
-4) Provide your bot token
--------------------------
-Create a file named `.env` in the project root with this single line:
+4) Provide your secrets and env vars
+-----------------------------------
+Create a file named `.env` in the project root containing the values below (example):
 
 ```
 DISCORD_TOKEN=your_bot_token_here
+# Optional (for Spotify import):
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+# Internal token used by the frontend/backend to authenticate preview/upload requests
+WEB_INTERNAL_TOKEN=a-random-secret
 ```
+
+Keep `.env` private and never commit it to the repository.
 
 5) Start the bot and services
 ----------------------------
-Recommended local development flow (creates venv, installs deps and runs services):
+Recommended local development flow (create venv, install deps and run services).
 
-PowerShell (foreground):
+Quick sequence (PowerShell):
 
 ```powershell
-.\start.ps1         # runs backend, frontend (detached) and the bot in foreground
-.\start.ps1 -Detach # run bot detached/background (backend/frontend still started)
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# Run backend (uvicorn)
+.\.venv\Scripts\python -m uvicorn web.backend.main:app --host 127.0.0.1 --port 8000
+
+# In a second terminal: frontend dev server (if you want hot reload)
+npm --prefix web/frontend install
+npm --prefix web/frontend run dev
+
+# In a third terminal: start the bot (needs DISCORD_TOKEN in .env)
+.\.venv\Scripts\python -m src.mybot
 ```
 
-Windows (cmd):
+Alternatively you can use the provided helpers which automate these steps:
 
-```cmd
-start.bat            # starts backend/frontend in new windows and runs bot here
-```
+- PowerShell (foreground): `.\start.ps1` (backend + frontend + bot)
+- PowerShell (detached bot): `.\start.ps1 -Detach`
+- Windows (cmd): `start.bat`
 
-You can still run the bot directly as a package:
+Or run the bot directly as a package:
 
 ```powershell
 python -m src.mybot
 ```
+
+Absolute beginner quick-start (minimal)
+-------------------------------------
+If you're new and just want the bot running with minimal steps (skip the frontend/backend UI), follow these instructions.
+
+1. Open PowerShell: Press Start, type "PowerShell" and open "Windows PowerShell" or "Windows Terminal".
+
+2. Create a `.env` file with your Discord bot token:
+
+	 - Open Notepad and paste the following (replace the token):
+
+		 DISCORD_TOKEN=your_bot_token_here
+
+	 - Save the file as `.env` in the project folder (choose "All files" in Notepad's Save dialog).
+
+3. Create and activate a virtual environment, then install dependencies (copy-paste into PowerShell):
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+4. Start only the bot (no UI required):
+
+```powershell
+.\.venv\Scripts\python -m src.mybot
+```
+
+5. Verify: Once the bot is online, send `*ping` in a server where the bot is invited. If you don't know how to invite the bot, see the "Get a Discord bot token" section below.
+
+Notes for absolute beginners:
+- If PowerShell blocks execution, run Notepad as Administrator and follow the README's PowerShell note to set execution policy, or open a CMD window and use `\.venv\Scripts\activate.bat` instead of the PowerShell command.
+- If you can't find your Discord token, open the Discord Developer Portal (https://discord.com/developers/applications), create an application, add a Bot, then copy the token from the Bot page.
+
 
 Docker: a portable option is provided — see `DOCKER.md` and use:
 
@@ -81,7 +134,8 @@ Project layout (important files)
 - `web/backend/` — FastAPI dashboard backend (endpoints, preview generation).
 - `web/frontend/` — React + Vite dashboard frontend (development and production build).
 - `data/` — runtime data, logs and uploads (created at runtime).
-- `config/` — per-guild JSON settings (created from `data/config.example.json` if missing).
+- `data/config.example.json` — example per-cog config. On first bot startup the repository-level example is used to create the per-cog files under `config/` if they are missing.
+- `config/` — per-guild JSON settings (create by copying `data/config.example.json` here or let the bot create them automatically).
 - `start.ps1`, `start.bat` — helper scripts to create a venv, start backend, frontend and the bot for local development.
 - `docker-compose.yml`, `Dockerfile.python`, `Dockerfile.frontend` — containerized deployment artifacts (see `DOCKER.md`).
 
@@ -136,7 +190,5 @@ Troubleshooting
 - If ports 8000 or 5173 are already in use, stop the conflicting process or adjust ports in `start` scripts and `docker-compose.yml`.
 - Permission errors writing `data/`: Ensure the user running the bot has write permissions to the project folder.
 
-
-If you want, I can run the bot, tail logs, or add screenshots to this README.
 
 ```

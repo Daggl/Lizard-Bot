@@ -8,9 +8,9 @@ remains unchanged while allowing a package-style invocation.
 """
 
 import asyncio
+import importlib
 import os
 import sys
-import importlib
 
 # Ensure repository root is on sys.path so top-level modules (bot.py) are importable
 # __file__ is .../src/mybot/__main__.py; climb up three levels to reach the repo root
@@ -46,7 +46,8 @@ if main is None:
 
 if main is None:
     raise ImportError(
-        "Could not locate a callable named 'main' in src.mybot.lizard or top-level bot.py"
+        "Could not locate a callable named 'main' "
+        "in src.mybot.lizard or top-level 'bot' module"
     )
 
 if __name__ == "__main__":

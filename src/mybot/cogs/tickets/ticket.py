@@ -9,12 +9,8 @@ import discord
 from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
-from mybot.utils.paths import (
-    ensure_dirs,
-    get_db_path,
-    get_ticket_transcript_path,
-    migrate_old_paths,
-)
+from mybot.utils.paths import (ensure_dirs, get_db_path,
+                               get_ticket_transcript_path, migrate_old_paths)
 
 _CFG = load_cog_config("tickets")
 
@@ -256,8 +252,7 @@ class TicketCog(commands.Cog):
 
         await self._log_action(
             guild,
-            f"Ticket created: {channel.name} by {user} "
-            f"(id {user.id})",
+            f"Ticket created: {channel.name} by {user} " f"(id {user.id})",
         )
 
         try:
@@ -302,8 +297,7 @@ class TicketCog(commands.Cog):
             )
             try:
                 update_sql = (
-                    "UPDATE tickets SET transcript_path = ? "
-                    "WHERE channel_id = ?"
+                    "UPDATE tickets SET transcript_path = ? " "WHERE channel_id = ?"
                 )
                 await self._db_execute(update_sql, (path, channel.id))
             except Exception as exc:
