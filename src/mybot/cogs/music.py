@@ -495,8 +495,7 @@ class Music(commands.Cog, name="music"):
 
         try:
             embed.description = (
-                f"Import complete: {added} added, "
-                f"{skipped} skipped."
+                f"Import complete: {added} added, " f"{skipped} skipped."
             )
             for item in view.children:
                 item.disabled = True
@@ -539,8 +538,7 @@ class Music(commands.Cog, name="music"):
         lines = [f"Now: **{now_title}**"]
         for i, t in enumerate(q[:10], start=1):
             lines.append(
-                f"{i}. {t.title} "
-                f"— requested by {t.requester.display_name}"
+                f"{i}. {t.title} " f"— requested by {t.requester.display_name}"
             )
         await ctx.send("\n".join(lines))
 

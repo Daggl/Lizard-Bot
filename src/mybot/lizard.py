@@ -13,14 +13,15 @@ from dotenv import load_dotenv
 
 # ensure project root's `src` is importable (when running as module)
 _root = os.path.dirname(os.path.abspath(__file__))
-_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_project_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 _src = os.path.join(_project_root, "src")
 if os.path.isdir(_src) and _src not in sys.path:
     sys.path.insert(0, _src)
 
 # custom database for logs
 from data.logs import database  # noqa: E402
-
 # ensure per-cog config files exist before loading cogs
 from mybot.utils import ensure_configs_from_example  # noqa: E402
 
