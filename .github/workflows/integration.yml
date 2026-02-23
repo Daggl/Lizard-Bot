@@ -17,6 +17,18 @@ jobs:
         run: |
           docker compose -f docker-compose.yml up --build -d
 
+      - name: Debug Docker environment
+        if: always()
+        run: |
+          echo '--- docker --version ---'
+          docker --version || true
+          echo '--- docker compose version ---'
+          docker compose version || true
+          echo '--- docker info ---'
+          docker info || true
+          echo '--- docker compose config ---'
+          docker compose -f docker-compose.yml config || true
+
       - name: Wait for backend to be healthy
         run: |
           for i in {1..30}; do
