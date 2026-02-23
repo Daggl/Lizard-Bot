@@ -88,7 +88,10 @@ class Music(commands.Cog, name="music"):
         return token
 
     async def _fetch_spotify_tracks(self, url: str, limit: int = 50) -> List[str]:
-        """Return a list of search queries derived from a Spotify track or playlist URL."""
+        """
+        Return a list of search queries derived from a Spotify track or
+        playlist URL.
+        """
         token = await self._get_spotify_token()
         if not token:
             raise RuntimeError(
@@ -96,13 +99,12 @@ class Music(commands.Cog, name="music"):
             )
 
         headers = {"Authorization": f"Bearer {token}"}
-        # detect track or playlist id (support both URL and URI forms and optional locale segments)
-        m_track = re.search(
-            r"open\.spotify\.com(?:/[^/]+)?/track/([A-Za-z0-9_-]+)", url
-        )
-        m_playlist = re.search(
-            r"open\.spotify\.com(?:/[^/]+)?/playlist/([A-Za-z0-9_-]+)", url
-        )
+        # detect track or playlist id (support both URL and URI forms and
+        # optional locale segments)
+        TRACK_RE = r"open\.spotify\.com(?:/[^/]+)?/track/([A-Za-z0-9_-]+)"
+        PLAYLIST_RE = r"open\.spotify\.com(?:/[^/]+)?/playlist/([A-Za-z0-9_-]+)"
+        m_track = re.search(TRACK_RE, url)
+        m_playlist = re.search(PLAYLIST_RE, url)
         if not m_track:
             m_track = re.search(r"spotify:track:([A-Za-z0-9_-]+)", url)
         if not m_playlist:
@@ -117,7 +119,8 @@ class Music(commands.Cog, name="music"):
                     if resp.status != 200:
                         # try oEmbed fallback for public Spotify pages
                         try:
-                            oembed_url = f"https://open.spotify.com/oembed?url={quote(url, safe='')}"
+                            safe_q = quote(url, safe="")
+                            oembed_url = "https://open.spotify.com/oembed?url=" + safe_q
                             async with session.get(oembed_url) as oresp:
                                 if oresp.status == 200:
                                     oj = await oresp.json()
@@ -145,7 +148,10 @@ class Music(commands.Cog, name="music"):
                         if resp.status != 200:
                             # try oEmbed fallback for playlist page
                             try:
-                                oembed_url = f"https://open.spotify.com/oembed?url={quote(url, safe='')}"
+                                safe_q = quote(url, safe="")
+                                oembed_url = (
+                                    f"https://open.spotify.com/oembed?url={safe_q}"
+                                )
                                 async with session.get(oembed_url) as oresp:
                                     if oresp.status == 200:
                                         oj = await oresp.json()
@@ -232,12 +238,14 @@ class Music(commands.Cog, name="music"):
         perms = channel.permissions_for(me)
         if not perms.connect:
             await ctx.send(
-                "I don't have permission to connect to your voice channel (Connect permission missing)."
+                "I don't have permission to connect to your voice channel "
+                "(Connect permission missing)."
             )
             return None
         if not perms.speak:
             await ctx.send(
-                "I don't have permission to speak in your voice channel (Speak permission missing)."
+                "I don't have permission to speak in your voice channel "
+                "(Speak permission missing)."
             )
             return None
 
@@ -477,13 +485,19 @@ class Music(commands.Cog, name="music"):
             # update status every 5 items or on the last item
             if idx % 5 == 0 or idx == total:
                 try:
-                    embed.description = f"Importing {total} tracks... {added}/{total} added (skipped {skipped})"
+                    embed.description = (
+                        f"Importing {total} tracks... {added}/{total} added "
+                        f"(skipped {skipped})"
+                    )
                     await status.edit(embed=embed, view=view)
                 except Exception:
                     pass
 
         try:
-            embed.description = f"Import complete: {added} added, {skipped} skipped."
+            embed.description = (
+                f"Import complete: {added} added, "
+                f"{skipped} skipped."
+            )
             for item in view.children:
                 item.disabled = True
             await status.edit(embed=embed, view=view)
@@ -517,11 +531,17 @@ class Music(commands.Cog, name="music"):
         if not q:
             await ctx.send("Queue is empty.")
             return
-        lines = [
-            f"Now: **{self.now_playing.get(ctx.guild.id).title if self.now_playing.get(ctx.guild.id) else 'Nothing'}**"
-        ]
+        now_playing_obj = self.now_playing.get(ctx.guild.id)
+        if now_playing_obj and now_playing_obj.title:
+            now_title = now_playing_obj.title
+        else:
+            now_title = "Nothing"
+        lines = [f"Now: **{now_title}**"]
         for i, t in enumerate(q[:10], start=1):
-            lines.append(f"{i}. {t.title} — requested by {t.requester.display_name}")
+            lines.append(
+                f"{i}. {t.title} "
+                f"— requested by {t.requester.display_name}"
+            )
         await ctx.send("\n".join(lines))
 
     @commands.hybrid_command(name="now", description="Show now playing")
@@ -531,7 +551,8 @@ class Music(commands.Cog, name="music"):
             await ctx.send("Nothing is playing.")
             return
         await ctx.send(
-            f"Now playing: **{now.title}** — requested by {now.requester.display_name}"
+            f"Now playing: **{now.title}** "
+            f"— requested by {now.requester.display_name}"
         )
 
     @commands.hybrid_command(name="stop", description="Stop and clear the queue")
@@ -554,7 +575,8 @@ class ImportCancelView(discord.ui.View):
 
     @discord.ui.button(label="Abbrechen", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # allow the requester or server admins (administrator / manage_guild / manage_messages)
+        # allow the requester or server admins
+        # (administrator / manage_guild / manage_messages)
         if interaction.user.id != self._owner_id:
             perms = None
             if interaction.guild and hasattr(interaction.user, "guild_permissions"):

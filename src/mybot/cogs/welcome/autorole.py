@@ -1,6 +1,5 @@
 import sqlite3
 
-import discord
 from discord.ext import commands
 
 from mybot.utils.config import load_cog_config

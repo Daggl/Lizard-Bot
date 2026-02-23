@@ -286,9 +286,12 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="Storage",
             value=(
-                "All logs are additionally saved to the SQLite database `data/logs/logs.db` for long‑term storage.\n"
-                "You can query or export logs with the helper script `tools/query_logs.py` (recent, by-category, search, raw).\n"
-                "Stored fields include type, user_id, channel_id, message, extra and timestamp."
+                "All logs are additionally saved to the SQLite database "
+                "``data/logs/logs.db`` for long-term storage.\n"
+                "You can query or export logs with the helper script "
+                "``tools/query_logs.py`` (recent, by-category, search, raw).\n"
+                "Stored fields include type, user_id, channel_id,"
+                " message, extra and timestamp."
             ),
             inline=False,
         )
