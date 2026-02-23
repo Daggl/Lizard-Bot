@@ -41,7 +41,7 @@ def ensure_configs_from_example() -> List[str]:
     """
 
     repo_root = _find_repo_root_from_package()
-    example_path = os.path.join(repo_root, "config.example.json")
+    example_path = os.path.join(repo_root, "data", "config.example.json")
     config_dir = os.path.join(repo_root, "config")
 
     created: List[str] = []

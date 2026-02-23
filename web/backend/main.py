@@ -36,55 +36,9 @@ FONTS_DIR = ROOT / "web" / "backend" / "fonts"
 
 
 def ensure_fonts():
+    # Only ensure the local fonts directory exists. No network downloads.
     FONTS_DIR.mkdir(parents=True, exist_ok=True)
-    fonts = [
-        "Inter",
-        "Roboto",
-        "OpenSans",
-        "Lato",
-        "Montserrat",
-        "Poppins",
-        "Merriweather",
-    ]
-    # candidate URL patterns (raw + jsdelivr) and repo locations
-    patterns = [
-        "https://raw.githubusercontent.com/google/fonts/main/ofl/{dir}/{file}",
-        "https://raw.githubusercontent.com/google/fonts/main/apache/{dir}/{file}",
-        "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/{dir}/{file}",
-        "https://cdn.jsdelivr.net/gh/google/fonts@main/apache/{dir}/{file}",
-    ]
-
-    for name in fonts:
-        dest = FONTS_DIR / f"{name}.ttf"
-        if dest.exists():
-            continue
-        dir_candidates = [name.lower(), name]
-        file_candidates = [
-            f"{name}-Regular.ttf",
-            f"{name}Regular.ttf",
-            f"{name}.ttf",
-            "Regular.ttf",
-        ]
-        downloaded = False
-        last_err = None
-        for d in dir_candidates:
-            for f in file_candidates:
-                for pattern in patterns:
-                    url = pattern.format(dir=d, file=f)
-                    try:
-                        print(f"Attempting download for {name} from {url}...")
-                        urllib.request.urlretrieve(url, dest)
-                        print(f"Downloaded {dest} from {url}")
-                        downloaded = True
-                        break
-                    except Exception as e:
-                        last_err = e
-                if downloaded:
-                    break
-            if downloaded:
-                break
-        if not downloaded:
-            print(f"Failed to download font {name}: last error: {last_err}")
+    print("Using local fonts only; no remote font downloads will be attempted.")
 
 
 ensure_fonts()

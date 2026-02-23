@@ -21,7 +21,8 @@ try:
 except Exception:
     # Fallback: try importing main from src.mybot package modules if available
     try:
-        from src.mybot import main as pkg_main
+        # import the callable `main` from the package module
+        from src.mybot.main import main as pkg_main
 
         main = pkg_main
     except Exception:
