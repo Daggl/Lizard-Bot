@@ -3,14 +3,11 @@
 # ==========================================================
 
 import asyncio
-import datetime
-import json
 import logging
 import os
 import sys
 
 import discord
-import wavelink
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -21,10 +18,10 @@ if os.path.isdir(_src) and _src not in sys.path:
     sys.path.insert(0, _src)
 
 # custom database for logs
-from data.logs import database
+from data.logs import database  # noqa: E402
 
 # ensure per-cog config files exist before loading cogs
-from utils.config import ensure_configs_from_example
+from utils.config import ensure_configs_from_example  # noqa: E402
 
 # ==========================================================
 # LOAD ENVIRONMENT / TOKEN

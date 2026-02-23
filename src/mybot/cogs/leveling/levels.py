@@ -3,7 +3,7 @@ from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
 from mybot.cogs.leveling.utils.database import Database
-from mybot.cogs.leveling.utils.level_config import *
+from mybot.cogs.leveling.utils.level_config import ACHIEVEMENT_CHANNEL_ID
 
 # ======================================================
 # XP FORMULA
