@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 import uuid
 
@@ -138,7 +137,7 @@ class Poll(commands.Cog):
         try:
             time_msg = await self.bot.wait_for("message", timeout=60, check=check)
             duration = int(time_msg.content)
-        except:
+        except ValueError:
             return await ctx.send("❌ Invalid time.")
 
         await ctx.send("📊 Please send the answer options separated by `,`.")

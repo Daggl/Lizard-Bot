@@ -1,8 +1,5 @@
 import datetime
-import json
 import os
-
-import discord
 from discord.ext import commands, tasks
 
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
