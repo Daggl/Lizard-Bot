@@ -1,0 +1,45 @@
+name: Integration Tests (docker-compose)
+
+on:
+  push:
+    branches: [ main, chore/** ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start services with docker-compose
+        run: |
+          docker compose -f docker-compose.yml up --build -d
+
+      - name: Wait for backend to be healthy
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:8000/api/ping >/dev/null; then
+              echo "backend ready"; exit 0
+            fi
+            sleep 2
+          done
+          echo "backend did not become ready"; exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Run smoke tests
+        run: |
+          python scripts/check_backend_ping.py
+          python scripts/check_api.py
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.yml down
