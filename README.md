@@ -6,6 +6,8 @@ Lizard Bot is a Discord bot (built with discord.py) that provides moderation, le
 Prerequisites
 -------------
 - Python 3.10 or newer installed: https://www.python.org
+- Node.js (for frontend development) if you plan to run the frontend locally: https://nodejs.org
+- Docker (optional) if you plan to run the services in containers: https://www.docker.com
 - A Discord bot token from the Discord Developer Portal: https://discord.com/developers/applications
 
 1) Open a terminal (PowerShell on Windows)
@@ -43,34 +45,45 @@ Create a file named `.env` in the project root with this single line:
 DISCORD_TOKEN=your_bot_token_here
 ```
 
-5) Start the bot
-----------------
-Foreground (recommended while testing):
+5) Start the bot and services
+----------------------------
+Recommended local development flow (creates venv, installs deps and runs services):
+
+PowerShell (foreground):
 
 ```powershell
-python bot.py
+.\start.ps1         # runs backend, frontend (detached) and the bot in foreground
+.\start.ps1 -Detach # run bot detached/background (backend/frontend still started)
 ```
 
-Use the bundled PowerShell helper to create a venv and run the bot automatically:
+Windows (cmd):
 
-```powershell
-.\start.ps1         # foreground
-.\start.ps1 -Detach # run in background
+```cmd
+start.bat            # starts backend/frontend in new windows and runs bot here
 ```
 
-Alternative: run the bot as a package (preferred once `src/` is a package):
+You can still run the bot directly as a package:
 
 ```powershell
 python -m src.mybot
 ```
 
+Docker: a portable option is provided — see `DOCKER.md` and use:
+
+```bash
+docker compose up --build
+```
+This starts the `backend` (http://localhost:8000), `frontend` (http://localhost:5173) and the `bot` container.
+
 Project layout (important files)
 --------------------------------
-- `bot.py` — main entry point.
-- `src/mybot/` — packaged bot code (cogs and utils).
-- `data/` — databases, logs and ticket transcripts (created at runtime).
-- `config/` — per-cog JSON settings (missing files are auto-generated from `config.example.json`).
-- `tools/` — small helper scripts (e.g., `tools/query_logs.py`).
+- `src/mybot/` — packaged bot code (cogs and utils). This is the canonical bot code; run with `python -m src.mybot` or via the provided start scripts.
+- `web/backend/` — FastAPI dashboard backend (endpoints, preview generation).
+- `web/frontend/` — React + Vite dashboard frontend (development and production build).
+- `data/` — runtime data, logs and uploads (created at runtime).
+- `config/` — per-guild JSON settings (created from `data/config.example.json` if missing).
+- `start.ps1`, `start.bat` — helper scripts to create a venv, start backend, frontend and the bot for local development.
+- `docker-compose.yml`, `Dockerfile.python`, `Dockerfile.frontend` — containerized deployment artifacts (see `DOCKER.md`).
 
 Music features
 --------------
@@ -110,14 +123,19 @@ Security note: keep `.env` private and never commit it to a public repository.
 
 Quick smoke tests
 -----------------
-- After starting, try `*ping` in a server where the bot is invited.
+- After starting the bot, try `*ping` in a server where the bot is invited.
 - Check `discord.log` in the project root for stack traces if the bot exits.
+- Backend health: visit `http://localhost:8000/api/ping` — should return `{ "ok": true }`.
+- Frontend: open `http://localhost:5173` (if running via `start` or Docker).
 
 Troubleshooting
 ---------------
-- "DISCORD_TOKEN not set": Create `.env` with the token.
-- Import errors: Make sure you activated the `.venv` and ran `pip install -r requirements.txt`.
+- "DISCORD_TOKEN not set": Create `.env` with the token in the project root.
+- If the frontend fails to build or `npm` is missing, install Node.js and run `npm install` in `web/frontend`.
+- If `uvicorn`/backend fails: ensure `requirements.txt` is installed into the active venv, or run the backend via Docker.
+- If ports 8000 or 5173 are already in use, stop the conflicting process or adjust ports in `start` scripts and `docker-compose.yml`.
 - Permission errors writing `data/`: Ensure the user running the bot has write permissions to the project folder.
+
 
 If you want, I can run the bot, tail logs, or add screenshots to this README.
 
