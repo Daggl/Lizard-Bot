@@ -17,17 +17,33 @@ _root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-try:
-    from bot import main
-except Exception:
-    # Fallback: try importing main from src.mybot package modules if available
-    try:
-        # import the callable `main` from the package module
-        from src.mybot.lizard import main as pkg_main
+# Resolve the callable `main` from either the package runner or a top-level
+# `bot.py`. Prefer the package module when available (running as
+# `python -m src.mybot`), but fall back to importing `bot.main` for
+# back-compat when a top-level runner is present.
+main = None
 
-        main = pkg_main
+# Preferred: package runner
+try:
+    from src.mybot.lizard import main as pkg_main
+
+    main = pkg_main
+except Exception:
+    # ignore and try top-level
+    pass
+
+if main is None:
+    try:
+        from bot import main as top_main
+
+        main = top_main
     except Exception:
-        raise
+        pass
+
+if main is None:
+    raise ImportError(
+        "Could not locate a callable named 'main' in src.mybot.lizard or top-level bot.py"
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())
