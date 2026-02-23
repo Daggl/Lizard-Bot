@@ -37,9 +37,18 @@ if (Test-Path "requirements.txt") {
 if ($Detach) {
     Write-Output "Starting bot in background..."
     $pythonPath = (Get-Command python).Source
-    Start-Process -FilePath $pythonPath -ArgumentList "bot.py" -WorkingDirectory $root
+    # Prefer package-style run if src package exists
+    if (Test-Path "src\__init__.py") {
+        Start-Process -FilePath $pythonPath -ArgumentList "-m src.mybot" -WorkingDirectory $root
+    } else {
+        Start-Process -FilePath $pythonPath -ArgumentList "bot.py" -WorkingDirectory $root
+    }
     Write-Output "Bot started (detached)."
 } else {
     Write-Output "Starting bot in foreground (press Ctrl+C to stop)..."
-    python bot.py
+    if (Test-Path "src\__init__.py") {
+        python -m src.mybot
+    } else {
+        python bot.py
+    }
 }
