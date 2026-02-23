@@ -11,8 +11,9 @@ import asyncio
 import os
 import sys
 
-# Ensure project root is on sys.path so top-level modules (bot.py) are importable
-_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Ensure repository root is on sys.path so top-level modules (bot.py) are importable
+# __file__ is .../src/mybot/__main__.py; climb up three levels to reach the repo root
+_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
