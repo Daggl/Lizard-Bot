@@ -1,0 +1,27 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install build deps and pip requirements
+COPY requirements.txt ./
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libffi-dev libssl-dev build-essential curl \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apt-get remove -y gcc build-essential curl \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project
+COPY . .
+
+# avoid running as root
+RUN useradd -m botuser || true
+USER botuser
+
+ENV PATH="/home/botuser/.local/bin:${PATH}"
+
+# Default: keep container running. Compose overrides the command per service.
+CMD ["sleep", "infinity"]

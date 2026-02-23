@@ -1,0 +1,2 @@
+Get-CimInstance Win32_Process -Filter "Name='python.exe'" | Select-Object ProcessId,CommandLine | Out-File .\scripts\python_procs.txt -Encoding utf8
+Write-Output "Wrote process list to scripts\python_procs.txt"
