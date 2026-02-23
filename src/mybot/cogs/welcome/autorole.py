@@ -1,12 +1,14 @@
+import sqlite3
+
 import discord
 from discord.ext import commands
-import sqlite3
+
+from mybot.utils.config import load_cog_config
 
 # ==========================================================
 # CONFIG (loaded from config/autorole.json with fallbacks)
 # ==========================================================
 
-from mybot.utils.config import load_cog_config
 
 _CFG = load_cog_config("autorole")
 
@@ -17,8 +19,12 @@ STARTER_ROLE_ID = _CFG.get("STARTER_ROLE_ID", 1472417667670347817)
 VERIFY_ROLE_ID = _CFG.get("VERIFY_ROLE_ID", 1472489108969492654)
 DEFAULT_ROLE_ID = _CFG.get("DEFAULT_ROLE_ID", 1269213126356897885)
 
-VERIFY_MESSAGE_IDS = _CFG.get("VERIFY_MESSAGE_IDS", [1472508232105853054, 1472513629550153729])
-RULES_MESSAGE_IDS = _CFG.get("RULES_MESSAGE_IDS", [1472625130286088244, 1472627338587017421])
+VERIFY_MESSAGE_IDS = _CFG.get(
+    "VERIFY_MESSAGE_IDS", [1472508232105853054, 1472513629550153729]
+)
+RULES_MESSAGE_IDS = _CFG.get(
+    "RULES_MESSAGE_IDS", [1472625130286088244, 1472627338587017421]
+)
 
 EMOJI = _CFG.get("EMOJI", "✅")
 
@@ -76,8 +82,7 @@ class AutoRole(commands.Cog):
 
         # Verify Role
         cursor.execute(
-            "SELECT user_id FROM verified_users WHERE user_id = ?",
-            (member.id,)
+            "SELECT user_id FROM verified_users WHERE user_id = ?", (member.id,)
         )
 
         if cursor.fetchone():
@@ -88,11 +93,9 @@ class AutoRole(commands.Cog):
                 await member.add_roles(role)
                 print(f"[RESTORE] Verify Role → {member}")
 
-        
         # Default Role
         cursor.execute(
-            "SELECT user_id FROM rules_accepted WHERE user_id = ?",
-            (member.id,)
+            "SELECT user_id FROM rules_accepted WHERE user_id = ?", (member.id,)
         )
 
         if cursor.fetchone():
@@ -142,8 +145,7 @@ class AutoRole(commands.Cog):
                 await member.add_roles(role)
 
                 cursor.execute(
-                    "INSERT OR IGNORE INTO verified_users VALUES (?)",
-                    (member.id,)
+                    "INSERT OR IGNORE INTO verified_users VALUES (?)", (member.id,)
                 )
 
                 conn.commit()
@@ -160,7 +162,6 @@ class AutoRole(commands.Cog):
 
                     print(f"[STARTER REMOVE] {member}")
 
-
         # DEFAULT ROLE
 
         if (
@@ -175,8 +176,7 @@ class AutoRole(commands.Cog):
                 await member.add_roles(role)
 
                 cursor.execute(
-                    "INSERT OR IGNORE INTO rules_accepted VALUES (?)",
-                    (member.id,)
+                    "INSERT OR IGNORE INTO rules_accepted VALUES (?)", (member.id,)
                 )
 
                 conn.commit()
@@ -222,8 +222,7 @@ class AutoRole(commands.Cog):
                 await member.remove_roles(role)
 
                 cursor.execute(
-                    "DELETE FROM verified_users WHERE user_id = ?",
-                    (member.id,)
+                    "DELETE FROM verified_users WHERE user_id = ?", (member.id,)
                 )
 
                 conn.commit()
@@ -244,8 +243,7 @@ class AutoRole(commands.Cog):
                 await member.remove_roles(role)
 
                 cursor.execute(
-                    "DELETE FROM rules_accepted WHERE user_id = ?",
-                    (member.id,)
+                    "DELETE FROM rules_accepted WHERE user_id = ?", (member.id,)
                 )
 
                 conn.commit()

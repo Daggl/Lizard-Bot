@@ -1,16 +1,10 @@
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
+
 import aiohttp
+from PIL import Image, ImageDraw, ImageFont
 
 
-async def generate_rank_card(
-    member,
-    level,
-    xp,
-    voice_minutes,
-    messages,
-    achievements
-):
+async def generate_rank_card(member, level, xp, voice_minutes, messages, achievements):
 
     width = 800
     height = 250

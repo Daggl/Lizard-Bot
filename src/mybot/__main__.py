@@ -6,6 +6,7 @@ Usage:
 This simply delegates to the existing `bot.py` runner so behaviour
 remains unchanged while allowing a package-style invocation.
 """
+
 import asyncio
 import os
 import sys
@@ -21,6 +22,7 @@ except Exception:
     # Fallback: try importing main from src.mybot package modules if available
     try:
         from src.mybot import main as pkg_main
+
         main = pkg_main
     except Exception:
         raise

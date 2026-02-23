@@ -1,17 +1,31 @@
+import json
 import os
+import urllib.request
+from io import BytesIO
 from pathlib import Path
 from typing import Optional
-
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header, Query, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, JSONResponse, StreamingResponse
-import json
-from dotenv import load_dotenv
-import httpx
 from urllib.parse import quote
-from io import BytesIO
+
+import httpx
+from dotenv import load_dotenv
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import (
+    FileResponse,
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from PIL import Image, ImageDraw, ImageFont
-import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
 # Load .env from repository root to ensure variables are available
@@ -19,16 +33,26 @@ ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(dotenv_path=ROOT / ".env", override=True)
 
 # Ensure fonts exist in web/backend/fonts; download basic fonts if missing
-FONTS_DIR = ROOT / 'web' / 'backend' / 'fonts'
+FONTS_DIR = ROOT / "web" / "backend" / "fonts"
+
+
 def ensure_fonts():
     FONTS_DIR.mkdir(parents=True, exist_ok=True)
-    fonts = ['Inter','Roboto','OpenSans','Lato','Montserrat','Poppins','Merriweather']
+    fonts = [
+        "Inter",
+        "Roboto",
+        "OpenSans",
+        "Lato",
+        "Montserrat",
+        "Poppins",
+        "Merriweather",
+    ]
     # candidate URL patterns (raw + jsdelivr) and repo locations
     patterns = [
-        'https://raw.githubusercontent.com/google/fonts/main/ofl/{dir}/{file}',
-        'https://raw.githubusercontent.com/google/fonts/main/apache/{dir}/{file}',
-        'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/{dir}/{file}',
-        'https://cdn.jsdelivr.net/gh/google/fonts@main/apache/{dir}/{file}',
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/{dir}/{file}",
+        "https://raw.githubusercontent.com/google/fonts/main/apache/{dir}/{file}",
+        "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/{dir}/{file}",
+        "https://cdn.jsdelivr.net/gh/google/fonts@main/apache/{dir}/{file}",
     ]
 
     for name in fonts:
@@ -36,7 +60,12 @@ def ensure_fonts():
         if dest.exists():
             continue
         dir_candidates = [name.lower(), name]
-        file_candidates = [f"{name}-Regular.ttf", f"{name}Regular.ttf", f"{name}.ttf", 'Regular.ttf']
+        file_candidates = [
+            f"{name}-Regular.ttf",
+            f"{name}Regular.ttf",
+            f"{name}.ttf",
+            "Regular.ttf",
+        ]
         downloaded = False
         last_err = None
         for d in dir_candidates:
@@ -58,6 +87,7 @@ def ensure_fonts():
         if not downloaded:
             print(f"Failed to download font {name}: last error: {last_err}")
 
+
 ensure_fonts()
 DATA_DIR = ROOT / "data" / "web"
 CONFIG_DIR = DATA_DIR / "configs"
@@ -69,7 +99,12 @@ app = FastAPI(title="Bot Dashboard API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -115,7 +150,9 @@ async def get_guild_channels(guild_id: int, authorized: bool = Depends(internal_
             headers={"Authorization": f"Bot {bot_token}"},
         )
         if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"failed to fetch channels: {resp.text}")
+            raise HTTPException(
+                status_code=502, detail=f"failed to fetch channels: {resp.text}"
+            )
         return resp.json()
 
 
@@ -131,7 +168,9 @@ async def get_guild_roles(guild_id: int, authorized: bool = Depends(internal_aut
             headers={"Authorization": f"Bot {bot_token}"},
         )
         if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"failed to fetch roles: {resp.text}")
+            raise HTTPException(
+                status_code=502, detail=f"failed to fetch roles: {resp.text}"
+            )
         return resp.json()
 
 
@@ -151,12 +190,17 @@ async def get_guild_channels_user(guild_id: int, request: Request):
             headers={"Authorization": f"Bearer {token}"},
         )
         if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"failed to fetch channels with user token: {resp.text}")
+            raise HTTPException(
+                status_code=502,
+                detail=f"failed to fetch channels with user token: {resp.text}",
+            )
         return resp.json()
 
 
 @app.post("/api/guilds/{guild_id}/preview")
-async def generate_preview(guild_id: int, data: dict = None, authorized: bool = Depends(internal_auth)):
+async def generate_preview(
+    guild_id: int, data: dict = None, authorized: bool = Depends(internal_auth)
+):
     """Generate a PNG preview for the given guild config.
 
     Accepts either JSON body with config fields or will read saved config file.
@@ -177,24 +221,24 @@ async def generate_preview(guild_id: int, data: dict = None, authorized: bool = 
     width, height = 800, 300
     bg_color = (30, 34, 42)
     text_color = (235, 235, 235)
-    im = Image.new('RGBA', (width, height), bg_color)
+    im = Image.new("RGBA", (width, height), bg_color)
     draw = ImageDraw.Draw(im)
 
     # If an image path is provided, try to load from uploads
-    img_path = cfg.get('image')
+    img_path = cfg.get("image")
     if img_path:
         # expected relative path like data/web/uploads/{guild_id}/filename
         p = ROOT / img_path
         try:
             with Image.open(p) as uimg:
                 uimg.thumbnail((240, 240))
-                im.paste(uimg, (20, (height - uimg.height)//2))
+                im.paste(uimg, (20, (height - uimg.height) // 2))
         except Exception:
             pass
 
     # Draw welcome text
-    welcome = cfg.get('welcome_message', 'Welcome to the server!')
-    font_name = cfg.get('font', 'arial')
+    welcome = cfg.get("welcome_message", "Welcome to the server!")
+    font_name = cfg.get("font", "arial")
     try:
         # Try loading a TTF from system; fallback to default
         font = ImageFont.truetype(font_name, 28)
@@ -205,19 +249,21 @@ async def generate_preview(guild_id: int, data: dict = None, authorized: bool = 
     draw.text((text_x, 60), welcome, font=font, fill=text_color)
 
     # small metadata
-    channel = cfg.get('announcement_channel_id', '')
-    role = cfg.get('role_id', '')
+    channel = cfg.get("announcement_channel_id", "")
+    role = cfg.get("role_id", "")
     meta = f"Channel: {channel}    Role: {role}"
-    draw.text((text_x, 140), meta, font=ImageFont.load_default(), fill=(180,180,180))
+    draw.text((text_x, 140), meta, font=ImageFont.load_default(), fill=(180, 180, 180))
 
     buf = BytesIO()
-    im.save(buf, format='PNG')
+    im.save(buf, format="PNG")
     buf.seek(0)
-    return StreamingResponse(buf, media_type='image/png')
+    return StreamingResponse(buf, media_type="image/png")
 
 
 @app.post("/api/guilds/{guild_id}/preview/save")
-async def save_preview(guild_id: int, data: dict = None, authorized: bool = Depends(internal_auth)):
+async def save_preview(
+    guild_id: int, data: dict = None, authorized: bool = Depends(internal_auth)
+):
     """Generate and save preview PNG into the guild's upload folder and return path."""
     # reuse generation logic: load cfg
     cfg = data
@@ -234,23 +280,23 @@ async def save_preview(guild_id: int, data: dict = None, authorized: bool = Depe
     width, height = 800, 300
     bg_color = (30, 34, 42)
     text_color = (235, 235, 235)
-    im = Image.new('RGBA', (width, height), bg_color)
+    im = Image.new("RGBA", (width, height), bg_color)
     draw = ImageDraw.Draw(im)
 
-    img_path = cfg.get('image')
+    img_path = cfg.get("image")
     if img_path:
         p = ROOT / img_path
         try:
             with Image.open(p) as uimg:
                 uimg.thumbnail((240, 240))
-                im.paste(uimg, (20, (height - uimg.height)//2))
+                im.paste(uimg, (20, (height - uimg.height) // 2))
         except Exception:
             pass
 
-    welcome = cfg.get('welcome_message', 'Welcome to the server!')
-    font_name = cfg.get('font', 'arial')
+    welcome = cfg.get("welcome_message", "Welcome to the server!")
+    font_name = cfg.get("font", "arial")
     # try repo fonts folder first
-    fonts_dir = ROOT / 'web' / 'backend' / 'fonts'
+    fonts_dir = ROOT / "web" / "backend" / "fonts"
     font = None
     try:
         ttf = fonts_dir / f"{font_name}.ttf"
@@ -266,42 +312,51 @@ async def save_preview(guild_id: int, data: dict = None, authorized: bool = Depe
 
     text_x = 280
     draw.text((text_x, 60), welcome, font=font, fill=text_color)
-    channel = cfg.get('announcement_channel_id', '')
-    role = cfg.get('role_id', '')
+    channel = cfg.get("announcement_channel_id", "")
+    role = cfg.get("role_id", "")
     meta = f"Channel: {channel}    Role: {role}"
-    draw.text((text_x, 140), meta, font=ImageFont.load_default(), fill=(180,180,180))
+    draw.text((text_x, 140), meta, font=ImageFont.load_default(), fill=(180, 180, 180))
 
     # save to uploads
     gdir = UPLOAD_DIR / str(guild_id)
     gdir.mkdir(parents=True, exist_ok=True)
     from datetime import datetime
+
     name = f"preview-{int(datetime.utcnow().timestamp())}.png"
     dest = gdir / name
-    im.save(dest, format='PNG')
+    im.save(dest, format="PNG")
     return {"ok": True, "path": str(dest.relative_to(ROOT))}
 
 
-@app.get('/api/fonts')
+@app.get("/api/fonts")
 async def list_fonts():
-    fonts_dir = ROOT / 'web' / 'backend' / 'fonts'
+    fonts_dir = ROOT / "web" / "backend" / "fonts"
     if not fonts_dir.exists():
         return {"fonts": []}
-    fonts = [p.stem for p in fonts_dir.glob('*.ttf')]
+    fonts = [p.stem for p in fonts_dir.glob("*.ttf")]
     return {"fonts": fonts}
 
 
 @app.post("/api/guilds/{guild_id}/config")
-async def save_config(guild_id: int, data: dict, authorized: bool = Depends(internal_auth)):
+async def save_config(
+    guild_id: int, data: dict, authorized: bool = Depends(internal_auth)
+):
     path = CONFIG_DIR / f"{guild_id}.json"
     try:
-        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         return {"ok": True}
     except Exception:
         raise HTTPException(status_code=500, detail="failed to save config")
 
 
 @app.post("/api/guilds/{guild_id}/upload")
-async def upload_file(guild_id: int, file: UploadFile = File(...), authorized: bool = Depends(internal_auth)):
+async def upload_file(
+    guild_id: int,
+    file: UploadFile = File(...),
+    authorized: bool = Depends(internal_auth),
+):
     # Save uploads per-guild
     gdir = UPLOAD_DIR / str(guild_id)
     gdir.mkdir(parents=True, exist_ok=True)
@@ -336,7 +391,9 @@ async def auth_login(state: Optional[str] = Query(None)):
     if not client_id:
         raise HTTPException(status_code=500, detail="DISCORD_CLIENT_ID not configured")
 
-    redirect_uri = os.getenv("OAUTH_REDIRECT_URI") or "http://127.0.0.1:8000/auth/callback"
+    redirect_uri = (
+        os.getenv("OAUTH_REDIRECT_URI") or "http://127.0.0.1:8000/auth/callback"
+    )
     scope = "identify guilds"
     # frontend may supply a state value to validate the callback
     state = state or ""
@@ -359,7 +416,9 @@ async def auth_callback(code: str = Query(None)):
 
     client_id = os.getenv("DISCORD_CLIENT_ID")
     client_secret = os.getenv("DISCORD_CLIENT_SECRET")
-    redirect_uri = os.getenv("OAUTH_REDIRECT_URI") or "http://127.0.0.1:8000/auth/callback"
+    redirect_uri = (
+        os.getenv("OAUTH_REDIRECT_URI") or "http://127.0.0.1:8000/auth/callback"
+    )
 
     if not client_id or not client_secret:
         raise HTTPException(status_code=500, detail="OAuth client not configured")
@@ -377,7 +436,9 @@ async def auth_callback(code: str = Query(None)):
     async with httpx.AsyncClient() as client:
         resp = await client.post(token_url, data=data, headers=headers)
         if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"token exchange failed: {resp.text}")
+            raise HTTPException(
+                status_code=502, detail=f"token exchange failed: {resp.text}"
+            )
         token_json = resp.json()
 
         access_token = token_json.get("access_token")
@@ -390,14 +451,20 @@ async def auth_callback(code: str = Query(None)):
             headers={"Authorization": f"Bearer {access_token}"},
         )
         if guilds_resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"failed to fetch guilds: {guilds_resp.text}")
+            raise HTTPException(
+                status_code=502, detail=f"failed to fetch guilds: {guilds_resp.text}"
+            )
 
         guilds = guilds_resp.json()
 
     # Store the access token in a HttpOnly cookie so the frontend can use authenticated
     # requests via the browser without exposing the token to JS.
-    secure_flag = os.getenv("APP_ENV") == "production" or os.getenv("APP_ORIGIN", "").startswith("https")
-    redirect_target = os.getenv("APP_ORIGIN", "http://127.0.0.1:5174") + "/oauth-success"
+    secure_flag = os.getenv("APP_ENV") == "production" or os.getenv(
+        "APP_ORIGIN", ""
+    ).startswith("https")
+    redirect_target = (
+        os.getenv("APP_ORIGIN", "http://127.0.0.1:5174") + "/oauth-success"
+    )
 
     # Set cookie and then redirect the browser to the frontend success page.
     resp = RedirectResponse(url=redirect_target)
@@ -411,9 +478,6 @@ async def auth_callback(code: str = Query(None)):
         path="/",
     )
     return resp
-
-
-
 
 
 @app.get("/auth/me")
@@ -433,7 +497,9 @@ async def auth_me(request: Request):
             headers={"Authorization": f"Bearer {token}"},
         )
         if guilds_resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"failed to fetch guilds: {guilds_resp.text}")
+            raise HTTPException(
+                status_code=502, detail=f"failed to fetch guilds: {guilds_resp.text}"
+            )
         guilds = guilds_resp.json()
 
     return {"guilds": guilds}

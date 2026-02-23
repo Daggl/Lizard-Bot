@@ -1,5 +1,7 @@
 from discord.ext import commands
+
 from mybot.cogs.leveling.utils.level_config import *
+
 
 class Achievements(commands.Cog):
 
@@ -32,6 +34,7 @@ class Achievements(commands.Cog):
                     )
 
         db.save()
+
 
 async def setup(bot):
     await bot.add_cog(Achievements(bot))

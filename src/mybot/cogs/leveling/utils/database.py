@@ -5,6 +5,7 @@ import time
 DATA_FOLDER = "data"
 DATA_FILE = os.path.join(DATA_FOLDER, "levels.json")
 
+
 class Database:
 
     def __init__(self):
@@ -48,7 +49,7 @@ class Database:
                 "level": 1,
                 "messages": 0,
                 "voice_time": 0,
-                "achievements": []
+                "achievements": [],
             }
 
         return self.data[user_id]

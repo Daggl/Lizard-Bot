@@ -15,16 +15,16 @@ def safe_load_json(path: str, default: Any = None) -> Any:
     if default is None:
         default = {}
 
-    folder = os.path.dirname(path) or '.'
+    folder = os.path.dirname(path) or "."
     ensure_dir(folder)
 
     if not os.path.exists(path):
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(default, f, ensure_ascii=False, indent=4)
         return default
 
     try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, ValueError):
         # backup corrupt file
@@ -33,13 +33,13 @@ def safe_load_json(path: str, default: Any = None) -> Any:
             os.replace(path, backup)
         except Exception:
             pass
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(default, f, ensure_ascii=False, indent=4)
         return default
 
 
 def safe_save_json(path: str, data: Any) -> None:
-    folder = os.path.dirname(path) or '.'
+    folder = os.path.dirname(path) or "."
     ensure_dir(folder)
-    with open(path, 'w', encoding='utf-8') as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)

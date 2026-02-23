@@ -5,5 +5,10 @@ __all__ = [
     "paths",
 ]
 # mybot utils package
-from .config import load_cog_config, ensure_configs_from_example
-from .paths import get_db_path, get_ticket_transcript_path, ensure_dirs, migrate_old_paths
+from .config import ensure_configs_from_example, load_cog_config
+from .paths import (
+    ensure_dirs,
+    get_db_path,
+    get_ticket_transcript_path,
+    migrate_old_paths,
+)
