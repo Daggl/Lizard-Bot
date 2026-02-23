@@ -1,6 +1,5 @@
 import json
 import os
-import urllib.request
 from io import BytesIO
 from pathlib import Path
 from typing import Optional
@@ -8,22 +7,10 @@ from urllib.parse import quote
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import (
-    Depends,
-    FastAPI,
-    File,
-    Header,
-    HTTPException,
-    Query,
-    Request,
-    UploadFile,
-)
+from fastapi import (Depends, FastAPI, File, Header, HTTPException, Query,
+                     Request, UploadFile)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import (
-    FileResponse,
-    RedirectResponse,
-    StreamingResponse,
-)
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -92,9 +79,7 @@ async def get_config(guild_id: int):
 
 
 @app.get("/api/guilds/{guild_id}/channels")
-async def get_guild_channels(
-    guild_id: int, authorized: bool = Depends(internal_auth)
-):
+async def get_guild_channels(guild_id: int, authorized: bool = Depends(internal_auth)):
     """
     Return guild channels using the bot token.
     Requires internal token (internal API).
@@ -114,9 +99,7 @@ async def get_guild_channels(
 
 
 @app.get("/api/guilds/{guild_id}/roles")
-async def get_guild_roles(
-    guild_id: int, authorized: bool = Depends(internal_auth)
-):
+async def get_guild_roles(guild_id: int, authorized: bool = Depends(internal_auth)):
     """
     Return guild roles using the bot token.
     Requires internal token (internal API).
@@ -135,9 +118,7 @@ async def get_guild_roles(
 
 
 @app.get("/api/guilds/{guild_id}/channels-user")
-async def get_guild_channels_user(
-    guild_id: int, request: Request
-):
+async def get_guild_channels_user(guild_id: int, request: Request):
     """
     Attempt to fetch channels using the dashboard_access_token cookie
     (user token).
