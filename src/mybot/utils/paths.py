@@ -1,37 +1,4 @@
 import os
-
-
-def _repo_root():
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-
-
-def ensure_dirs():
-    root = _repo_root()
-    os.makedirs(os.path.join(root, "data", "db"), exist_ok=True)
-    os.makedirs(os.path.join(root, "data", "tickets", "transcripts"), exist_ok=True)
-    os.makedirs(os.path.join(root, "config"), exist_ok=True)
-
-
-def get_db_path(name: str) -> str:
-    """Return path to data/db/<name>.db"""
-    ensure_dirs()
-    root = _repo_root()
-    return os.path.join(root, "data", "db", f"{name}.db")
-
-
-def get_ticket_transcript_path(channel_id: int) -> str:
-    ensure_dirs()
-    root = _repo_root()
-    return os.path.join(root, "data", "tickets", "transcripts", f"{channel_id}.txt")
-
-
-def migrate_old_paths():
-    """Placeholder for migration logic (no-op)."""
-    # Real migration handled elsewhere; keep function for compatibility.
-    return
-
-
-import os
 import shutil
 
 

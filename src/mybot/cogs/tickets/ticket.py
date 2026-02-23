@@ -255,12 +255,19 @@ class TicketCog(commands.Cog):
         await channel.send(content=user.mention, embed=embed, view=view)
 
         await self._log_action(
-            guild, f"Ticket created: {channel.name} by {user} (id {user.id})"
+            guild,
+            f"Ticket created: {channel.name} by {user} "
+            f"(id {user.id})",
         )
 
         try:
+            sql = (
+                "INSERT OR REPLACE INTO tickets (channel_id, user_id, "
+                "channel_name, created_at, status) "
+                "VALUES (?, ?, ?, ?, ?)"
+            )
             await self._db_execute(
-                "INSERT OR REPLACE INTO tickets (channel_id, user_id, channel_name, created_at, status) VALUES (?, ?, ?, ?, ?)",
+                sql,
                 (
                     channel.id,
                     user.id,
@@ -294,10 +301,11 @@ class TicketCog(commands.Cog):
                 channel.guild, f"Transcript saved for {channel.name} -> {path}"
             )
             try:
-                await self._db_execute(
-                    "UPDATE tickets SET transcript_path = ? WHERE channel_id = ?",
-                    (path, channel.id),
+                update_sql = (
+                    "UPDATE tickets SET transcript_path = ? "
+                    "WHERE channel_id = ?"
                 )
+                await self._db_execute(update_sql, (path, channel.id))
             except Exception as exc:
                 print("[TICKET][DB] Failed to update transcript_path:", exc)
             return path
@@ -308,10 +316,17 @@ class TicketCog(commands.Cog):
         self, channel: discord.TextChannel, by: discord.Member
     ) -> None:
         await self.save_transcript(channel)
-        await self._log_action(channel.guild, f"Ticket closed: {channel.name} by {by}")
+        await self._log_action(
+            channel.guild,
+            f"Ticket closed: {channel.name} by {by}",
+        )
         try:
+            close_sql = (
+                "UPDATE tickets SET closed_at = ?, closed_by = ?, status = ? "
+                "WHERE channel_id = ?"
+            )
             await self._db_execute(
-                "UPDATE tickets SET closed_at = ?, closed_by = ?, status = ? WHERE channel_id = ?",
+                close_sql,
                 (datetime.utcnow().isoformat(), by.id, "closed", channel.id),
             )
         except Exception as exc:

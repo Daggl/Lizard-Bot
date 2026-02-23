@@ -103,7 +103,10 @@ class Rank(commands.Cog):
         draw.text((260, 120), f"Level {level}", font=font_medium, fill=(200, 200, 200))
 
         draw.text(
-            (710, 140), f"{xp} / {needed} XP", font=font_small, fill=(200, 200, 200)
+            (710, 140),
+            f"{xp} / {needed} XP",
+            font=font_small,
+            fill=(200, 200, 200),
         )
 
         bar_x = 260
@@ -191,7 +194,8 @@ class Rank(commands.Cog):
         self.bot.db.save()
 
         await ctx.send(
-            "♻ User was reset to level 1 with 0 XP, messages, voice time and achievements."
+            "♻ User was reset to level 1 with 0 XP, messages, voice time "
+            "and achievements."
         )
 
 

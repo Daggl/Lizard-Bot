@@ -1,6 +1,5 @@
 from io import BytesIO
 
-import aiohttp
 from PIL import Image, ImageDraw, ImageFont
 
 

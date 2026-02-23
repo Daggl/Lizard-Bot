@@ -21,7 +21,6 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import (
     FileResponse,
-    JSONResponse,
     RedirectResponse,
     StreamingResponse,
 )
@@ -139,67 +138,79 @@ async def get_config(guild_id: int):
 
 
 @app.get("/api/guilds/{guild_id}/channels")
-async def get_guild_channels(guild_id: int, authorized: bool = Depends(internal_auth)):
-    """Return guild channels using the bot token. Requires internal token (internal API)."""
+async def get_guild_channels(
+    guild_id: int, authorized: bool = Depends(internal_auth)
+):
+    """
+    Return guild channels using the bot token.
+    Requires internal token (internal API).
+    """
     bot_token = os.getenv("DISCORD_TOKEN")
     if not bot_token:
         raise HTTPException(status_code=500, detail="bot token not configured")
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"https://discord.com/api/guilds/{guild_id}/channels",
-            headers={"Authorization": f"Bot {bot_token}"},
-        )
+        url = f"https://discord.com/api/guilds/{guild_id}/channels"
+        resp = await client.get(url, headers={"Authorization": f"Bot {bot_token}"})
         if resp.status_code != 200:
             raise HTTPException(
-                status_code=502, detail=f"failed to fetch channels: {resp.text}"
+                status_code=502,
+                detail=f"failed to fetch channels: {resp.status_code}",
             )
         return resp.json()
 
 
 @app.get("/api/guilds/{guild_id}/roles")
-async def get_guild_roles(guild_id: int, authorized: bool = Depends(internal_auth)):
-    """Return guild roles using the bot token. Requires internal token (internal API)."""
+async def get_guild_roles(
+    guild_id: int, authorized: bool = Depends(internal_auth)
+):
+    """
+    Return guild roles using the bot token.
+    Requires internal token (internal API).
+    """
     bot_token = os.getenv("DISCORD_TOKEN")
     if not bot_token:
         raise HTTPException(status_code=500, detail="bot token not configured")
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"https://discord.com/api/guilds/{guild_id}/roles",
-            headers={"Authorization": f"Bot {bot_token}"},
-        )
+        url = f"https://discord.com/api/guilds/{guild_id}/roles"
+        resp = await client.get(url, headers={"Authorization": f"Bot {bot_token}"})
         if resp.status_code != 200:
             raise HTTPException(
-                status_code=502, detail=f"failed to fetch roles: {resp.text}"
+                status_code=502, detail=f"failed to fetch roles: {resp.status_code}"
             )
         return resp.json()
 
 
 @app.get("/api/guilds/{guild_id}/channels-user")
-async def get_guild_channels_user(guild_id: int, request: Request):
-    """Attempt to fetch channels using the dashboard_access_token cookie (user token).
+async def get_guild_channels_user(
+    guild_id: int, request: Request
+):
+    """
+    Attempt to fetch channels using the dashboard_access_token cookie
+    (user token).
 
-    Note: Discord may not allow user tokens for this endpoint; this is a best-effort
-    fallback and may return 403. The preferred method is to use the bot token endpoints above.
+    Note: Discord may not allow user tokens for this endpoint; this is a
+    best-effort fallback and may return 403. The preferred method is to use
+    the bot token endpoints above.
     """
     token = request.cookies.get("dashboard_access_token")
     if not token:
         raise HTTPException(status_code=401, detail="not authenticated")
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"https://discord.com/api/guilds/{guild_id}/channels",
-            headers={"Authorization": f"Bearer {token}"},
-        )
+        url = f"https://discord.com/api/guilds/{guild_id}/channels"
+        resp = await client.get(url, headers={"Authorization": f"Bearer {token}"})
         if resp.status_code != 200:
             raise HTTPException(
                 status_code=502,
-                detail=f"failed to fetch channels with user token: {resp.text}",
+                detail=f"failed to fetch channels with user token: {resp.status_code}",
             )
         return resp.json()
 
 
 @app.post("/api/guilds/{guild_id}/preview")
 async def generate_preview(
-    guild_id: int, data: dict = None, authorized: bool = Depends(internal_auth)
+    guild_id: int,
+    data: dict = None,
+    authorized: bool = Depends(internal_auth),
 ):
     """Generate a PNG preview for the given guild config.
 
@@ -246,13 +257,23 @@ async def generate_preview(
         font = ImageFont.load_default()
 
     text_x = 280
-    draw.text((text_x, 60), welcome, font=font, fill=text_color)
+    draw.text(
+        (text_x, 60),
+        welcome,
+        font=font,
+        fill=text_color,
+    )
 
     # small metadata
     channel = cfg.get("announcement_channel_id", "")
     role = cfg.get("role_id", "")
     meta = f"Channel: {channel}    Role: {role}"
-    draw.text((text_x, 140), meta, font=ImageFont.load_default(), fill=(180, 180, 180))
+    draw.text(
+        (text_x, 140),
+        meta,
+        font=ImageFont.load_default(),
+        fill=(180, 180, 180),
+    )
 
     buf = BytesIO()
     im.save(buf, format="PNG")
@@ -262,7 +283,9 @@ async def generate_preview(
 
 @app.post("/api/guilds/{guild_id}/preview/save")
 async def save_preview(
-    guild_id: int, data: dict = None, authorized: bool = Depends(internal_auth)
+    guild_id: int,
+    data: dict = None,
+    authorized: bool = Depends(internal_auth),
 ):
     """Generate and save preview PNG into the guild's upload folder and return path."""
     # reuse generation logic: load cfg
@@ -339,7 +362,9 @@ async def list_fonts():
 
 @app.post("/api/guilds/{guild_id}/config")
 async def save_config(
-    guild_id: int, data: dict, authorized: bool = Depends(internal_auth)
+    guild_id: int,
+    data: dict,
+    authorized: bool = Depends(internal_auth),
 ):
     path = CONFIG_DIR / f"{guild_id}.json"
     try:
@@ -374,7 +399,10 @@ async def upload_file(
 
 
 @app.get("/api/guilds/{guild_id}/uploads/{filename}")
-async def get_upload(guild_id: int, filename: str):
+async def get_upload(
+    guild_id: int,
+    filename: str,
+):
     path = UPLOAD_DIR / str(guild_id) / filename
     if not path.exists():
         raise HTTPException(status_code=404, detail="not found")
@@ -382,10 +410,14 @@ async def get_upload(guild_id: int, filename: str):
 
 
 @app.get("/auth/login")
-async def auth_login(state: Optional[str] = Query(None)):
-    """Redirect the user to Discord OAuth2 authorization page.
+async def auth_login(
+    state: Optional[str] = Query(None),
+):
+    """
+    Redirect the user to Discord OAuth2 authorization page.
 
-    Requires environment variables: `DISCORD_CLIENT_ID` and `OAUTH_REDIRECT_URI` (optional).
+    Requires environment variables:
+    `DISCORD_CLIENT_ID` and `OAUTH_REDIRECT_URI` (optional).
     """
     client_id = os.getenv("DISCORD_CLIENT_ID")
     if not client_id:
@@ -397,15 +429,21 @@ async def auth_login(state: Optional[str] = Query(None)):
     scope = "identify guilds"
     # frontend may supply a state value to validate the callback
     state = state or ""
+    base = "https://discord.com/api/oauth2/authorize?response_type=code"
     url = (
-        f"https://discord.com/api/oauth2/authorize?response_type=code&client_id={client_id}"
-        f"&scope={quote(scope)}&redirect_uri={quote(redirect_uri)}&state={quote(state)}"
+        base
+        + f"&client_id={client_id}"
+        + f"&scope={quote(scope)}"
+        + f"&redirect_uri={quote(redirect_uri)}"
+        + f"&state={quote(state)}"
     )
     return RedirectResponse(url)
 
 
 @app.get("/auth/callback")
-async def auth_callback(code: str = Query(None)):
+async def auth_callback(
+    code: str = Query(None),
+):
     """Exchange authorization code for an access token and return the user's guilds.
 
     This is a minimal implementation for the dashboard MVP. In production the
@@ -437,7 +475,7 @@ async def auth_callback(code: str = Query(None)):
         resp = await client.post(token_url, data=data, headers=headers)
         if resp.status_code != 200:
             raise HTTPException(
-                status_code=502, detail=f"token exchange failed: {resp.text}"
+                status_code=502, detail=f"token exchange failed: {resp.status_code}"
             )
         token_json = resp.json()
 
@@ -452,10 +490,12 @@ async def auth_callback(code: str = Query(None)):
         )
         if guilds_resp.status_code != 200:
             raise HTTPException(
-                status_code=502, detail=f"failed to fetch guilds: {guilds_resp.text}"
+                status_code=502,
+                detail=f"failed to fetch guilds: {guilds_resp.status_code}",
             )
 
-        guilds = guilds_resp.json()
+        # guilds are not used here; token is stored in a cookie and frontend
+        # will fetch guilds via `/auth/me` when needed
 
     # Store the access token in a HttpOnly cookie so the frontend can use authenticated
     # requests via the browser without exposing the token to JS.

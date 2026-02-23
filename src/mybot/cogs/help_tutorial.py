@@ -79,7 +79,8 @@ class HelpTutorial(commands.Cog):
         embed.add_field(
             name="⚙ General",
             value=(
-                "`*ping` → Tests if the bot is online\n" "`*help` → Shows this menu"
+                "`*ping` → Tests if the bot is online\n"
+                "`*help` → Shows this menu"
             ),
             inline=False,
         )
@@ -105,7 +106,8 @@ class HelpTutorial(commands.Cog):
         embed.add_field(
             name="🎫 Tickets",
             value=(
-                "`*ticket` — Open a private support ticket (or use the ticket panel posted by staff)"
+                "`*ticket` — Open a private support ticket"
+                " (or use the ticket panel posted by staff)"
             ),
             inline=False,
         )
@@ -120,7 +122,8 @@ class HelpTutorial(commands.Cog):
                 "`*queue` → Show queue\n"
                 "`*now` → Show now playing\n"
                 "`*stop` → Stop and clear queue\n"
-                "`*spotify <url> [max_tracks]` → Import Spotify track or playlist into the queue."
+                "`*spotify <url> [max_tracks]` → Import Spotify track or playlist\n"
+                "into the queue."
             ),
             inline=False,
         )
