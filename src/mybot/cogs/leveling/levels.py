@@ -1,12 +1,13 @@
-from discord.ext import commands
-from mybot.cogs.leveling.utils.database import Database
-from mybot.cogs.leveling.utils.level_config import *
 import discord
-from PIL import Image, ImageDraw, ImageFont
+from discord.ext import commands
+
+from mybot.cogs.leveling.utils.database import Database
+from mybot.cogs.leveling.utils.level_config import ACHIEVEMENT_CHANNEL_ID
 
 # ======================================================
 # XP FORMULA
 # ======================================================
+
 
 def xp_for_level(level: int) -> int:
     """
@@ -22,6 +23,7 @@ def xp_for_level(level: int) -> int:
 # ======================================================
 # LEVELS COG
 # ======================================================
+
 
 class Levels(commands.Cog):
 
@@ -70,14 +72,12 @@ class Levels(commands.Cog):
                         f"keep it up, cutie! "
                         f"<a:AP_scribbleheart:1472809672946745519>"
                     ),
-                    color=0x5865F2
+                    color=0x5865F2,
                 )
 
                 embed.set_thumbnail(url=member.display_avatar.url)
 
                 await channel.send(embed=embed)
-
-
 
         # ==================================================
         # REWARDS
@@ -101,6 +101,7 @@ class Levels(commands.Cog):
 # ======================================================
 # SETUP
 # ======================================================
+
 
 async def setup(bot):
 

@@ -1,8 +1,8 @@
-import discord
 import os
-
-from discord.ext import commands
 from datetime import datetime
+
+import discord
+from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
 
@@ -24,17 +24,15 @@ class MemberLog(commands.Cog):
 
         os.makedirs("data/logs", exist_ok=True)
 
-
-# ==========================================================
-# SAVE
-# ==========================================================
+    # ==========================================================
+    # SAVE
+    # ==========================================================
 
     def save(self, data):
         from data.logs import database as db
 
         # Persist using central logs DB
         db.save_log("member", data)
-
 
     # ==========================================================
     # SEND
@@ -57,25 +55,23 @@ class MemberLog(commands.Cog):
         embed = discord.Embed(
             title="🟢 Member joined",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
 
         embed.add_field(
-            name="👤 User",
-            value=f"{member.mention} (`{member.id}`)",
-            inline=False
+            name="👤 User", value=f"{member.mention} (`{member.id}`)", inline=False
         )
 
         embed.add_field(
             name="📅 Account created",
             value=f"<t:{int(member.created_at.timestamp())}:F>",
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
             name="🕒 Time",
             value=f"<t:{int(datetime.utcnow().timestamp())}:F>",
-            inline=False
+            inline=False,
         )
 
         embed.set_thumbnail(url=member.display_avatar.url)
@@ -84,14 +80,16 @@ class MemberLog(commands.Cog):
 
         await self.send(member.guild, embed)
 
-        self.save({
-            "type": "join",
-            "user": member.id,
-            "user_name": str(member),
-            "created_at": member.created_at.isoformat(),
-            "guild": member.guild.id,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.save(
+            {
+                "type": "join",
+                "user": member.id,
+                "user_name": str(member),
+                "created_at": member.created_at.isoformat(),
+                "guild": member.guild.id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     # ==========================================================
     # MEMBER LEAVE (FIXED)
@@ -103,19 +101,15 @@ class MemberLog(commands.Cog):
         embed = discord.Embed(
             title="📤 Member left",
             color=discord.Color.orange(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
 
-        embed.add_field(
-            name="👤 User",
-            value=f"{member} (`{member.id}`)",
-            inline=False
-        )
+        embed.add_field(name="👤 User", value=f"{member} (`{member.id}`)", inline=False)
 
         embed.add_field(
             name="🕒 Time",
             value=f"<t:{int(datetime.utcnow().timestamp())}:F>",
-            inline=False
+            inline=False,
         )
 
         embed.set_thumbnail(url=member.display_avatar.url)
@@ -124,18 +118,21 @@ class MemberLog(commands.Cog):
 
         await self.send(member.guild, embed)
 
-        self.save({
-            "type": "leave",
-            "user": member.id,
-            "user_name": str(member),
-            "guild": member.guild.id,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.save(
+            {
+                "type": "leave",
+                "user": member.id,
+                "user_name": str(member),
+                "guild": member.guild.id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
 
 # ==========================================================
 # SETUP
 # ==========================================================
+
 
 async def setup(bot):
 

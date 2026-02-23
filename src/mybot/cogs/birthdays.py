@@ -1,11 +1,9 @@
-import json
-import os
 import datetime
-import discord
-from mybot.utils.jsonstore import safe_load_json, safe_save_json
+import os
 
 from discord.ext import commands, tasks
 
+from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
 DATA_FOLDER = "data"
 BIRTHDAY_FILE = os.path.join(DATA_FOLDER, "birthdays.json")
@@ -58,9 +56,7 @@ class Birthdays(commands.Cog):
 
                     if channel is not None:
 
-                        await channel.send(
-                            f"🎉 Today is {user.mention}'s birthday!"
-                        )
+                        await channel.send(f"🎉 Today is {user.mention}'s birthday!")
 
                 except Exception:
                     pass

@@ -58,6 +58,12 @@ Use the bundled PowerShell helper to create a venv and run the bot automatically
 .\start.ps1 -Detach # run in background
 ```
 
+Alternative: run the bot as a package (preferred once `src/` is a package):
+
+```powershell
+python -m src.mybot
+```
+
 Project layout (important files)
 --------------------------------
 - `bot.py` — main entry point.

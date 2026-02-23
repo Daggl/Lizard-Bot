@@ -1,0 +1,10 @@
+{
+  // Use the project's virtualenv for language server and linting
+  "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+  // Help Pylance find project packages
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}\\src",
+    "${workspaceFolder}\\web\\backend"
+  ],
+  "python.analysis.useLibraryCodeForTypes": true
+}

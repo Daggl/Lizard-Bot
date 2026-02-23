@@ -1,5 +1,4 @@
 import discord
-
 from discord.ext import commands
 
 
@@ -17,7 +16,7 @@ class HelpTutorial(commands.Cog):
         embed = discord.Embed(
             title="🤖 Bot Help & Tutorials",
             description="Here you can find all features explained",
-            color=discord.Color.blurple()
+            color=discord.Color.blurple(),
         )
 
         embed.add_field(
@@ -30,7 +29,7 @@ class HelpTutorial(commands.Cog):
                 "`*rank` → Shows your progress\n"
                 "`*leaderboard` → Server leaderboard"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -41,7 +40,7 @@ class HelpTutorial(commands.Cog):
                 "➡ Example:\n"
                 "`*poll Do you like pizza?`"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -51,7 +50,7 @@ class HelpTutorial(commands.Cog):
                 "`*birthday <DD.MM>`\n"
                 "➡ The bot will remind automatically"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -62,7 +61,7 @@ class HelpTutorial(commands.Cog):
                 "• Voice chat time\n"
                 "• Unlocking achievements"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -74,7 +73,7 @@ class HelpTutorial(commands.Cog):
                 "• Staying long in voice chat\n"
                 "• Reaching high levels"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -83,7 +82,7 @@ class HelpTutorial(commands.Cog):
                 "`*ping` → Tests if the bot is online\n"
                 "`*help` → Shows this menu"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -92,7 +91,7 @@ class HelpTutorial(commands.Cog):
                 "`*insult <name>` → Fun: insult someone\n"
                 "`*secretinsult <name>` → Send an insult but replies ephemeral"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -101,15 +100,16 @@ class HelpTutorial(commands.Cog):
                 "`*countstats` → Show counting channel statistics\n"
                 "`*counttop` → Show counting leaderboard"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
             name="🎫 Tickets",
             value=(
-                "`*ticket` — Open a private support ticket (or use the ticket panel posted by staff)"
+                "`*ticket` — Open a private support ticket"
+                " (or use the ticket panel posted by staff)"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -122,14 +122,13 @@ class HelpTutorial(commands.Cog):
                 "`*queue` → Show queue\n"
                 "`*now` → Show now playing\n"
                 "`*stop` → Stop and clear queue\n"
-                "`*spotify <url> [max_tracks]` → Import Spotify track or playlist into the queue."
+                "`*spotify <url> [max_tracks]` → Import Spotify track or playlist\n"
+                "into the queue."
             ),
-            inline=False
+            inline=False,
         )
 
-        embed.set_footer(
-            text="More features coming later 👀"
-        )
+        embed.set_footer(text="More features coming later 👀")
 
         await ctx.send(embed=embed)
 

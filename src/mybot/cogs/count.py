@@ -1,10 +1,10 @@
-import discord
-import json
 import os
-from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
+import discord
 from discord.ext import commands
+
 from mybot.utils.config import load_cog_config
+from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
 _CFG = load_cog_config("count")
 
@@ -25,7 +25,7 @@ def default_data():
         "record": 0,
         "record_holder": None,
         "total_counts": {},
-        "fails": 0
+        "fails": 0,
     }
 
 
@@ -115,8 +115,7 @@ class Count(commands.Cog):
             data["record_holder"] = str(message.author.id)
 
             await message.channel.send(
-                f"🏆 **NEW RECORD: {number}!**\n"
-                f"👑 by {message.author.mention}"
+                f"🏆 **NEW RECORD: {number}!**\n" f"👑 by {message.author.mention}"
             )
 
         save(data)
@@ -126,25 +125,13 @@ class Count(commands.Cog):
 
         data = load()
 
-        embed = discord.Embed(
-            title="📊 Count Statistics",
-            color=discord.Color.blue()
-        )
+        embed = discord.Embed(title="📊 Count Statistics", color=discord.Color.blue())
 
-        embed.add_field(
-            name="Current",
-            value=data["current"]
-        )
+        embed.add_field(name="Current", value=data["current"])
 
-        embed.add_field(
-            name="Record",
-            value=data["record"]
-        )
+        embed.add_field(name="Record", value=data["record"])
 
-        embed.add_field(
-            name="Fails",
-            value=data["fails"]
-        )
+        embed.add_field(name="Fails", value=data["fails"])
 
         await ctx.send(embed=embed)
 
@@ -154,15 +141,10 @@ class Count(commands.Cog):
         data = load()
 
         sorted_users = sorted(
-            data["total_counts"].items(),
-            key=lambda x: x[1],
-            reverse=True
+            data["total_counts"].items(), key=lambda x: x[1], reverse=True
         )[:10]
 
-        embed = discord.Embed(
-            title="🏆 Count Leaderboard",
-            color=discord.Color.gold()
-        )
+        embed = discord.Embed(title="🏆 Count Leaderboard", color=discord.Color.gold())
 
         text = ""
 
