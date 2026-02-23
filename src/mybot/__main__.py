@@ -22,7 +22,7 @@ except Exception:
     # Fallback: try importing main from src.mybot package modules if available
     try:
         # import the callable `main` from the package module
-        from src.mybot.main import main as pkg_main
+        from src.mybot.lizard import main as pkg_main
 
         main = pkg_main
     except Exception:

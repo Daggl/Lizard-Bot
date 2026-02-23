@@ -218,25 +218,3 @@ async def main():
 # ==========================================================
 # SCRIPT START
 # ==========================================================
-
-if __name__ == "__main__":
-
-    asyncio.run(main())
-
-    # ======================================================
-    # AUTO RESTART PROTECTION
-    # ======================================================
-
-    while True:
-
-        try:
-
-            asyncio.run(main())
-
-        except Exception as e:
-
-            print(f"Crash: {e}")
-
-            import time
-
-            time.sleep(5)
