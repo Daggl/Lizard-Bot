@@ -1,3 +1,6 @@
-# mybot.cogs package
-from pkgutil import extend_path
-__path__ = extend_path(__path__, __name__)
+"""Package `mybot.cogs`.
+
+Package marker for the bot cogs. Keep simple to avoid namespace issues.
+"""
+
+__all__ = []

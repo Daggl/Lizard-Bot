@@ -5,6 +5,7 @@ from discord.ext import commands
 # ADMIN VIEW (ADMINS ONLY)
 # ==========================================================
 
+
 class AdminHelpView(discord.ui.View):
 
     def __init__(self, author):
@@ -14,15 +15,13 @@ class AdminHelpView(discord.ui.View):
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.user != self.author:
             await interaction.response.send_message(
-                "❌ This menu does not belong to you.",
-                ephemeral=True
+                "❌ This menu does not belong to you.", ephemeral=True
             )
             return False
 
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
-                "❌ Only administrators may use this menu.",
-                ephemeral=True
+                "❌ Only administrators may use this menu.", ephemeral=True
             )
             return False
 
@@ -33,7 +32,9 @@ class AdminHelpView(discord.ui.View):
     # ======================================================
 
     @discord.ui.button(label="🏠 Main Menu", style=discord.ButtonStyle.primary)
-    async def main_menu(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def main_menu(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
 
         embed = discord.Embed(
             title="🛠 Administrator Control Center",
@@ -42,22 +43,21 @@ class AdminHelpView(discord.ui.View):
                 "of all admin features of the bot.\n\n"
                 "Use the buttons to open detailed explanations."
             ),
-            color=discord.Color.blue()
+            color=discord.Color.blue(),
         )
 
         embed.add_field(
             name="📊 Admin Tools",
             value="Bot control & manual interventions",
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
             name="📁 Log System",
             value="Server monitoring & audit tracking",
-            inline=False
+            inline=False,
         )
 
- 
         await interaction.response.edit_message(embed=embed)
 
     # ======================================================
@@ -65,22 +65,23 @@ class AdminHelpView(discord.ui.View):
     # ======================================================
 
     @discord.ui.button(label="📊 Admin Tools", style=discord.ButtonStyle.danger)
-    async def admin_tools(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def admin_tools(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
 
         embed = discord.Embed(
-            title="📊 Admin Control Commands",
-            color=discord.Color.red()
+            title="📊 Admin Control Commands", color=discord.Color.red()
         )
 
         embed.add_field(
             name="*say",
             value=(
-             "Makes the bot send a message.\n"
-            "Syntax: *say #channel Message\n"
-            "Attach image: add |link at the end of the message\n"
-             "Example: *say Hello world!"
-),
-            inline=False
+                "Makes the bot send a message.\n"
+                "Syntax: *say #channel Message\n"
+                "Attach image: add |link at the end of the message\n"
+                "Example: *say Hello world!"
+            ),
+            inline=False,
         )
 
         embed.add_field(
@@ -95,7 +96,7 @@ class AdminHelpView(discord.ui.View):
                 "• Achievement status\n"
                 "• Reward roles control\n"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -108,7 +109,7 @@ class AdminHelpView(discord.ui.View):
                 "• Achievement check\n"
                 "• Reward roles check\n"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -118,8 +119,7 @@ class AdminHelpView(discord.ui.View):
                 "Useful for corrections or penalties.\n\n"
                 "Will not reduce levels below 0."
             ),
-
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -129,7 +129,7 @@ class AdminHelpView(discord.ui.View):
                 "Useful for special occasions or rewards.\n\n"
                 "Example: *giveachievement @user First Kill"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -139,19 +139,17 @@ class AdminHelpView(discord.ui.View):
                 "Useful for corrections or penalties.\n\n"
                 "Example: *removeachievement @user First Kill"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
             name="*reset @user",
             value="Resets a user's XP, level & achievements completely.",
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
-            name="*rankuser @user",
-            value="Displays a user's rank.",
-            inline=False
+            name="*rankuser @user", value="Displays a user's rank.", inline=False
         )
 
         embed.add_field(
@@ -160,7 +158,7 @@ class AdminHelpView(discord.ui.View):
                 "Deletes a poll from the database by its ID.\n"
                 "Requires admin privileges."
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -169,7 +167,7 @@ class AdminHelpView(discord.ui.View):
                 "Resets the counting channel data and statistics.\n"
                 "Requires admin privileges."
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -178,25 +176,23 @@ class AdminHelpView(discord.ui.View):
                 "Add XP to a user (alternative admin XP command).\n"
                 "Useful for events and manual adjustments."
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
             name="*setxp @user amount",
             value=(
-                "Set a user's XP to a specific value.\n"
-                "Requires admin privileges."
+                "Set a user's XP to a specific value.\n" "Requires admin privileges."
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
             name="*setlevel @user level",
             value=(
-                "Set a user's level to a specific value.\n"
-                "Requires admin privileges."
+                "Set a user's level to a specific value.\n" "Requires admin privileges."
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -205,7 +201,7 @@ class AdminHelpView(discord.ui.View):
                 "Grant a named achievement to a user for testing.\n"
                 "Requires admin privileges."
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -214,7 +210,7 @@ class AdminHelpView(discord.ui.View):
                 "Posts the ticket creation panel for users to open support tickets.\n"
                 "Requires admin privileges."
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -223,7 +219,7 @@ class AdminHelpView(discord.ui.View):
                 "Saves and returns a transcript for the specified ticket channel.\n"
                 "Requires admin privileges."
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
@@ -232,22 +228,22 @@ class AdminHelpView(discord.ui.View):
                 "Force-close and archive a ticket channel.\n"
                 "Requires admin privileges."
             ),
-            inline=False
+            inline=False,
         )
 
         await interaction.response.edit_message(embed=embed)
 
- 
     # ======================================================
     # LOG SYSTEM DETAILLIERT
     # ======================================================
 
     @discord.ui.button(label="📁 Log System", style=discord.ButtonStyle.secondary)
-    async def log_system(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def log_system(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
 
         embed = discord.Embed(
-            title="📁 Server Log System",
-            color=discord.Color.orange()
+            title="📁 Server Log System", color=discord.Color.orange()
         )
 
         embed.add_field(
@@ -258,55 +254,46 @@ class AdminHelpView(discord.ui.View):
                 "• Message edited\n"
                 "• Audit log detection"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
             name="Moderation Log Channel",
-            value=(
-                "• Kick\n"
-                "• Ban\n"
-                "• Timeout"
-            ),
-            inline=False
+            value=("• Kick\n" "• Ban\n" "• Timeout"),
+            inline=False,
         )
 
         embed.add_field(
             name="Voice Log Channel",
-            value=(
-            "• Voice join\n"
-            "• Voice leave"
-            ),
-            inline=False
+            value=("• Voice join\n" "• Voice leave"),
+            inline=False,
         )
 
         embed.add_field(
             name="Server Log Channel",
             value=(
-                "• Channel created / deleted\n"
-                "• Role changes\n"
-                "• Nickname changed"
+                "• Channel created / deleted\n" "• Role changes\n" "• Nickname changed"
             ),
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
             name="Member Log Channel",
-            value=(
-                "• Member joined\n"
-                "• Member left"
-            ),
-            inline=False
+            value=("• Member joined\n" "• Member left"),
+            inline=False,
         )
 
         embed.add_field(
             name="Storage",
             value=(
-                "All logs are additionally saved to the SQLite database `data/logs/logs.db` for long‑term storage.\n"
-                "You can query or export logs with the helper script `tools/query_logs.py` (recent, by-category, search, raw).\n"
-                "Stored fields include type, user_id, channel_id, message, extra and timestamp."
+                "All logs are additionally saved to the SQLite database "
+                "``data/logs/logs.db`` for long-term storage.\n"
+                "You can query or export logs with the helper script "
+                "``tools/query_logs.py`` (recent, by-category, search, raw).\n"
+                "Stored fields include type, user_id, channel_id,"
+                " message, extra and timestamp."
             ),
-            inline=False
+            inline=False,
         )
 
         await interaction.response.edit_message(embed=embed)
@@ -316,23 +303,20 @@ class AdminHelpView(discord.ui.View):
     # ======================================================
 
     @discord.ui.button(label="🧪 Test Commands", style=discord.ButtonStyle.secondary)
-    async def test_commands(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def test_commands(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
 
-        embed = discord.Embed(
-            title="🧪 Test Commands",
-            color=discord.Color.green()
-        )
+        embed = discord.Embed(title="🧪 Test Commands", color=discord.Color.green())
 
         embed.add_field(
             name="*ping",
             value="A simple test command to check the bot's responsiveness.",
-            inline=False
+            inline=False,
         )
 
         embed.add_field(
-            name="*testwelcome",
-            value="Tests the welcome system.",
-            inline=False
+            name="*testwelcome", value="Tests the welcome system.", inline=False
         )
 
         await interaction.response.edit_message(embed=embed)
@@ -341,6 +325,7 @@ class AdminHelpView(discord.ui.View):
 # ==========================================================
 # COG
 # ==========================================================
+
 
 class AdminHelp(commands.Cog):
 
@@ -357,15 +342,17 @@ class AdminHelp(commands.Cog):
                 "This menu is for administrators only.\n\n"
                 "Here you get a full system overview."
             ),
-            color=discord.Color.blue()
+            color=discord.Color.blue(),
         )
 
         view = AdminHelpView(ctx.author)
         await ctx.send(embed=embed, view=view)
 
+
 # ==========================================================
 # SETUP
 # ==========================================================
+
 
 async def setup(bot):
     await bot.add_cog(AdminHelp(bot))

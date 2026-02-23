@@ -1,10 +1,11 @@
-from discord.ext import commands, tasks
 import time
+
+from discord.ext import commands, tasks
 
 from mybot.cogs.leveling.utils.level_config import (
     MESSAGE_COOLDOWN,
+    VOICE_XP_PER_MINUTE,
     XP_PER_MESSAGE,
-    VOICE_XP_PER_MINUTE
 )
 
 
@@ -197,6 +198,7 @@ class Tracking(commands.Cog):
 
 
 # ==========================================================
+
 
 async def setup(bot):
 

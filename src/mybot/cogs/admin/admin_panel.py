@@ -1,7 +1,13 @@
+import time
+
 import discord
 from discord.ext import commands
-import time
-from mybot.cogs.leveling.utils.level_config import LEVEL_REWARDS, ACHIEVEMENTS, ACHIEVEMENT_CHANNEL_ID
+
+from mybot.cogs.leveling.utils.level_config import (
+    ACHIEVEMENT_CHANNEL_ID,
+    ACHIEVEMENTS,
+    LEVEL_REWARDS,
+)
 
 
 class AdminPanelView(discord.ui.View):
@@ -10,7 +16,9 @@ class AdminPanelView(discord.ui.View):
         self.cog = cog
 
     @discord.ui.button(label="🔄 Refresh", style=discord.ButtonStyle.green)
-    async def refresh(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def refresh(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         embed = await self.cog.create_panel_embed(interaction.guild)
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -49,10 +57,7 @@ class AdminPanel(commands.Cog):
             else:
                 reward_status += f"Level {lvl} → {role_name} ❌ (Missing!)\n"
 
-        embed = discord.Embed(
-            title="🛠 Admin Status Panel",
-            color=discord.Color.red()
-        )
+        embed = discord.Embed(title="🛠 Admin Status Panel", color=discord.Color.red())
 
         # BOT STATUS
         embed.add_field(
@@ -63,17 +68,14 @@ class AdminPanel(commands.Cog):
                 f"Loaded Cogs: {len(self.bot.cogs)}\n"
                 f"Server: {len(self.bot.guilds)}"
             ),
-            inline=False
+            inline=False,
         )
 
         # LEVEL SYSTEM
         embed.add_field(
             name="🏆 Level System",
-            value=(
-                f"Saved User: {total_users}\n"
-                f"Highest Level: {highest_level}"
-            ),
-            inline=False
+            value=(f"Saved User: {total_users}\n" f"Highest Level: {highest_level}"),
+            inline=False,
         )
 
         # ACHIEVEMENTS
@@ -84,14 +86,14 @@ class AdminPanel(commands.Cog):
                 f"Given: {total_achievements_given}\n"
                 f"Channel ID: {ACHIEVEMENT_CHANNEL_ID}"
             ),
-            inline=False
+            inline=False,
         )
 
         # REWARDS CHECK
         embed.add_field(
             name="🎁 Rewards Check",
             value=reward_status or "No Rewards defined",
-            inline=False
+            inline=False,
         )
 
         embed.set_footer(text="Admin Panel • Live Status")

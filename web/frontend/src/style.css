@@ -1,0 +1,3 @@
+body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+#root { min-height: 100vh; }
+.mantine-TextInput-input, .mantine-Textarea-input { font-family: monospace; }

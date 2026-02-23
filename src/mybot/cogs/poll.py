@@ -1,9 +1,10 @@
-import discord
-from discord.ext import commands
-import json
+import asyncio
 import os
 import uuid
-import asyncio
+
+import discord
+from discord.ext import commands
+
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
 DATA_FOLDER = "data"
@@ -32,7 +33,7 @@ class PollView(discord.ui.View):
             button = discord.ui.Button(
                 label=option,
                 style=discord.ButtonStyle.primary,
-                custom_id=f"poll_{self.poll_id}_{index}"
+                custom_id=f"poll_{self.poll_id}_{index}",
             )
             button.callback = self.vote_callback(index)
             self.add_item(button)
@@ -40,7 +41,7 @@ class PollView(discord.ui.View):
         close_button = discord.ui.Button(
             label="🔒 Close",
             style=discord.ButtonStyle.danger,
-            custom_id=f"close_{self.poll_id}"
+            custom_id=f"close_{self.poll_id}",
         )
         close_button.callback = self.close_poll
         self.add_item(close_button)
@@ -52,11 +53,15 @@ class PollView(discord.ui.View):
             user_id = str(interaction.user.id)
 
             if poll["closed"]:
-                await interaction.response.send_message("❌ This poll is closed.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ This poll is closed.", ephemeral=True
+                )
                 return
 
             if user_id in poll["votes"]:
-                await interaction.response.send_message("❌ You have already voted!", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ You have already voted!", ephemeral=True
+                )
                 return
 
             poll["votes"][user_id] = index
@@ -73,7 +78,9 @@ class PollView(discord.ui.View):
         poll["closed"] = True
         save_polls(polls)
 
-        await interaction.response.send_message("🔒 Poll has been closed.", ephemeral=True)
+        await interaction.response.send_message(
+            "🔒 Poll has been closed.", ephemeral=True
+        )
         await self.update_message(interaction.message)
 
     async def update_message(self, message):
@@ -100,7 +107,7 @@ class PollView(discord.ui.View):
         embed = discord.Embed(
             title=f"📊 {poll['question']}",
             description=description,
-            color=discord.Color.green()
+            color=discord.Color.green(),
         )
 
         embed.set_footer(text=f"Votes: {total_votes}")
@@ -130,7 +137,7 @@ class Poll(commands.Cog):
         try:
             time_msg = await self.bot.wait_for("message", timeout=60, check=check)
             duration = int(time_msg.content)
-        except:
+        except ValueError:
             return await ctx.send("❌ Invalid time.")
 
         await ctx.send("📊 Please send the answer options separated by `,`.")
@@ -151,7 +158,7 @@ class Poll(commands.Cog):
             "question": question,
             "options": options,
             "votes": {},
-            "closed": False
+            "closed": False,
         }
 
         save_polls(polls)
@@ -159,7 +166,7 @@ class Poll(commands.Cog):
         embed = discord.Embed(
             title=f"📊 {question}",
             description="No votes yet.",
-            color=discord.Color.green()
+            color=discord.Color.green(),
         )
 
         view = PollView(poll_id)

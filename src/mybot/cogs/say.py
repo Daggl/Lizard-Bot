@@ -28,8 +28,7 @@ class Say(commands.Cog):
             image_url = None
 
         embed = discord.Embed(
-            description=text,
-            color=discord.Color.from_rgb(140, 110, 255)
+            description=text, color=discord.Color.from_rgb(140, 110, 255)
         )
 
         if image_url:

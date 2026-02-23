@@ -1,8 +1,8 @@
-import discord
 import os
-
-from discord.ext import commands
 from datetime import datetime
+
+import discord
+from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
 
@@ -23,7 +23,6 @@ class ServerLog(commands.Cog):
         self.bot = bot
 
         os.makedirs("data/logs", exist_ok=True)
-
 
     # ==========================================================
     # SAVE
@@ -57,22 +56,21 @@ class ServerLog(commands.Cog):
         embed = discord.Embed(
             title="📁 Channel created",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
 
-        embed.add_field(
-            name="📁 Channel",
-            value=channel.mention
-        )
+        embed.add_field(name="📁 Channel", value=channel.mention)
 
         await self.send(channel.guild, embed)
-        self.save({
-            "type": "channel_create",
-            "channel": channel.id,
-            "channel_name": channel.name,
-            "guild": channel.guild.id,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.save(
+            {
+                "type": "channel_create",
+                "channel": channel.id,
+                "channel_name": channel.name,
+                "guild": channel.guild.id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     # ==========================================================
     # CHANNEL DELETE
@@ -84,22 +82,21 @@ class ServerLog(commands.Cog):
         embed = discord.Embed(
             title="🗑 Channel deleted",
             color=discord.Color.red(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
 
-        embed.add_field(
-            name="📁 Name",
-            value=channel.name
-        )
+        embed.add_field(name="📁 Name", value=channel.name)
 
         await self.send(channel.guild, embed)
-        self.save({
-            "type": "channel_delete",
-            "channel": channel.id,
-            "channel_name": channel.name,
-            "guild": channel.guild.id,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.save(
+            {
+                "type": "channel_delete",
+                "channel": channel.id,
+                "channel_name": channel.name,
+                "guild": channel.guild.id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
 
 async def setup(bot):
@@ -115,10 +112,7 @@ async def setup(bot):
         embed = discord.Embed(
             title="🛡 Role created",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
 
-        embed.add_field(
-            name="🛡 Role",
-            value=role.mention
-        )
+        embed.add_field(name="🛡 Role", value=role.mention)
