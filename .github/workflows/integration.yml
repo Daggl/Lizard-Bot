@@ -13,21 +13,45 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Start services with docker-compose
-        run: |
-          docker compose -f docker-compose.yml up --build -d
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
 
-      - name: Debug Docker environment
-        if: always()
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile.python
+          push: false
+          tags: lizard-bot-backend:ci
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile.frontend
+          push: false
+          tags: lizard-bot-frontend:ci
+
+      - name: Run backend container
         run: |
-          echo '--- docker --version ---'
-          docker --version || true
-          echo '--- docker compose version ---'
-          docker compose version || true
-          echo '--- docker info ---'
-          docker info || true
-          echo '--- docker compose config ---'
-          docker compose -f docker-compose.yml config || true
+          docker run -d --name lizard-ci-backend -p 8000:8000 lizard-bot-backend:ci sleep infinity || docker ps -a
+
+      - name: Run frontend container
+        run: |
+          docker run -d --name lizard-ci-frontend -p 5173:5173 lizard-bot-frontend:ci sleep infinity || docker ps -a
+
+      - name: Wait for backend to be healthy
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:8000/api/ping >/dev/null; then
+              echo "backend ready"; exit 0
+            fi
+            sleep 2
+          done
+          echo "backend did not become ready"; docker logs lizard-ci-backend || true; exit 1
 
       - name: Wait for backend to be healthy
         run: |
