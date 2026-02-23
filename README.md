@@ -86,6 +86,41 @@ Or run the bot directly as a package:
 python -m src.mybot
 ```
 
+Absolute beginner quick-start (minimal)
+-------------------------------------
+If you're new and just want the bot running with minimal steps (skip the frontend/backend UI), follow these instructions.
+
+1. Open PowerShell: Press Start, type "PowerShell" and open "Windows PowerShell" or "Windows Terminal".
+
+2. Create a `.env` file with your Discord bot token:
+
+	 - Open Notepad and paste the following (replace the token):
+
+		 DISCORD_TOKEN=your_bot_token_here
+
+	 - Save the file as `.env` in the project folder (choose "All files" in Notepad's Save dialog).
+
+3. Create and activate a virtual environment, then install dependencies (copy-paste into PowerShell):
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+4. Start only the bot (no UI required):
+
+```powershell
+.\.venv\Scripts\python -m src.mybot
+```
+
+5. Verify: Once the bot is online, send `*ping` in a server where the bot is invited. If you don't know how to invite the bot, see the "Get a Discord bot token" section below.
+
+Notes for absolute beginners:
+- If PowerShell blocks execution, run Notepad as Administrator and follow the README's PowerShell note to set execution policy, or open a CMD window and use `\.venv\Scripts\activate.bat` instead of the PowerShell command.
+- If you can't find your Discord token, open the Discord Developer Portal (https://discord.com/developers/applications), create an application, add a Bot, then copy the token from the Bot page.
+
+
 Docker: a portable option is provided — see `DOCKER.md` and use:
 
 ```bash
@@ -155,7 +190,5 @@ Troubleshooting
 - If ports 8000 or 5173 are already in use, stop the conflicting process or adjust ports in `start` scripts and `docker-compose.yml`.
 - Permission errors writing `data/`: Ensure the user running the bot has write permissions to the project folder.
 
-
-If you want, I can run the bot, tail logs, or add screenshots to this README.
 
 ```
