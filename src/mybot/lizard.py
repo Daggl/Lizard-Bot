@@ -11,9 +11,10 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-# make `src/` importable so `mybot` package works when present
+# ensure project root's `src` is importable (when running as module)
 _root = os.path.dirname(os.path.abspath(__file__))
-_src = os.path.join(_root, "src")
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_src = os.path.join(_project_root, "src")
 if os.path.isdir(_src) and _src not in sys.path:
     sys.path.insert(0, _src)
 
@@ -21,7 +22,7 @@ if os.path.isdir(_src) and _src not in sys.path:
 from data.logs import database  # noqa: E402
 
 # ensure per-cog config files exist before loading cogs
-from utils.config import ensure_configs_from_example  # noqa: E402
+from mybot.utils import ensure_configs_from_example  # noqa: E402
 
 # ==========================================================
 # LOAD ENVIRONMENT / TOKEN
@@ -191,10 +192,6 @@ async def main():
         # START BOT
         # ==================================================
 
-        # ==================================================
-        # START BOT
-        # ==================================================
-
         try:
 
             # connect bot to Discord
@@ -221,25 +218,3 @@ async def main():
 # ==========================================================
 # SCRIPT START
 # ==========================================================
-
-if __name__ == "__main__":
-
-    asyncio.run(main())
-
-    # ======================================================
-    # AUTO RESTART PROTECTION
-    # ======================================================
-
-    while True:
-
-        try:
-
-            asyncio.run(main())
-
-        except Exception as e:
-
-            print(f"Crash: {e}")
-
-            import time
-
-            time.sleep(5)

@@ -14,13 +14,13 @@ def find_repo_root():
     # package path: src/mybot/utils -> climb up 3 levels
     cand = os.path.abspath(os.path.join(here, "..", "..", ".."))
     if os.path.exists(os.path.join(cand, "bot.py")) or os.path.exists(
-        os.path.join(cand, "config.example.json")
+        os.path.join(cand, "data", "config.example.json")
     ):
         return cand
     # fallback: climb until we find bot.py
     for c in repo_root_candidates(here):
         if os.path.exists(os.path.join(c, "bot.py")) or os.path.exists(
-            os.path.join(c, "config.example.json")
+            os.path.join(c, "data", "config.example.json")
         ):
             return c
     return cand
