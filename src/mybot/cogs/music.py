@@ -4,9 +4,9 @@ import re
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional
+from urllib.parse import quote
 
 import aiohttp
-from urllib.parse import quote
 import discord
 from discord.ext import commands
 
@@ -17,14 +17,19 @@ except Exception:
 
 
 YTDL_OPTS = {
-    'format': 'bestaudio/best',
-    'quiet': True,
-    'no_warnings': True,
-    'noplaylist': True,
+    "format": "bestaudio/best",
+    "quiet": True,
+    "no_warnings": True,
+    "noplaylist": True,
 }
 
 FFMPEG_OPTIONS = (
-    '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5'
+    "-reconnect",
+    "1",
+    "-reconnect_streamed",
+    "1",
+    "-reconnect_delay_max",
+    "5",
 )
 
 
@@ -59,23 +64,25 @@ class Music(commands.Cog, name="music"):
 
     # --- Spotify helpers ---
     async def _get_spotify_token(self) -> Optional[str]:
-        client_id = os.getenv('SPOTIFY_CLIENT_ID')
-        client_secret = os.getenv('SPOTIFY_CLIENT_SECRET')
+        client_id = os.getenv("SPOTIFY_CLIENT_ID")
+        client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
         if not client_id or not client_secret:
             return None
 
         if self._spotify_token and time.time() + 30 < self._spotify_token_expires_at:
             return self._spotify_token
 
-        data = {'grant_type': 'client_credentials'}
+        data = {"grant_type": "client_credentials"}
         auth = aiohttp.BasicAuth(client_id, client_secret)
         async with aiohttp.ClientSession() as session:
-            async with session.post('https://accounts.spotify.com/api/token', data=data, auth=auth) as resp:
+            async with session.post(
+                "https://accounts.spotify.com/api/token", data=data, auth=auth
+            ) as resp:
                 if resp.status != 200:
                     return None
                 j = await resp.json()
-        token = j.get('access_token')
-        expires_in = j.get('expires_in', 3600)
+        token = j.get("access_token")
+        expires_in = j.get("expires_in", 3600)
         self._spotify_token = token
         self._spotify_token_expires_at = time.time() + int(expires_in)
         return token
@@ -84,22 +91,28 @@ class Music(commands.Cog, name="music"):
         """Return a list of search queries derived from a Spotify track or playlist URL."""
         token = await self._get_spotify_token()
         if not token:
-            raise RuntimeError('SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not configured')
+            raise RuntimeError(
+                "SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not configured"
+            )
 
-        headers = {'Authorization': f'Bearer {token}'}
+        headers = {"Authorization": f"Bearer {token}"}
         # detect track or playlist id (support both URL and URI forms and optional locale segments)
-        m_track = re.search(r'open\.spotify\.com(?:/[^/]+)?/track/([A-Za-z0-9_-]+)', url)
-        m_playlist = re.search(r'open\.spotify\.com(?:/[^/]+)?/playlist/([A-Za-z0-9_-]+)', url)
+        m_track = re.search(
+            r"open\.spotify\.com(?:/[^/]+)?/track/([A-Za-z0-9_-]+)", url
+        )
+        m_playlist = re.search(
+            r"open\.spotify\.com(?:/[^/]+)?/playlist/([A-Za-z0-9_-]+)", url
+        )
         if not m_track:
-            m_track = re.search(r'spotify:track:([A-Za-z0-9_-]+)', url)
+            m_track = re.search(r"spotify:track:([A-Za-z0-9_-]+)", url)
         if not m_playlist:
-            m_playlist = re.search(r'spotify:playlist:([A-Za-z0-9_-]+)', url)
+            m_playlist = re.search(r"spotify:playlist:([A-Za-z0-9_-]+)", url)
         queries: List[str] = []
 
         async with aiohttp.ClientSession() as session:
             if m_track:
                 track_id = m_track.group(1)
-                api = f'https://api.spotify.com/v1/tracks/{track_id}'
+                api = f"https://api.spotify.com/v1/tracks/{track_id}"
                 async with session.get(api, headers=headers) as resp:
                     if resp.status != 200:
                         # try oEmbed fallback for public Spotify pages
@@ -108,7 +121,7 @@ class Music(commands.Cog, name="music"):
                             async with session.get(oembed_url) as oresp:
                                 if oresp.status == 200:
                                     oj = await oresp.json()
-                                    title = oj.get('title')
+                                    title = oj.get("title")
                                     if title:
                                         queries.append(title)
                                         return queries
@@ -117,17 +130,17 @@ class Music(commands.Cog, name="music"):
                         text = await resp.text()
                         raise RuntimeError(f"Spotify API error {resp.status}: {text}")
                     j = await resp.json()
-                name = j.get('name')
-                artists = ', '.join([a['name'] for a in j.get('artists', [])])
+                name = j.get("name")
+                artists = ", ".join([a["name"] for a in j.get("artists", [])])
                 queries.append(f"{name} {artists}")
                 return queries
 
             if m_playlist:
                 playlist_id = m_playlist.group(1)
-                api = f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks'
+                api = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
                 offset = 0
                 while True:
-                    params = {'limit': min(100, limit - len(queries)), 'offset': offset}
+                    params = {"limit": min(100, limit - len(queries)), "offset": offset}
                     async with session.get(api, headers=headers, params=params) as resp:
                         if resp.status != 200:
                             # try oEmbed fallback for playlist page
@@ -136,27 +149,29 @@ class Music(commands.Cog, name="music"):
                                 async with session.get(oembed_url) as oresp:
                                     if oresp.status == 200:
                                         oj = await oresp.json()
-                                        title = oj.get('title')
+                                        title = oj.get("title")
                                         if title:
                                             queries.append(title)
                                             return queries
                             except Exception:
                                 pass
                             text = await resp.text()
-                            raise RuntimeError(f"Spotify API error {resp.status}: {text}")
+                            raise RuntimeError(
+                                f"Spotify API error {resp.status}: {text}"
+                            )
                         j = await resp.json()
-                    items = j.get('items', [])
+                    items = j.get("items", [])
                     for it in items:
-                        t = it.get('track') or {}
-                        name = t.get('name')
-                        artists = ', '.join([a['name'] for a in t.get('artists', [])])
+                        t = it.get("track") or {}
+                        name = t.get("name")
+                        artists = ", ".join([a["name"] for a in t.get("artists", [])])
                         if name:
                             queries.append(f"{name} {artists}")
                         if len(queries) >= limit:
                             break
                     if len(queries) >= limit:
                         break
-                    if not j.get('next'):
+                    if not j.get("next"):
                         break
                     offset += len(items)
                 return queries
@@ -176,7 +191,7 @@ class Music(commands.Cog, name="music"):
             async with aiohttp.ClientSession() as sess:
                 async with sess.get(url, timeout=10) as resp:
                     text = await resp.text()
-            m = re.search(r'<title>(.*?)</title>', text, re.IGNORECASE | re.DOTALL)
+            m = re.search(r"<title>(.*?)</title>", text, re.IGNORECASE | re.DOTALL)
             if m:
                 title = m.group(1).strip()
                 title = re.sub(r"\s+\|\s*Spotify$", "", title)
@@ -201,7 +216,7 @@ class Music(commands.Cog, name="music"):
             return ctx.voice_client
 
         # ensure author is in a voice channel
-        author_vc = getattr(ctx.author, 'voice', None)
+        author_vc = getattr(ctx.author, "voice", None)
         if not author_vc or not author_vc.channel:
             await ctx.send("You are not connected to a voice channel.")
             return None
@@ -216,14 +231,18 @@ class Music(commands.Cog, name="music"):
 
         perms = channel.permissions_for(me)
         if not perms.connect:
-            await ctx.send("I don't have permission to connect to your voice channel (Connect permission missing).")
+            await ctx.send(
+                "I don't have permission to connect to your voice channel (Connect permission missing)."
+            )
             return None
         if not perms.speak:
-            await ctx.send("I don't have permission to speak in your voice channel (Speak permission missing).")
+            await ctx.send(
+                "I don't have permission to speak in your voice channel (Speak permission missing)."
+            )
             return None
 
         # Stage channels require special handling
-        if getattr(channel, 'stage_instance', None) is not None:
+        if getattr(channel, "stage_instance", None) is not None:
             await ctx.send("Stage channels are not supported by this bot.")
             return None
 
@@ -260,7 +279,9 @@ class Music(commands.Cog, name="music"):
                 except Exception:
                     pass
 
-            source = discord.FFmpegPCMAudio(track.source, **{'before_options': ' '.join(FFMPEG_OPTIONS)})
+            source = discord.FFmpegPCMAudio(
+                track.source, **{"before_options": " ".join(FFMPEG_OPTIONS)}
+            )
             vc.play(source, after=after)
 
     # --- commands ---
@@ -275,7 +296,9 @@ class Music(commands.Cog, name="music"):
         """Alias for join to test prefix command dispatch."""
         await self.join(ctx)
 
-    @commands.hybrid_command(name="leave", description="Leave voice channel and clear queue")
+    @commands.hybrid_command(
+        name="leave", description="Leave voice channel and clear queue"
+    )
     async def leave(self, ctx: commands.Context):
         guild_id = ctx.guild.id
         if ctx.voice_client:
@@ -284,10 +307,14 @@ class Music(commands.Cog, name="music"):
         self.now_playing[guild_id] = None
         await ctx.send("Left the voice channel and cleared the queue.")
 
-    @commands.hybrid_command(name="play", description="Play a YouTube URL or search term")
+    @commands.hybrid_command(
+        name="play", description="Play a YouTube URL or search term"
+    )
     async def play(self, ctx: commands.Context, *, query: str):
         if YoutubeDL is None:
-            await ctx.send("Playback requires `yt-dlp`. Install with `pip install yt-dlp`.")
+            await ctx.send(
+                "Playback requires `yt-dlp`. Install with `pip install yt-dlp`."
+            )
             return
 
         guild_id = ctx.guild.id
@@ -296,7 +323,10 @@ class Music(commands.Cog, name="music"):
             return
 
         original_query = query.strip()
-        if not (original_query.startswith('http://') or original_query.startswith('https://')):
+        if not (
+            original_query.startswith("http://")
+            or original_query.startswith("https://")
+        ):
             query = f"ytsearch:{original_query}"
         else:
             query = original_query
@@ -315,25 +345,36 @@ class Music(commands.Cog, name="music"):
             await ctx.send(f"Error resolving source: {e}")
             return
 
-        if 'entries' in info:
-            info = info['entries'][0]
+        if "entries" in info:
+            info = info["entries"][0]
 
-        url = info.get('url') or info.get('webpage_url')
+        url = info.get("url") or info.get("webpage_url")
         if not url:
             await ctx.send("Could not resolve a playable URL for that query.")
             return
 
-        stream_url = info.get('url') or info.get('webpage_url')
-        track = Track(title=info.get('title', 'Unknown'), source=stream_url, requester=ctx.author, duration=info.get('duration'))
+        stream_url = info.get("url") or info.get("webpage_url")
+        track = Track(
+            title=info.get("title", "Unknown"),
+            source=stream_url,
+            requester=ctx.author,
+            duration=info.get("duration"),
+        )
 
         self.queues.setdefault(guild_id, []).append(track)
-        await ctx.send(f"Queued: **{track.title}** (requested by {ctx.author.display_name})")
+        await ctx.send(
+            f"Queued: **{track.title}** (requested by {ctx.author.display_name})"
+        )
 
         if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
             await self._play_next(guild_id)
 
-    @commands.hybrid_command(name="spotify", description="Import Spotify track or playlist into the queue")
-    async def spotify(self, ctx: commands.Context, url: str, max_tracks: Optional[str] = None):
+    @commands.hybrid_command(
+        name="spotify", description="Import Spotify track or playlist into the queue"
+    )
+    async def spotify(
+        self, ctx: commands.Context, url: str, max_tracks: Optional[str] = None
+    ):
         """Import a Spotify track or playlist into the queue (uses Spotify Web API).
 
         Requires environment variables `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`.
@@ -362,7 +403,11 @@ class Music(commands.Cog, name="music"):
         except Exception as e:
             # If Spotify API forbids access (403) or similar, try a fallback
             msg = str(e)
-            if '403' in msg or 'forbidden' in msg.lower() or 'spotify api error' in msg.lower():
+            if (
+                "403" in msg
+                or "forbidden" in msg.lower()
+                or "spotify api error" in msg.lower()
+            ):
                 title = await self._fetch_spotify_title(url)
                 if title:
                     queries = [title]
@@ -385,7 +430,11 @@ class Music(commands.Cog, name="music"):
 
         # send initial status embed and update it periodically
         total = len(queries)
-        embed = discord.Embed(title="Spotify Import", description=f"Importing {total} tracks... 0/{total} added", color=0x1DB954)
+        embed = discord.Embed(
+            title="Spotify Import",
+            description=f"Importing {total} tracks... 0/{total} added",
+            color=0x1DB954,
+        )
         # create cancel event and view so user can abort
         cancel_event = asyncio.Event()
         self._import_cancel_events[guild_id] = cancel_event
@@ -397,11 +446,16 @@ class Music(commands.Cog, name="music"):
         for idx, q in enumerate(queries, start=1):
             try:
                 info = await self._resolve_query(f"ytsearch:{q}")
-                if 'entries' in info:
-                    info = info['entries'][0]
-                stream_url = info.get('url') or info.get('webpage_url')
-                title = info.get('title', q)
-                track = Track(title=title, source=stream_url, requester=ctx.author, duration=info.get('duration'))
+                if "entries" in info:
+                    info = info["entries"][0]
+                stream_url = info.get("url") or info.get("webpage_url")
+                title = info.get("title", q)
+                track = Track(
+                    title=title,
+                    source=stream_url,
+                    requester=ctx.author,
+                    duration=info.get("duration"),
+                )
                 self.queues.setdefault(guild_id, []).append(track)
                 added += 1
             except Exception:
@@ -410,7 +464,9 @@ class Music(commands.Cog, name="music"):
             # check cancellation
             if cancel_event.is_set():
                 try:
-                    embed.description = f"Import abgebrochen: {added} added, {skipped} skipped."
+                    embed.description = (
+                        f"Import abgebrochen: {added} added, {skipped} skipped."
+                    )
                     for item in view.children:
                         item.disabled = True
                     await status.edit(embed=embed, view=view)
@@ -461,7 +517,9 @@ class Music(commands.Cog, name="music"):
         if not q:
             await ctx.send("Queue is empty.")
             return
-        lines = [f"Now: **{self.now_playing.get(ctx.guild.id).title if self.now_playing.get(ctx.guild.id) else 'Nothing'}**"]
+        lines = [
+            f"Now: **{self.now_playing.get(ctx.guild.id).title if self.now_playing.get(ctx.guild.id) else 'Nothing'}**"
+        ]
         for i, t in enumerate(q[:10], start=1):
             lines.append(f"{i}. {t.title} — requested by {t.requester.display_name}")
         await ctx.send("\n".join(lines))
@@ -472,7 +530,9 @@ class Music(commands.Cog, name="music"):
         if not now:
             await ctx.send("Nothing is playing.")
             return
-        await ctx.send(f"Now playing: **{now.title}** — requested by {now.requester.display_name}")
+        await ctx.send(
+            f"Now playing: **{now.title}** — requested by {now.requester.display_name}"
+        )
 
     @commands.hybrid_command(name="stop", description="Stop and clear the queue")
     async def stop(self, ctx: commands.Context):
@@ -497,16 +557,24 @@ class ImportCancelView(discord.ui.View):
         # allow the requester or server admins (administrator / manage_guild / manage_messages)
         if interaction.user.id != self._owner_id:
             perms = None
-            if interaction.guild and hasattr(interaction.user, 'guild_permissions'):
+            if interaction.guild and hasattr(interaction.user, "guild_permissions"):
                 perms = interaction.user.guild_permissions
-            if not (perms and (perms.administrator or perms.manage_guild or perms.manage_messages)):
-                await interaction.response.send_message("Only the requester or an admin can cancel the import.", ephemeral=True)
+            if not (
+                perms
+                and (perms.administrator or perms.manage_guild or perms.manage_messages)
+            ):
+                await interaction.response.send_message(
+                    "Only the requester or an admin can cancel the import.",
+                    ephemeral=True,
+                )
                 return
         self._event.set()
         for item in self.children:
             item.disabled = True
         try:
-            await interaction.response.edit_message(content="Import abgebrochen.", view=self)
+            await interaction.response.edit_message(
+                content="Import abgebrochen.", view=self
+            )
         except Exception:
             pass
 

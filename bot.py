@@ -3,16 +3,16 @@
 # ==========================================================
 
 import asyncio
-import wavelink
-import discord
-from discord.ext import commands
-import logging
-from dotenv import load_dotenv
-import os
 import datetime
 import json
-
+import logging
+import os
 import sys
+
+import discord
+import wavelink
+from discord.ext import commands
+from dotenv import load_dotenv
 
 # make `src/` importable so `mybot` package works when present
 _root = os.path.dirname(os.path.abspath(__file__))
@@ -25,7 +25,6 @@ from data.logs import database
 
 # ensure per-cog config files exist before loading cogs
 from utils.config import ensure_configs_from_example
-
 
 # ==========================================================
 # LOAD ENVIRONMENT / TOKEN
@@ -43,11 +42,7 @@ token = os.getenv("DISCORD_TOKEN")
 # ==========================================================
 
 # create log file for Discord events / errors
-handler = logging.FileHandler(
-    filename="discord.log",
-    encoding="utf-8",
-    mode="w"
-)
+handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
 
 
 # ==========================================================
@@ -58,15 +53,13 @@ handler = logging.FileHandler(
 intents = discord.Intents.all()
 
 # create bot instance with prefix *
-bot = commands.Bot(
-    command_prefix="*",
-    intents=intents
-)
+bot = commands.Bot(command_prefix="*", intents=intents)
 
 
 # ==========================================================
 # READY EVENT
 # ==========================================================
+
 
 @bot.event
 async def on_ready():
@@ -82,15 +75,18 @@ async def on_ready():
 # TEST COMMAND
 # ==========================================================
 
+
 @bot.command()
 async def ping(ctx):
 
     # simple test command to check if bot responds
     await ctx.send("🏓 Pong! all is good in the hood!")
 
+
 @bot.event
 async def on_command_error(ctx, error):
     import traceback
+
     print(f"[CMD ERROR] Error running command {getattr(ctx, 'command', None)}: {error}")
     traceback.print_exception(type(error), error, error.__traceback__)
 
@@ -98,6 +94,7 @@ async def on_command_error(ctx, error):
 # ==========================================================
 # MESSAGE EVENT
 # ==========================================================
+
 
 @bot.event
 async def on_message(message):
@@ -114,15 +111,13 @@ async def on_message(message):
 # MAIN FUNCTION
 # ==========================================================
 
+
 async def main():
 
     # check if token exists
     if not token:
 
-        print(
-            "DISCORD_TOKEN not set. "
-            "Create a .env file with DISCORD_TOKEN=..."
-        )
+        print("DISCORD_TOKEN not set. " "Create a .env file with DISCORD_TOKEN=...")
 
         return
 
@@ -163,8 +158,8 @@ async def main():
             "mybot.cogs.music",
         ]
 
-        import traceback
         import importlib
+        import traceback
 
         for ext in extensions:
 

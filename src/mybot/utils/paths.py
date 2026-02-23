@@ -29,6 +29,8 @@ def migrate_old_paths():
     """Placeholder for migration logic (no-op)."""
     # Real migration handled elsewhere; keep function for compatibility.
     return
+
+
 import os
 import shutil
 
@@ -44,11 +46,15 @@ def find_repo_root():
     here = os.path.abspath(os.path.dirname(__file__))
     # package path: src/mybot/utils -> climb up 3 levels
     cand = os.path.abspath(os.path.join(here, "..", "..", ".."))
-    if os.path.exists(os.path.join(cand, "bot.py")) or os.path.exists(os.path.join(cand, "config.example.json")):
+    if os.path.exists(os.path.join(cand, "bot.py")) or os.path.exists(
+        os.path.join(cand, "config.example.json")
+    ):
         return cand
     # fallback: climb until we find bot.py
     for c in repo_root_candidates(here):
-        if os.path.exists(os.path.join(c, "bot.py")) or os.path.exists(os.path.join(c, "config.example.json")):
+        if os.path.exists(os.path.join(c, "bot.py")) or os.path.exists(
+            os.path.join(c, "config.example.json")
+        ):
             return c
     return cand
 

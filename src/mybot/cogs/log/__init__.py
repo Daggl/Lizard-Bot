@@ -1,3 +1,6 @@
-# mybot.cogs.log package
-from pkgutil import extend_path
-__path__ = extend_path(__path__, __name__)
+"""Package `mybot.cogs.log`.
+
+Package marker for logging-related cogs.
+"""
+
+__all__ = []

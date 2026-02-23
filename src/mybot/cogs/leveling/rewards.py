@@ -1,6 +1,8 @@
-from discord.ext import commands
 import discord
+from discord.ext import commands
+
 from mybot.cogs.leveling.utils.level_config import LEVEL_REWARDS
+
 
 class Rewards(commands.Cog):
 
@@ -18,6 +20,7 @@ class Rewards(commands.Cog):
             role = discord.utils.get(member.guild.roles, name=role_name)
             if role:
                 await member.add_roles(role)
+
 
 async def setup(bot):
     await bot.add_cog(Rewards(bot))

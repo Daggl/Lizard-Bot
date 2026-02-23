@@ -1,9 +1,9 @@
-import discord
 import os
 import sqlite3
-
-from discord.ext import commands
 from datetime import datetime, timezone
+
+import discord
+from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
 
@@ -56,10 +56,7 @@ class ModLog(commands.Cog):
         executor = None
         reason = "No reason provided"
 
-        async for entry in guild.audit_logs(
-            limit=5,
-            action=discord.AuditLogAction.ban
-        ):
+        async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.ban):
 
             if entry.target.id == user.id:
 
@@ -73,43 +70,33 @@ class ModLog(commands.Cog):
         embed = discord.Embed(
             title="🔨 Member banned",
             color=discord.Color.dark_red(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
 
-        embed.add_field(
-            name="User",
-            value=f"{user} ({user.id})",
-            inline=False
-        )
+        embed.add_field(name="User", value=f"{user} ({user.id})", inline=False)
 
         if executor:
 
-            embed.add_field(
-                name="Moderator",
-                value=executor.mention,
-                inline=False
-            )
+            embed.add_field(name="Moderator", value=executor.mention, inline=False)
 
-        embed.add_field(
-            name="Reason",
-            value=reason,
-            inline=False
-        )
+        embed.add_field(name="Reason", value=reason, inline=False)
 
         embed.set_thumbnail(url=user.display_avatar.url)
 
         await self.send(guild, embed)
 
-        self.save({
-            "type": "ban",
-            "user": user.id,
-            "user_name": str(user),
-            "by": executor.id if executor else None,
-            "by_name": str(executor) if executor else None,
-            "reason": reason,
-            "guild": guild.id,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.save(
+            {
+                "type": "ban",
+                "user": user.id,
+                "user_name": str(user),
+                "by": executor.id if executor else None,
+                "by_name": str(executor) if executor else None,
+                "reason": reason,
+                "guild": guild.id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     # ==========================================================
     # KICK
@@ -121,8 +108,7 @@ class ModLog(commands.Cog):
         guild = member.guild
 
         async for entry in guild.audit_logs(
-            limit=5,
-            action=discord.AuditLogAction.kick
+            limit=5, action=discord.AuditLogAction.kick
         ):
 
             if entry.target.id == member.id:
@@ -136,32 +122,30 @@ class ModLog(commands.Cog):
                 embed = discord.Embed(
                     title="👢 Member kicked",
                     color=discord.Color.red(),
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.utcnow(),
                 )
 
                 embed.add_field(
-                    name="User",
-                    value=f"{member} ({member.id})",
-                    inline=False
+                    name="User", value=f"{member} ({member.id})", inline=False
                 )
 
                 embed.add_field(
-                    name="Moderator",
-                    value=entry.user.mention,
-                    inline=False
+                    name="Moderator", value=entry.user.mention, inline=False
                 )
 
                 await self.send(guild, embed)
 
-                self.save({
-                    "type": "kick",
-                    "user": member.id,
-                    "user_name": str(member),
-                    "by": entry.user.id,
-                    "by_name": str(entry.user),
-                    "guild": guild.id,
-                    "timestamp": datetime.utcnow().isoformat()
-                })
+                self.save(
+                    {
+                        "type": "kick",
+                        "user": member.id,
+                        "user_name": str(member),
+                        "by": entry.user.id,
+                        "by_name": str(entry.user),
+                        "guild": guild.id,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
 
                 break
 
@@ -178,8 +162,7 @@ class ModLog(commands.Cog):
         executor = None
 
         async for entry in after.guild.audit_logs(
-            limit=5,
-            action=discord.AuditLogAction.member_update
+            limit=5, action=discord.AuditLogAction.member_update
         ):
 
             if entry.target.id == after.id:
@@ -192,19 +175,15 @@ class ModLog(commands.Cog):
             embed = discord.Embed(
                 title="⏱ Member timeout",
                 color=discord.Color.orange(),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.utcnow(),
             )
 
-            embed.add_field(
-                name="User",
-                value=f"{after} ({after.id})",
-                inline=False
-            )
+            embed.add_field(name="User", value=f"{after} ({after.id})", inline=False)
 
             embed.add_field(
                 name="Until",
                 value=f"<t:{int(after.timed_out_until.timestamp())}:F>",
-                inline=False
+                inline=False,
             )
 
             log_type = "timeout"
@@ -214,41 +193,36 @@ class ModLog(commands.Cog):
             embed = discord.Embed(
                 title="✅ Timeout removed",
                 color=discord.Color.green(),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.utcnow(),
             )
 
-            embed.add_field(
-                name="User",
-                value=f"{after} ({after.id})",
-                inline=False
-            )
+            embed.add_field(name="User", value=f"{after} ({after.id})", inline=False)
 
             log_type = "untimeout"
 
         if executor:
 
-            embed.add_field(
-                name="Moderator",
-                value=executor.mention,
-                inline=False
-            )
+            embed.add_field(name="Moderator", value=executor.mention, inline=False)
 
         await self.send(after.guild, embed)
 
-        self.save({
-            "type": log_type,
-            "user": after.id,
-            "user_name": str(after),
-            "by": executor.id if executor else None,
-            "by_name": str(executor) if executor else None,
-            "guild": after.guild.id,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.save(
+            {
+                "type": log_type,
+                "user": after.id,
+                "user_name": str(after),
+                "by": executor.id if executor else None,
+                "by_name": str(executor) if executor else None,
+                "guild": after.guild.id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
 
 # ==========================================================
 # SETUP
 # ==========================================================
+
 
 async def setup(bot):
 

@@ -1,8 +1,9 @@
-from discord.ext import commands
-import discord
-from PIL import Image, ImageDraw, ImageFont
-import aiohttp
 import io
+
+import aiohttp
+import discord
+from discord.ext import commands
+from PIL import Image, ImageDraw, ImageFont
 
 from mybot.cogs.leveling.levels import xp_for_level
 
@@ -69,14 +70,9 @@ class Rank(commands.Cog):
         voice_minutes = user["voice_time"] // 60
         achievements = len(user["achievements"])
 
-        card = Image.open(
-            "assets/rankcard.png"
-        ).convert("RGB")
+        card = Image.open("assets/rankcard.png").convert("RGB")
 
-        card = card.resize(
-            (CARD_WIDTH, CARD_HEIGHT)
-        )
-
+        card = card.resize((CARD_WIDTH, CARD_HEIGHT))
 
         draw = ImageDraw.Draw(card)
 
@@ -92,10 +88,7 @@ class Rank(commands.Cog):
 
         mask_draw = ImageDraw.Draw(mask)
 
-        mask_draw.ellipse(
-            (0, 0, AVATAR_SIZE, AVATAR_SIZE),
-            fill=255
-        )
+        mask_draw.ellipse((0, 0, AVATAR_SIZE, AVATAR_SIZE), fill=255)
 
         avatar.putalpha(mask)
 
@@ -105,69 +98,42 @@ class Rank(commands.Cog):
         font_medium = ImageFont.truetype(FONT_BOLD, 40)
         font_small = ImageFont.truetype(FONT_REGULAR, 22)
 
-        draw.text(
-            (260, 50),
-            member.display_name,
-            font=font_big,
-            fill=(255, 255, 255)
-        )
+        draw.text((260, 50), member.display_name, font=font_big, fill=(255, 255, 255))
+
+        draw.text((260, 120), f"Level {level}", font=font_medium, fill=(200, 200, 200))
 
         draw.text(
-            (260, 120),
-            f"Level {level}",
-            font=font_medium,
-            fill=(200, 200, 200)
-        )
-
-        draw.text(
-            (710, 140),
-            f"{xp} / {needed} XP",
-            font=font_small,
-            fill=(200, 200, 200)
+            (710, 140), f"{xp} / {needed} XP", font=font_small, fill=(200, 200, 200)
         )
 
         bar_x = 260
         bar_y = 180
 
         draw.rectangle(
-            (
-                bar_x,
-                bar_y,
-                bar_x + BAR_WIDTH,
-                bar_y + BAR_HEIGHT
-            ),
-            fill=(50, 50, 50)
+            (bar_x, bar_y, bar_x + BAR_WIDTH, bar_y + BAR_HEIGHT), fill=(50, 50, 50)
         )
 
         draw.rectangle(
-            (
-                bar_x,
-                bar_y,
-                bar_x + int(BAR_WIDTH * progress),
-                bar_y + BAR_HEIGHT
-            ),
-            fill=(140, 110, 255)
+            (bar_x, bar_y, bar_x + int(BAR_WIDTH * progress), bar_y + BAR_HEIGHT),
+            fill=(140, 110, 255),
         )
 
         draw.text(
-            (260, 220),
-            f"Messages: {messages}",
-            font=font_small,
-            fill=(180, 180, 180)
+            (260, 220), f"Messages: {messages}", font=font_small, fill=(180, 180, 180)
         )
 
         draw.text(
             (450, 220),
             f"Voice: {voice_minutes} min",
             font=font_small,
-            fill=(180, 180, 180)
+            fill=(180, 180, 180),
         )
 
         draw.text(
             (650, 220),
             f"Achievements: {achievements}",
             font=font_small,
-            fill=(180, 180, 180)
+            fill=(180, 180, 180),
         )
 
         buffer = io.BytesIO()
@@ -176,10 +142,7 @@ class Rank(commands.Cog):
 
         buffer.seek(0)
 
-        return discord.File(
-            buffer,
-            filename="rank.png"
-        )
+        return discord.File(buffer, filename="rank.png")
 
     # ======================================================
     # ADMIN COMMANDS
@@ -187,12 +150,7 @@ class Rank(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def addxp(
-        self,
-        ctx,
-        member: discord.Member,
-        amount: int
-    ):
+    async def addxp(self, ctx, member: discord.Member, amount: int):
         """Add XP using level system."""
 
         levels = self.bot.get_cog("Levels")
@@ -204,39 +162,23 @@ class Rank(commands.Cog):
         if achievements:
             await achievements.check_achievements(member)
 
-        await ctx.send(
-            f"✅ {amount} XP added to {member.mention}"
-        )
+        await ctx.send(f"✅ {amount} XP added to {member.mention}")
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def removexp(
-        self,
-        ctx,
-        member: discord.Member,
-        amount: int
-    ):
+    async def removexp(self, ctx, member: discord.Member, amount: int):
 
         user = self.bot.db.get_user(member.id)
 
-        user["xp"] = max(
-            0,
-            user["xp"] - amount
-        )
+        user["xp"] = max(0, user["xp"] - amount)
 
         self.bot.db.save()
 
-        await ctx.send(
-            f"🗑 {amount} XP removed from {member.mention}"
-        )
+        await ctx.send(f"🗑 {amount} XP removed from {member.mention}")
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def reset(
-        self,
-        ctx,
-        member: discord.Member
-    ):
+    async def reset(self, ctx, member: discord.Member):
 
         user = self.bot.db.get_user(member.id)
 
@@ -255,6 +197,4 @@ class Rank(commands.Cog):
 
 async def setup(bot):
 
-    await bot.add_cog(
-        Rank(bot)
-    )
+    await bot.add_cog(Rank(bot))

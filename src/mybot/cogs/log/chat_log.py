@@ -1,8 +1,8 @@
-import discord
 import os
-
-from discord.ext import commands
 from datetime import datetime
+
+import discord
+from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
 
@@ -58,38 +58,31 @@ class ChatLog(commands.Cog):
         embed = discord.Embed(
             title="Message Sent",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
 
-        embed.add_field(
-            name="User",
-            value=msg.author.mention
-        )
+        embed.add_field(name="User", value=msg.author.mention)
 
-        embed.add_field(
-            name="Channel",
-            value=msg.channel.mention
-        )
+        embed.add_field(name="Channel", value=msg.channel.mention)
 
-        embed.add_field(
-            name="Content",
-            value=msg.content or "None"
-        )
+        embed.add_field(name="Content", value=msg.content or "None")
 
         await self.send(msg.guild, embed)
 
-        self.save({
-            "type": "send",
-            "user": msg.author.id,
-            "user_name": str(msg.author),
-            "channel": msg.channel.id,
-            "channel_name": getattr(msg.channel, "name", None),
-            "message": msg.content,
-            "message_id": msg.id,
-            "attachments": [a.url for a in msg.attachments],
-            "guild": msg.guild.id if msg.guild else None,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.save(
+            {
+                "type": "send",
+                "user": msg.author.id,
+                "user_name": str(msg.author),
+                "channel": msg.channel.id,
+                "channel_name": getattr(msg.channel, "name", None),
+                "message": msg.content,
+                "message_id": msg.id,
+                "attachments": [a.url for a in msg.attachments],
+                "guild": msg.guild.id if msg.guild else None,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     # ==========================================================
     # MESSAGE DELETE
@@ -104,8 +97,7 @@ class ChatLog(commands.Cog):
         deleter = None
 
         async for entry in msg.guild.audit_logs(
-            limit=5,
-            action=discord.AuditLogAction.message_delete
+            limit=5, action=discord.AuditLogAction.message_delete
         ):
 
             if entry.target.id == msg.author.id:
@@ -116,34 +108,30 @@ class ChatLog(commands.Cog):
         embed = discord.Embed(
             title="Message Deleted",
             color=discord.Color.red(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
 
-        embed.add_field(
-            name="User",
-            value=msg.author.mention
-        )
+        embed.add_field(name="User", value=msg.author.mention)
 
         if deleter:
 
-            embed.add_field(
-                name="Deleted by",
-                value=deleter.mention
-            )
+            embed.add_field(name="Deleted by", value=deleter.mention)
 
         await self.send(msg.guild, embed)
 
-        self.save({
-            "type": "delete",
-            "user": msg.author.id,
-            "user_name": str(msg.author),
-            "channel": msg.channel.id if msg.channel else None,
-            "message": msg.content,
-            "message_id": msg.id,
-            "deleted_by": deleter.id if deleter else None,
-            "guild": msg.guild.id if msg.guild else None,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.save(
+            {
+                "type": "delete",
+                "user": msg.author.id,
+                "user_name": str(msg.author),
+                "channel": msg.channel.id if msg.channel else None,
+                "message": msg.content,
+                "message_id": msg.id,
+                "deleted_by": deleter.id if deleter else None,
+                "guild": msg.guild.id if msg.guild else None,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     # ==========================================================
     # MESSAGE EDIT
@@ -161,37 +149,34 @@ class ChatLog(commands.Cog):
         embed = discord.Embed(
             title="Message Edited",
             color=discord.Color.orange(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
 
-        embed.add_field(
-            name="Before",
-            value=before.content
-        )
+        embed.add_field(name="Before", value=before.content)
 
-        embed.add_field(
-            name="After",
-            value=after.content
-        )
+        embed.add_field(name="After", value=after.content)
 
         await self.send(before.guild, embed)
 
-        self.save({
-            "type": "edit",
-            "user": before.author.id,
-            "user_name": str(before.author),
-            "channel": before.channel.id,
-            "message_id": before.id,
-            "before": before.content,
-            "after": after.content,
-            "guild": before.guild.id if before.guild else None,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self.save(
+            {
+                "type": "edit",
+                "user": before.author.id,
+                "user_name": str(before.author),
+                "channel": before.channel.id,
+                "message_id": before.id,
+                "before": before.content,
+                "after": after.content,
+                "guild": before.guild.id if before.guild else None,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
 
 # ==========================================================
 # SETUP
 # ==========================================================
+
 
 async def setup(bot):
 

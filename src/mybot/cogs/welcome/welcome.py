@@ -2,21 +2,21 @@
 # IMPORTS
 # ==========================================================
 
-import discord
-import aiohttp
 import io
 import re
-
-from discord.ext import commands
 from datetime import datetime
+
+import aiohttp
+import discord
+from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
+from mybot.utils.config import load_cog_config
 
 # ==========================================================
 # CONFIGURATION (loaded from config/welcome.json with fallbacks)
 # ==========================================================
 
-from mybot.utils.config import load_cog_config
 
 _CFG = load_cog_config("welcome")
 
@@ -35,6 +35,7 @@ FONT_USERNAME = _CFG.get("FONT_USERNAME", "assets/fonts/Poppins-Regular.ttf")
 # ==========================================================
 # USERNAME CLEAN FUNCTION
 # ==========================================================
+
 
 def clean_username(member: discord.Member):
     """
@@ -59,6 +60,7 @@ def clean_username(member: discord.Member):
 # COG CLASS
 # ==========================================================
 
+
 class Welcome(commands.Cog):
     """
     Welcome System Cog
@@ -80,7 +82,7 @@ class Welcome(commands.Cog):
 
     async def create_banner(self, member):
         """
-            Creates the welcome banner image
+        Creates the welcome banner image
         """
 
         try:
@@ -105,39 +107,21 @@ class Welcome(commands.Cog):
 
                 width, height = 1400, 420
 
-                banner = Image.new(
-                    "RGBA",
-                    (width, height),
-                    (18, 18, 18, 255)
-                )
+                banner = Image.new("RGBA", (width, height), (18, 18, 18, 255))
 
-            avatar = Image.open(
-                io.BytesIO(avatar_bytes)
-            ).convert("RGBA")
+            avatar = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
 
             margin = 40
 
-            avatar_size = min(
-                360,
-                height - margin * 2
-            )
+            avatar_size = min(360, height - margin * 2)
 
-            avatar = avatar.resize(
-                (avatar_size, avatar_size)
-            )
+            avatar = avatar.resize((avatar_size, avatar_size))
 
-            mask = Image.new(
-                "L",
-                (avatar_size, avatar_size),
-                0
-            )
+            mask = Image.new("L", (avatar_size, avatar_size), 0)
 
             draw_mask = ImageDraw.Draw(mask)
 
-            draw_mask.ellipse(
-                (0, 0, avatar_size, avatar_size),
-                fill=255
-            )
+            draw_mask.ellipse((0, 0, avatar_size, avatar_size), fill=255)
 
             avatar.putalpha(mask)
 
@@ -145,47 +129,29 @@ class Welcome(commands.Cog):
 
             print("[DEBUG] Loading fonts...")
 
-            font_welcome = ImageFont.truetype(
-                FONT_WELCOME,
-                140
-            )
+            font_welcome = ImageFont.truetype(FONT_WELCOME, 140)
 
-            font_user_bold = ImageFont.truetype(
-                FONT_WELCOME,
-                64
-            )
+            font_user_bold = ImageFont.truetype(FONT_WELCOME, 64)
 
             draw = ImageDraw.Draw(banner)
 
             welcome_text = "WELCOME"
 
-            bbox_w = draw.textbbox(
-                (0, 0),
-                welcome_text,
-                font=font_welcome
-            )
+            bbox_w = draw.textbbox((0, 0), welcome_text, font=font_welcome)
 
             w_width = bbox_w[2] - bbox_w[0]
 
             S = 40
 
-            avatar_x_calc = int(
-                (width - avatar_size - S + margin - w_width) / 3
-            )
+            avatar_x_calc = int((width - avatar_size - S + margin - w_width) / 3)
 
-            avatar_x = max(
-                margin,
-                avatar_x_calc
-            )
+            avatar_x = max(margin, avatar_x_calc)
 
             text_area_x = avatar_x + avatar_size + S
 
             text_area_width = width - text_area_x - margin
 
-            welcome_x = text_area_x + max(
-                0,
-                (text_area_width - w_width) // 2
-            )
+            welcome_x = text_area_x + max(0, (text_area_width - w_width) // 2)
 
             welcome_y = avatar_y + 40
 
@@ -193,53 +159,32 @@ class Welcome(commands.Cog):
                 (welcome_x, welcome_y),
                 welcome_text,
                 font=font_welcome,
-                fill=(255, 255, 255)
+                fill=(255, 255, 255),
             )
 
-            banner.paste(
-                avatar,
-                (avatar_x, avatar_y),
-                avatar
-            )
+            banner.paste(avatar, (avatar_x, avatar_y), avatar)
 
-            bbox_u = draw.textbbox(
-                (0, 0),
-                username,
-                font=font_user_bold
-            )
+            bbox_u = draw.textbbox((0, 0), username, font=font_user_bold)
 
             u_width = bbox_u[2] - bbox_u[0]
 
-            user_x = text_area_x + max(
-                0,
-                (text_area_width - u_width) // 2
-            )
+            user_x = text_area_x + max(0, (text_area_width - u_width) // 2)
 
             extra_spacing = 80
 
             user_y = welcome_y + (bbox_w[3] - bbox_w[1]) + extra_spacing
 
             draw.text(
-                (user_x, user_y),
-                username,
-                font=font_user_bold,
-                fill=(230, 230, 230)
+                (user_x, user_y), username, font=font_user_bold, fill=(230, 230, 230)
             )
 
             if banner.mode == "RGBA":
 
-                background_rgb = Image.new(
-                    "RGB",
-                    banner.size,
-                    (18, 18, 18)
-                )
+                background_rgb = Image.new("RGB", banner.size, (18, 18, 18))
 
                 alpha = banner.split()[3]
 
-                background_rgb.paste(
-                    banner,
-                    mask=alpha
-                )
+                background_rgb.paste(banner, mask=alpha)
 
                 final_image = background_rgb
 
@@ -249,19 +194,13 @@ class Welcome(commands.Cog):
 
             buffer = io.BytesIO()
 
-            final_image.save(
-                buffer,
-                "PNG"
-            )
+            final_image.save(buffer, "PNG")
 
             buffer.seek(0)
 
             print("[DEBUG] Banner ready")
 
-            return discord.File(
-                buffer,
-                filename="welcome.png"
-            )
+            return discord.File(buffer, filename="welcome.png")
 
         except Exception as exc:
 
@@ -283,9 +222,7 @@ class Welcome(commands.Cog):
 
         guild = member.guild
 
-        welcome_channel = guild.get_channel(
-            WELCOME_CHANNEL_ID
-        )
+        welcome_channel = guild.get_channel(WELCOME_CHANNEL_ID)
 
         if welcome_channel is None:
 
@@ -312,10 +249,7 @@ class Welcome(commands.Cog):
         print("[DEBUG] Banner erstellt")
 
         embed = discord.Embed(
-
-            description=(
-
-f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! 🎔
+            description=(f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! 🎔
 𝖻𝖾𝖿𝗈𝗋𝖾 𝗒𝗈𝘂 𝖿𝗅𝗈𝖺𝗍 𝖺𝗋𝗈𝗎𝗇𝖽 𝖙𝖍𝖊 𝖘𝖊𝖗𝖛𝖊𝖗,
 𝗍𝖺𝗄𝖾 𝖺 𝗌𝖾𝖼 𝗍𝗈 𝗋𝖾𝖺𝖽 𝗍𝗁𝖾 {rules_channel.mention}
 
@@ -331,24 +265,16 @@ f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! �
 
 ❀ 𝗮𝗳𝘁𝗲𝗋 𝘆𝗈𝘂 𝗁𝗮𝘃𝗘 𝗖𝗈𝗆𝗉𝗅𝗘𝗧𝗘𝗗 𝗔𝗅𝗅 𝗍𝗁𝗘 𝗙𝗈𝗋𝗆𝗔𝗅𝗂𝗍𝗂𝗘𝗌 ❀
 𝗀𝗈, 𝗀𝗋𝖺𝖻 𝗒𝗈𝗎𝗋 𝗌𝗇𝖺𝖼𝗄𝗌, 𝗀𝖾𝗍 𝖼𝗈𝗆𝖿𝗒 𝖺𝗇𝖽 𝖾𝗇𝗃𝗈𝗒 𝗍𝗁𝖾 𝗀𝗈𝗈𝖽 𝗏𝗂𝖻𝖾𝗌!
-"""
-
-            ),
-
+"""),
             color=discord.Color.from_rgb(140, 110, 255),
-
-            timestamp=datetime.utcnow()
-
+            timestamp=datetime.utcnow(),
         )
 
         embed.set_image(url="attachment://welcome.png")
 
         print("[DEBUG] Sending message...")
 
-        await welcome_channel.send(
-            file=banner,
-            embed=embed
-        )
+        await welcome_channel.send(file=banner, embed=embed)
 
         print("[DEBUG] Message sent")
 
@@ -368,6 +294,7 @@ f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! �
 # ==========================================================
 # SETUP FUNCTION
 # ==========================================================
+
 
 async def setup(bot):
 
