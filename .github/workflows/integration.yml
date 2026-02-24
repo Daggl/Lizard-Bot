@@ -126,6 +126,7 @@ jobs:
       - name: Tear down
         if: always()
         run: |
-          # ensure missing .env doesn't cause `down` to fail
-          touch .env || true
-          docker compose -f docker-compose.yml down || true
+          # create a temporary env file for CI so the repo .env is not required
+          echo "CI_RUN=1" > .env.ci || true
+          docker compose --env-file .env.ci -f docker-compose.yml down || true
+          rm -f .env.ci || true
