@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+
+## 0.2.0 - 2026-02-24
+
 - Security: upgraded vulnerable dependencies to resolve multipart/form-data and h11/httpcore issues:
   - `fastapi` -> 0.132.0
   - `starlette` -> 0.52.1
