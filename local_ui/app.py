@@ -8,7 +8,7 @@ import sys
 import os
 import json
 import socket
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtWidgets, QtCore, QtGui
 
 
 API_ADDR = ("127.0.0.1", 8765)
@@ -39,42 +39,86 @@ def send_cmd(cmd: dict, timeout: float = 1.0):
         return {"ok": False, "error": str(e)}
 
 
-class MainWindow(QtWidgets.QWidget):
+class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("DC Bot - Local UI")
-        self.resize(420, 140)
+        self.setWindowTitle("DC Bot — Local UI")
+        self.resize(900, 600)
+
+        # central tabs
+        tabs = QtWidgets.QTabWidget()
+        tabs.setDocumentMode(True)
+
+        # Dashboard tab
+        dash = QtWidgets.QWidget()
+        dash_layout = QtWidgets.QVBoxLayout(dash)
 
         self.status_label = QtWidgets.QLabel("Status: unknown")
+        self.status_label.setObjectName("statusLabel")
+        dash_layout.addWidget(self.status_label)
+
+        btn_row = QtWidgets.QHBoxLayout()
         self.ping_btn = QtWidgets.QPushButton("Ping")
-        self.shutdown_btn = QtWidgets.QPushButton("Shutdown Bot")
         self.refresh_btn = QtWidgets.QPushButton("Refresh Status")
         self.reload_btn = QtWidgets.QPushButton("Reload Cogs")
         self.config_btn = QtWidgets.QPushButton("Edit Configs")
+        self.shutdown_btn = QtWidgets.QPushButton("Shutdown Bot")
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.status_label)
-        row = QtWidgets.QHBoxLayout()
-        row.addWidget(self.ping_btn)
-        row.addWidget(self.refresh_btn)
-        row.addWidget(self.reload_btn)
-        row.addWidget(self.config_btn)
-        row.addWidget(self.shutdown_btn)
-        layout.addLayout(row)
+        for w in (self.ping_btn, self.refresh_btn, self.reload_btn, self.config_btn, self.shutdown_btn):
+            btn_row.addWidget(w)
 
-        self.ping_btn.clicked.connect(self.on_ping)
-        self.refresh_btn.clicked.connect(self.on_refresh)
-        self.shutdown_btn.clicked.connect(self.on_shutdown)
-        self.reload_btn.clicked.connect(self.on_reload)
-        self.config_btn.clicked.connect(self.on_edit_configs)
+        dash_layout.addLayout(btn_row)
 
-        # poll status every 3 seconds
-        self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.on_refresh)
-        self.timer.start(3000)
+        # Preview quick card
+        self.preview_card = QtWidgets.QGroupBox("Preview")
+        self.preview_card.setMinimumHeight(220)
+        prev_layout = QtWidgets.QHBoxLayout(self.preview_card)
+        self.preview_image = QtWidgets.QLabel()
+        self.preview_image.setFixedSize(360, 120)
+        self.preview_image.setScaledContents(True)
+        prev_layout.addWidget(self.preview_image)
+        self.preview_text = QtWidgets.QLabel("No preview available")
+        prev_layout.addWidget(self.preview_text)
+        dash_layout.addWidget(self.preview_card)
 
-        self.on_refresh()
+        dash_layout.addStretch()
 
+        tabs.addTab(dash, "Dashboard")
+
+            # Logs tab (live tail)
+            logs = QtWidgets.QWidget()
+            logs_layout = QtWidgets.QVBoxLayout(logs)
+            self.log_text = QtWidgets.QPlainTextEdit()
+            self.log_text.setReadOnly(True)
+            logs_layout.addWidget(self.log_text)
+            tabs.addTab(logs, "Logs")
+
+            # Config editor tab
+            self.cfg_editor = ConfigEditor(self)
+            tabs.addTab(self.cfg_editor, "Configs")
+
+            self.setCentralWidget(tabs)
+
+            # styling
+            self.setStyleSheet("""
+            QWidget { font-family: Segoe UI, Arial, Helvetica, sans-serif; }
+            #statusLabel { font-weight: bold; font-size: 14px; }
+            QGroupBox { border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
+            QPushButton { padding: 6px 10px; }
+            """)
+
+            # timers
+            self.status_timer = QtCore.QTimer(self)
+            self.status_timer.timeout.connect(self.on_refresh)
+            self.status_timer.start(3000)
+
+            self.log_timer = QtCore.QTimer(self)
+            self.log_timer.timeout.connect(self.tail_logs)
+            self.log_timer.start(1000)
+
+            # initialize
+            self._log_fp = None
+            self._open_log()
     def on_ping(self):
         r = send_cmd({"action": "ping"})
         QtWidgets.QMessageBox.information(self, "Ping", str(r))
@@ -111,8 +155,78 @@ class MainWindow(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Reload Cogs", f"Failed: {r}")
 
     def on_edit_configs(self):
+        # switch to Configs tab (if available) or open modal
+        try:
+            tabs = self.parent().findChild(QtWidgets.QTabWidget)
+        except Exception:
+            tabs = None
+        if tabs:
+            for i in range(tabs.count()):
+                if tabs.tabText(i) == "Configs":
+                    tabs.setCurrentIndex(i)
+                    return
         dlg = ConfigEditor(self)
         dlg.exec()
+
+    # ==================================================
+    # Log tailing & preview helpers
+    # ==================================================
+
+    def _open_log(self):
+        # try to open repo-level `discord.log` if present
+        try:
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            log_path = os.path.join(repo_root, "discord.log")
+            if os.path.exists(log_path):
+                self._log_fp = open(log_path, "r", encoding="utf-8", errors="ignore")
+                # seek to end
+                self._log_fp.seek(0, os.SEEK_END)
+        except Exception:
+            self._log_fp = None
+
+    def tail_logs(self):
+        if not self._log_fp:
+            return
+        try:
+            for line in self._log_fp:
+                self.log_text.appendPlainText(line.rstrip())
+            # keep the view scrolled to bottom
+            self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
+        except Exception:
+            pass
+
+    def update_preview(self):
+        # simple preview using config/welcome.json values
+        try:
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            cfg_path = os.path.join(repo_root, "config", "welcome.json")
+            if not os.path.exists(cfg_path):
+                self.preview_text.setText("No welcome config found")
+                self.preview_image.clear()
+                return
+            with open(cfg_path, "r", encoding="utf-8") as fh:
+                cfg = json.load(fh)
+        except Exception:
+            cfg = {}
+
+        name = cfg.get("EXAMPLE_NAME", "NewMember")
+        rules = cfg.get("RULES_CHANNEL_ID", 0)
+        verify = cfg.get("VERIFY_CHANNEL_ID", 0)
+        role = cfg.get("ROLE_ID", 0)
+
+        text = f"@{name} — Verify: {verify}\nRules: {rules}\nRole: {role}"
+        self.preview_text.setText(text)
+
+        # show banner image if available
+        banner = cfg.get("BANNER_PATH") or os.path.join(repo_root, "assets", "welcome.png")
+        try:
+            if banner and os.path.exists(banner):
+                pix = QtGui.QPixmap(banner)
+                self.preview_image.setPixmap(pix.scaled(self.preview_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+            else:
+                self.preview_image.clear()
+        except Exception:
+            self.preview_image.clear()
 
 
 class ConfigEditor(QtWidgets.QDialog):
