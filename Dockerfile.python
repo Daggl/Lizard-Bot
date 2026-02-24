@@ -17,11 +17,15 @@ RUN apt-get update \
 # Copy project
 COPY . .
 
-# avoid running as root
-RUN useradd -m botuser || true
-USER botuser
+# ensure runtime data dir exists and will be owned by botuser
+RUN mkdir -p /app/data/web/configs \
+    && useradd -m botuser || true \
+    && chown -R botuser:botuser /app/data || true
 
 ENV PATH="/home/botuser/.local/bin:${PATH}"
+
+# avoid running as root
+USER botuser
 
 # Default: keep container running. Compose overrides the command per service.
 CMD ["sleep", "infinity"]

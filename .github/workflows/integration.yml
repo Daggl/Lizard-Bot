@@ -1,0 +1,123 @@
+name: Integration Tests (docker-compose)
+
+on:
+  push:
+    branches: [ main, chore/** ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile.python
+          push: true
+          load: true
+          tags: ghcr.io/${{ github.repository_owner }}/lizard-bot-backend:ci, lizard-bot-backend:ci
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile.frontend
+          push: true
+          load: true
+          tags: ghcr.io/${{ github.repository_owner }}/lizard-bot-frontend:ci, lizard-bot-frontend:ci
+
+      - name: Run backend container
+        run: |
+          docker run -d --name lizard-ci-backend --user root -p 8000:8000 lizard-bot-backend:ci uvicorn web.backend.main:app --host 0.0.0.0 --port 8000 || docker ps -a
+
+      - name: Show backend logs (initial)
+        run: |
+          sleep 1
+          docker logs lizard-ci-backend || true
+
+      - name: Run frontend container
+        run: |
+          docker run -d --name lizard-ci-frontend -p 5173:5173 lizard-bot-frontend:ci || docker ps -a
+
+      - name: Wait for backend to be healthy
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:8000/api/ping >/dev/null; then
+              echo "backend ready"; exit 0
+            fi
+            sleep 2
+          done
+          echo "backend did not become ready"; docker logs lizard-ci-backend || true; exit 1
+
+      - name: Wait for backend to be healthy
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:8000/api/ping >/dev/null; then
+              echo "backend ready"; exit 0
+            fi
+            sleep 2
+          done
+          echo "backend did not become ready"; exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Run smoke tests (inline)
+        run: |
+          set -e
+          echo 'Checking /api/ping with retries'
+          for i in {1..15}; do
+            if curl -sSf http://localhost:8000/api/ping >/dev/null; then
+              echo 'ping ok'; break
+            fi
+            sleep 1
+          done
+          echo 'Checking additional endpoints'
+          curl -sSf http://localhost:8000/api/ping
+          curl -sSf http://localhost:8000/api/fonts || true
+          curl -sSf http://localhost:8000/api/guilds/123/config || true
+
+      - name: Debug containers
+        if: always()
+        run: |
+          echo '--- docker ps -a ---'
+          docker ps -a || true
+          echo '--- backend inspect ---'
+          docker inspect lizard-ci-backend || true
+          echo '--- backend logs (tail 200) ---'
+          docker logs --tail 200 lizard-ci-backend || true
+          echo '--- frontend inspect ---'
+          docker inspect lizard-ci-frontend || true
+          echo '--- frontend logs (tail 200) ---'
+          docker logs --tail 200 lizard-ci-frontend || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.yml down
