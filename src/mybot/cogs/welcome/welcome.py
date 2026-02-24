@@ -34,6 +34,9 @@ FONT_USERNAME = _CFG.get("FONT_USERNAME", "assets/fonts/Poppins-Regular.ttf")
 
 # (Using the original hard-coded welcome embed below; no configurable template.)
 
+# if present in config/welcome.json, use this template (placeholders: {mention}, {rules_channel}, {verify_channel}, {aboutme_channel})
+WELCOME_MESSAGE = _CFG.get("WELCOME_MESSAGE")
+
 
 # ==========================================================
 # USERNAME CLEAN FUNCTION
@@ -251,12 +254,42 @@ class Welcome(commands.Cog):
 
         print("[DEBUG] Banner erstellt")
 
-        embed = discord.Embed(
-            description=(f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! 🎔
+        if WELCOME_MESSAGE:
+            # prepare placeholders for channels (use mention if available, else fallback text)
+            rules_mention = rules_channel.mention if rules_channel is not None else "#rules"
+            verify_mention = verify_channel.mention if verify_channel is not None else "#verify"
+            aboutme_mention = aboutme_channel.mention if aboutme_channel is not None else "#aboutme"
+
+            try:
+                description = WELCOME_MESSAGE.format(
+                    mention=member.mention,
+                    rules_channel=rules_mention,
+                    verify_channel=verify_mention,
+                    aboutme_channel=aboutme_mention,
+                )
+            except Exception:
+                description = f"{member.mention} welcome to the server"
+
+            embed = discord.Embed(
+                description=description,
+                color=discord.Color.from_rgb(140, 110, 255),
+                timestamp=datetime.utcnow(),
+            )
+
+            embed.set_image(url="attachment://welcome.png")
+
+            print("[DEBUG] Sending message...")
+
+            await welcome_channel.send(file=banner, embed=embed)
+
+            print("[DEBUG] Message sent")
+        else:
+            embed = discord.Embed(
+                description=(f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! 🎔
 𝖻𝖾𝖿𝗈𝗋𝖾 𝗒𝗈𝘂 𝖿𝗅𝗈𝖺𝗍 𝖺𝗋𝗈𝗎𝗇𝖽 𝖙𝖍𝖊 𝖘𝖊𝖗𝖛𝖊𝖗,
 𝗍𝖺𝗄𝖾 𝖺 𝗌𝖾𝖼 𝗍𝗈 𝗋𝖾𝖺𝖽 𝗍𝗁𝖾 {rules_channel.mention}
 
-˚◟𝗼𝗻𝗰𝗲 𝘆𝗈𝘂 𝗿𝗲𝗮𝘀 𝗍𝗁𝖾 𝗋𝖾𝗅𝖾𝘀◞˚
+˚◟𝗼𝗻𝗰𝗲 𝘆𝗈𝘂 𝗋𝖾𝖺𝘀 𝗍𝗁𝖾 𝗋𝖾𝗅𝖾𝘀◞˚
 
 ❀ 𝘃𝗲𝗋𝗂𝗳𝘆 𝘆𝗈𝘂𝗋𝘀𝗲𝗹𝗳 ❀
 𝗁𝖾𝖺𝖽 𝗍𝗈 {verify_channel.mention} 𝗌𝗈 𝗒𝗈𝗎 𝖼𝖺𝗇 𝗎𝗇𝗅𝗈𝖼𝗄  𝗍𝗁𝖾 𝗐𝗁𝗈𝗅𝖾 𝗌𝖾𝗋𝗏𝖾𝗋
@@ -269,17 +302,17 @@ class Welcome(commands.Cog):
 ❀ 𝗮𝗳𝘁𝗲𝗋 𝘆𝗈𝘂 𝗁𝗮𝘃𝗘 𝗖𝗈𝗆𝗉𝗅𝗘𝗧𝗘𝗗 𝗔𝗅𝗅 𝗍𝗁𝗘 𝗙𝗈𝗋𝗆𝗔𝗅𝗂𝗍𝗂𝗘𝗌 ❀
 𝗀𝗈, 𝗀𝗋𝖺𝖻 𝗒𝗈𝗎𝗋 𝗌𝗇𝖺𝖼𝗄𝗌, 𝗀𝖾𝗍 𝖼𝗈𝗆𝖿𝗒 𝖺𝗇𝖽 𝖾𝗇𝗃𝗈𝗒 𝗍𝗁𝖾 𝗀𝗈𝗈𝖽 𝗏𝗂𝖻𝖾𝗌!
 """),
-            color=discord.Color.from_rgb(140, 110, 255),
-            timestamp=datetime.utcnow(),
-        )
+                color=discord.Color.from_rgb(140, 110, 255),
+                timestamp=datetime.utcnow(),
+            )
 
-        embed.set_image(url="attachment://welcome.png")
+            embed.set_image(url="attachment://welcome.png")
 
-        print("[DEBUG] Sending message...")
+            print("[DEBUG] Sending message...")
 
-        await welcome_channel.send(file=banner, embed=embed)
+            await welcome_channel.send(file=banner, embed=embed)
 
-        print("[DEBUG] Message sent")
+            print("[DEBUG] Message sent")
 
     # ======================================================
     # TEST COMMAND
