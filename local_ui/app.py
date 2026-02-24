@@ -121,11 +121,14 @@ class MainWindow(QtWidgets.QMainWindow):
         pv_layout.addLayout(pv_top)
 
         # live rendered preview (message + simple embed look)
-        self.pv_render = QtWidgets.QLabel()
-        self.pv_render.setWordWrap(True)
-        self.pv_render.setMinimumHeight(120)
-        # make the rendered preview fit the dark theme and be readable
-        self.pv_render.setStyleSheet("background:#2b2b2b; color:#eeeeee; padding:10px; border-radius:6px;")
+        # use QTextBrowser for richer HTML support and better image handling
+        self.pv_render = QtWidgets.QTextBrowser()
+        self.pv_render.setReadOnly(True)
+        self.pv_render.setMinimumHeight(160)
+        self.pv_render.setFrameShape(QtWidgets.QFrame.NoFrame)
+        # keep the embed styling but make the widget background transparent so the embed HTML controls appearance
+        self.pv_render.setStyleSheet("background: transparent; color: #e6e6e6;")
+        self.pv_render.setOpenExternalLinks(False)
         pv_layout.addWidget(self.pv_render)
 
         pv_row = QtWidgets.QHBoxLayout()
@@ -339,14 +342,17 @@ class MainWindow(QtWidgets.QMainWindow):
 """ % (safe_name, rendered)
 
             if banner_url:
-                # show large banner image below the embed content
-                html += f"<tr><td colspan=\"2\" style=\"padding:0 12px 12px 12px;\"><img src=\"{banner_url}\" width=\"520\" style=\"border-radius:6px;\"></td></tr>"
+                # responsive banner using max-width so it fits the preview widget
+                html += f"<tr><td colspan=\"2\" style=\"padding:0 12px 12px 12px;\"><img src=\"{banner_url}\" style=\"max-width:100%; height:auto; border-radius:6px; display:block;\"/></td></tr>"
 
             html += "</table></div>"
 
-            self.pv_render.setTextFormat(QtCore.Qt.RichText)
-            self.pv_render.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-            self.pv_render.setText(html)
+            # set HTML into QTextBrowser
+            try:
+                self.pv_render.setHtml(html)
+            except Exception:
+                # fallback to plain text
+                self.pv_render.setPlainText(_html.unescape(rendered))
         except Exception:
             pass
 
