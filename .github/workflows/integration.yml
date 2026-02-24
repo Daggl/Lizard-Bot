@@ -52,6 +52,17 @@ jobs:
         run: |
           docker run -d --name lizard-ci-backend --user root -p 8000:8000 lizard-bot-backend:ci uvicorn web.backend.main:app --host 0.0.0.0 --port 8000 || docker ps -a
 
+      - name: Create .env.ci from GitHub Secrets (if present)
+        run: |
+          # Populate a temporary env file from repository secrets so sensitive values
+          # are available to docker compose at runtime but never committed.
+          > .env.ci
+          if [ -n "${{ secrets.DISCORD_TOKEN }}" ]; then echo "DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}" >> .env.ci; fi
+          if [ -n "${{ secrets.DATABASE_URL }}" ]; then echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env.ci; fi
+          if [ -n "${{ secrets.REDIS_URL }}" ]; then echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> .env.ci; fi
+          if [ -n "${{ secrets.SENTRY_DSN }}" ]; then echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env.ci; fi
+          # add more secrets here as needed
+
       - name: Show backend logs (initial)
         run: |
           sleep 1
