@@ -33,3 +33,9 @@ discord.log
 *.log
 data/logs/tickets/
 data/logs/*.txt
+
+# Audit reports
+pip_audit_post_upgrade.json
+
+# Large or binary blobs that shouldn't be committed
+cogs/music/Lavalink.jar
