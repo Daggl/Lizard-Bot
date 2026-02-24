@@ -143,26 +143,11 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     # Call setup() if present
                     if hasattr(module, "setup"):
                         try:
-                            # Debug: show current cogs before setup
-                            try:
-                                print(f"[CONTROL_API] before setup for {name}, current cogs: {list(bot.cogs.keys())}")
-                            except Exception:
-                                pass
-
                             res = module.setup(bot)
                             if asyncio.iscoroutine(res):
                                 await res
-                            # Debug: show current cogs after setup
-                            try:
-                                print(f"[CONTROL_API] after setup for {name}, current cogs: {list(bot.cogs.keys())}")
-                            except Exception:
-                                pass
                         except Exception as e:
-                            # capture full traceback for easier debugging
-                            import traceback
-                            tb = traceback.format_exc()
                             failed[name] = str(e)
-                            print(f"[CONTROL_API][ERROR] setup() for {name} raised: {tb}")
                             continue
 
                     reloaded.append(name)
