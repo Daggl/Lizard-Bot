@@ -39,7 +39,7 @@ jobs:
 
       - name: Run backend container
         run: |
-          docker run -d --name lizard-ci-backend -p 8000:8000 lizard-bot-backend:ci uvicorn web.backend.main:app --host 0.0.0.0 --port 8000 || docker ps -a
+          docker run -d --name lizard-ci-backend --user root -p 8000:8000 lizard-bot-backend:ci uvicorn web.backend.main:app --host 0.0.0.0 --port 8000 || docker ps -a
 
       - name: Show backend logs (initial)
         run: |
