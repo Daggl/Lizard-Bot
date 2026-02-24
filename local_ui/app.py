@@ -69,6 +69,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         dash_layout.addLayout(btn_row)
 
+        # connect dashboard buttons
+        self.ping_btn.clicked.connect(self.on_ping)
+        self.refresh_btn.clicked.connect(self.on_refresh)
+        self.reload_btn.clicked.connect(self.on_reload)
+        self.config_btn.clicked.connect(self.on_edit_configs)
+        self.shutdown_btn.clicked.connect(self.on_shutdown)
+
         # Preview quick card
         self.preview_card = QtWidgets.QGroupBox("Preview")
         self.preview_card.setMinimumHeight(220)
@@ -131,6 +138,11 @@ class MainWindow(QtWidgets.QMainWindow):
             ready = r.get("ready")
             cogs = r.get("cogs", [])
             self.status_label.setText(f"User: {user} — Ready: {ready} — Cogs: {len(cogs)}")
+            # update preview when status refreshed
+            try:
+                self.update_preview()
+            except Exception:
+                pass
         else:
             self.status_label.setText(f"Status: offline ({r.get('error')})")
 
@@ -341,6 +353,13 @@ class ConfigEditor(QtWidgets.QDialog):
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump(data, fh, indent=2, ensure_ascii=False)
             QtWidgets.QMessageBox.information(self, "Saved", f"Saved {name}")
+            # if parent has update_preview, call it so UI preview updates
+            try:
+                parent = self.parent()
+                if parent and hasattr(parent, "update_preview"):
+                    parent.update_preview()
+            except Exception:
+                pass
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save: {e}")
 
