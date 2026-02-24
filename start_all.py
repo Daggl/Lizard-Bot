@@ -63,6 +63,14 @@ def main():
                 print(f"  {key}={env[key]}")
 
     # Use -u to force unbuffered stdout/stderr in child Python processes
+    # Ensure per-cog config files exist (create from data/config.example.json when missing)
+    try:
+        create_configs = os.path.join(here, "scripts", "create_configs.py")
+        if os.path.exists(create_configs):
+            subprocess.run([sys.executable, create_configs], check=False)
+    except Exception:
+        pass
+
     bot_cmd = [sys.executable, "-u", "-m", "src.mybot"]
     ui_cmd = [sys.executable, "-u", "local_ui/app.py"]
 
