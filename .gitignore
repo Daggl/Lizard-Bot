@@ -24,3 +24,9 @@ web/frontend/node_modules/
 
 # Vite build
 web/frontend/dist/
+
+# Local logs and runtime files
+discord.log
+*.log
+data/logs/tickets/
+data/logs/*.txt
