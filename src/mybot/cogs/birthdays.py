@@ -4,6 +4,7 @@ import os
 from discord.ext import commands, tasks
 
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
+from mybot.utils.config import load_cog_config
 
 DATA_FOLDER = "data"
 BIRTHDAY_FILE = os.path.join(DATA_FOLDER, "birthdays.json")
@@ -15,6 +16,11 @@ def load_birthdays():
 
 def save_birthdays(data):
     safe_save_json(BIRTHDAY_FILE, data)
+
+
+# load config for birthdays (config/birthdays.json)
+_CFG = load_cog_config("birthdays")
+CHANNEL_ID = _CFG.get("CHANNEL_ID", 0)
 
 
 class Birthdays(commands.Cog):
@@ -52,7 +58,9 @@ class Birthdays(commands.Cog):
 
                     user = await self.bot.fetch_user(int(user_id))
 
-                    channel = self.bot.get_channel(1471979381588230244)
+                    channel = None
+                    if CHANNEL_ID:
+                        channel = self.bot.get_channel(int(CHANNEL_ID))
 
                     if channel is not None:
 

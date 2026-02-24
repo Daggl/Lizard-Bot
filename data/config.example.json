@@ -32,4 +32,5 @@
   "log_server": { "CHANNEL_ID": 0 },
   "leveling": { "ACHIEVEMENT_CHANNEL_ID": 0 },
   "count": { "COUNT_CHANNEL_ID": 0 }
+  ,"birthdays": { "CHANNEL_ID": 0 }
 }
