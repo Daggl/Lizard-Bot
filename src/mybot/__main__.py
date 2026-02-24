@@ -26,7 +26,21 @@ main = None
 
 # Preferred: package runner
 try:
-    from src.mybot.lizard import main as pkg_main
+    # When running as a package, prefer a relative import. If import fails,
+    # print the exception to help debug why the module couldn't be loaded.
+    import traceback
+
+    try:
+        from .lizard import main as pkg_main
+    except Exception as e_rel:
+        print("Failed relative import of .lizard:", repr(e_rel))
+        traceback.print_exc()
+        try:
+            from src.mybot.lizard import main as pkg_main
+        except Exception as e_abs:
+            print("Failed absolute import of src.mybot.lizard:", repr(e_abs))
+            traceback.print_exc()
+            raise
 
     main = pkg_main
 except Exception:

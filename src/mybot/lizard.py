@@ -112,110 +112,133 @@ async def on_message(message):
 
 
 async def main():
-
     # check if token exists
     if not token:
-
-        print("DISCORD_TOKEN not set. " "Create a .env file with DISCORD_TOKEN=...")
-
+        print("DISCORD_TOKEN not set. Create a .env file with DISCORD_TOKEN=...")
         return
 
     # start bot context
-    async with bot:
+    server_task = None
 
-        # Ensure per-cog config files exist (created from config.example.json)
-        created = ensure_configs_from_example()
-        if created:
-            print("Created missing config files:", ", ".join(created))
-
-        # ==================================================
-        # LOAD COGS
-        # ==================================================
-
-        extensions = [
-            "mybot.cogs.birthdays",
-            "mybot.cogs.welcome.welcome",
-            "mybot.cogs.poll",
-            "mybot.cogs.leveling.levels",
-            "mybot.cogs.leveling.rank",
-            "mybot.cogs.leveling.achievements",
-            "mybot.cogs.leveling.rewards",
-            "mybot.cogs.leveling.tracking",
-            "mybot.cogs.help_tutorial",
-            "mybot.cogs.admin.admin_panel",
-            "mybot.cogs.admin.admin_tools",
-            "mybot.cogs.admin.admin_tutorial",
-            "mybot.cogs.count",
-            "mybot.cogs.log.chat_log",
-            "mybot.cogs.log.mod_log",
-            "mybot.cogs.log.member_log",
-            "mybot.cogs.log.voice_log",
-            "mybot.cogs.log.server_log",
-            "mybot.cogs.welcome.autorole",
-            "mybot.cogs.say",
-            "mybot.cogs.tickets.ticket",
-            "mybot.cogs.music",
-        ]
-
-        import importlib
-        import traceback
-
-        for ext in extensions:
-
-            try:
-
-                # Import the module directly so we can call its setup()
-                module = importlib.import_module(ext)
-
-                # If module provides setup(), call it (await if coroutine)
-                if hasattr(module, "setup"):
-
-                    try:
-
-                        result = module.setup(bot)
-
-                        if asyncio.iscoroutine(result):
-                            await result
-
-                    except Exception:
-
-                        print(f"[COG][ERROR] setup() failed for {ext}:")
-                        traceback.print_exc()
-
-                # If there's no setup(), do nothing (silent success)
-
-            except Exception:
-
-                print(f"[COG][FAILED] Could not import {ext}:")
-                traceback.print_exc()
-
-        # ==================================================
-        # START BOT
-        # ==================================================
-
+    # Optionally start local control API
+    if os.getenv("LOCAL_UI_ENABLE") == "1":
+        control_api_module = None
         try:
-
-            # connect bot to Discord
-            await bot.start(token)
-
-        except asyncio.CancelledError:
-
-            print("Cancelled")
-            raise
-
+            from mybot import control_api as control_api_module
         except Exception:
+            try:
+                from src.mybot import control_api as control_api_module
+            except Exception as e:
+                print("Failed to import local UI control API:", e)
+                control_api_module = None
 
+        if control_api_module is not None:
+            try:
+                server_task = asyncio.create_task(control_api_module.serve(bot))
+            except Exception as e:
+                print("Failed to start local UI control API:", e)
+
+    try:
+        async with bot:
+
+            # Ensure per-cog config files exist (created from config.example.json)
+            created = ensure_configs_from_example()
+            if created:
+                print("Created missing config files:", ", ".join(created))
+
+            # ==================================================
+            # LOAD COGS
+            # ==================================================
+
+            extensions = [
+                "mybot.cogs.birthdays",
+                "mybot.cogs.welcome.welcome",
+                "mybot.cogs.poll",
+                "mybot.cogs.leveling.levels",
+                "mybot.cogs.leveling.rank",
+                "mybot.cogs.leveling.achievements",
+                "mybot.cogs.leveling.rewards",
+                "mybot.cogs.leveling.tracking",
+                "mybot.cogs.help_tutorial",
+                "mybot.cogs.admin.admin_panel",
+                "mybot.cogs.admin.admin_tools",
+                "mybot.cogs.admin.admin_tutorial",
+                "mybot.cogs.count",
+                "mybot.cogs.log.chat_log",
+                "mybot.cogs.log.mod_log",
+                "mybot.cogs.log.member_log",
+                "mybot.cogs.log.voice_log",
+                "mybot.cogs.log.server_log",
+                "mybot.cogs.welcome.autorole",
+                "mybot.cogs.say",
+                "mybot.cogs.tickets.ticket",
+                "mybot.cogs.music",
+            ]
+
+            import importlib
             import traceback
 
-            # print full error
-            traceback.print_exc()
+            # track which cogs each extension adds so reloads can remove them precisely
+            loaded_extensions = {}
 
-            # close bot cleanly
-            await bot.close()
+            for ext in extensions:
+                try:
+                    before = set(bot.cogs.keys())
+                    module = importlib.import_module(ext)
+                    if hasattr(module, "setup"):
+                        try:
+                            result = module.setup(bot)
+                            if asyncio.iscoroutine(result):
+                                await result
+                            # record any new cogs added by this extension
+                            after = set(bot.cogs.keys())
+                            added = sorted(list(after - before))
+                            if added:
+                                loaded_extensions[ext] = added
+                        except Exception:
+                            print(f"[COG][ERROR] setup() failed for {ext}:")
+                            traceback.print_exc()
+                except Exception:
+                    print(f"[COG][FAILED] Could not import {ext}:")
+                    traceback.print_exc()
 
-            raise
+            # expose mapping for runtime reload operations
+            try:
+                # attach to module so control_api can import it
+                import types
+                setattr(sys.modules.get(__name__), "loaded_extensions", loaded_extensions)
+            except Exception:
+                pass
+
+            # ==================================================
+            # START BOT
+            # ==================================================
+
+            try:
+                await bot.start(token)
+            except asyncio.CancelledError:
+                print("Cancelled")
+                raise
+            except Exception:
+                traceback.print_exc()
+                await bot.close()
+                raise
+    finally:
+        # ensure control API task is cancelled when bot exits
+        if server_task is not None:
+            try:
+                server_task.cancel()
+            except Exception:
+                pass
 
 
 # ==========================================================
 # SCRIPT START
 # ==========================================================
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
