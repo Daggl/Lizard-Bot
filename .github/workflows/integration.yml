@@ -57,6 +57,11 @@ jobs:
           sleep 1
           docker logs lizard-ci-backend || true
 
+      - name: Fix backend data permissions (in-container)
+        run: |
+          echo 'Attempting in-container chown to fix /app/data permissions'
+          docker exec --user root lizard-ci-backend sh -c 'chown -R botuser:botuser /app/data || true' || true
+
       - name: Run frontend container
         run: |
           docker run -d --name lizard-ci-frontend -p 5173:5173 lizard-bot-frontend:ci || docker ps -a
