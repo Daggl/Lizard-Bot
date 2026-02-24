@@ -29,7 +29,29 @@ ROLE_ID = _CFG.get("ROLE_ID", 0)
 BANNER_PATH = _CFG.get("BANNER_PATH", "assets/welcome.png")
 
 FONT_WELCOME = _CFG.get("FONT_WELCOME", "assets/fonts/Poppins-Bold.ttf")
+# fonts
 FONT_USERNAME = _CFG.get("FONT_USERNAME", "assets/fonts/Poppins-Regular.ttf")
+
+# allow the welcome message to be configured via config/welcome.json
+
+# Fallback template matching the original message but with placeholders
+DEFAULT_WELCOME_MESSAGE = (
+    "{mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! 🎔\n"
+    "you made it to our lovely community!\n"
+    "before you float around the server,\n"
+    "take a sec to read the {rules_channel}\n\n"
+    "˚◟𝗼𝗻𝗰𝗲 𝘆𝗈𝘂 𝗋𝖾𝖺𝘀 𝗍𝗁𝖾 𝗋𝖾𝗅𝖾𝘀◞˚\n\n"
+    "❀ 𝘃𝗲𝗋𝗂𝗳𝘆 𝘆𝗈𝘂𝗋𝘀𝗲𝗹𝗳 ❀\n"
+    "head to {verify_channel} so you can unlock the whole server\n"
+    "(yes, all the cozy & chaotic parts)\n\n"
+    "❀ 𝗶𝗻𝘁𝗋𝗈𝗱𝘂𝗰𝗲 𝘆𝗈𝘂𝗋𝘀𝗲𝗹𝗳 ❀\n"
+    "cruise over to {aboutme_channel} and tell us more about you!\n"
+    "we want to know who you are before we adopt you\n\n"
+    "❀ 𝗮𝗳𝘁𝗲𝗋 𝘆𝗈𝘂 𝗁𝗮𝘃𝗘 𝗖𝗈𝗆𝗉𝗅𝗘𝗧𝗘𝗗 𝗔𝗅𝗅 𝗍𝗁𝗘 𝗙𝗈𝗋𝗆𝗔𝗅𝗂𝗍𝗂𝗘𝗌 ❀\n"
+    "go, grab your snacks, get comfy and enjoy the good vibes!"
+)
+
+WELCOME_MESSAGE = _CFG.get("WELCOME_MESSAGE", DEFAULT_WELCOME_MESSAGE)
 
 
 # ==========================================================
@@ -248,24 +270,25 @@ class Welcome(commands.Cog):
 
         print("[DEBUG] Banner erstellt")
 
+        # prepare placeholders for channels (use mention if available, else fallback text)
+        rules_mention = rules_channel.mention if rules_channel is not None else "#rules"
+        verify_mention = verify_channel.mention if verify_channel is not None else "#verify"
+        aboutme_mention = aboutme_channel.mention if aboutme_channel is not None else "#aboutme"
+
+        # format the configured welcome message template
+        try:
+            description = WELCOME_MESSAGE.format(
+                mention=member.mention,
+                rules_channel=rules_mention,
+                verify_channel=verify_mention,
+                aboutme_channel=aboutme_mention,
+            )
+        except Exception:
+            # fallback to a simple mention if template fails
+            description = f"{member.mention} welcome to the server"
+
         embed = discord.Embed(
-            description=(f"""{member.mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! 🎔
-𝖻𝖾𝖿𝗈𝗋𝖾 𝗒𝗈𝘂 𝖿𝗅𝗈𝖺𝗍 𝖺𝗋𝗈𝗎𝗇𝖽 𝖙𝖍𝖊 𝖘𝖊𝖗𝖛𝖊𝖗,
-𝗍𝖺𝗄𝖾 𝖺 𝗌𝖾𝖼 𝗍𝗈 𝗋𝖾𝖺𝖽 𝗍𝗁𝖾 {rules_channel.mention}
-
-˚◟𝗼𝗻𝗰𝗲 𝘆𝗈𝘂 𝗿𝗲𝗮𝘀 𝗍𝗁𝖾 𝗋𝖾𝗅𝖾𝘀◞˚
-
-❀ 𝘃𝗲𝗋𝗂𝗳𝘆 𝘆𝗈𝘂𝗋𝘀𝗲𝗹𝗳 ❀
-𝗁𝖾𝖺𝖽 𝗍𝗈 {verify_channel.mention} 𝗌𝗈 𝗒𝗈𝗎 𝖼𝖺𝗇 𝗎𝗇𝗅𝗈𝖼𝗄  𝗍𝗁𝖾 𝗐𝗁𝗈𝗅𝖾 𝗌𝖾𝗋𝗏𝖾𝗋
-(𝗒𝖾𝗌, 𝖺𝗅𝗅 𝗍𝗁𝖾 𝖼𝗈𝗓𝗒 & 𝖼𝗁𝖺𝗈𝗍𝗂𝖼 𝗉𝖺𝗋𝗍𝗌)
-
-❀ 𝗶𝗻𝘁𝗋𝗈𝗱𝘂𝗰𝗲 𝘆𝗈𝘂𝗋𝘀𝗲𝗹𝗳 ❀
-𝖼𝗋𝗎𝗂𝖼𝗋 𝗈𝗏𝖾𝗋 𝗍𝗈 {aboutme_channel.mention} 𝖺𝗇𝖽 𝗍𝖾𝗅𝗅  𝗎𝗌 𝗆𝗈𝗋𝖾 𝖺𝖻𝗈𝗎𝖳 𝗒𝗈𝗎!
-𝗐𝖾 𝗐𝖺𝗇𝗍 𝗍𝗈 𝗄𝗇𝗈𝗐 𝗐𝗁𝗈 𝗒𝗈𝗎 𝖺𝗋𝗂 𝖻𝖾𝖿𝗈𝗋𝖾 𝗐𝖾 𝖺𝖽𝗈𝗉𝗍 𝗒𝗈𝗎
-
-❀ 𝗮𝗳𝘁𝗲𝗋 𝘆𝗈𝘂 𝗁𝗮𝘃𝗘 𝗖𝗈𝗆𝗉𝗅𝗘𝗧𝗘𝗗 𝗔𝗅𝗅 𝗍𝗁𝗘 𝗙𝗈𝗋𝗆𝗔𝗅𝗂𝗍𝗂𝗘𝗌 ❀
-𝗀𝗈, 𝗀𝗋𝖺𝖻 𝗒𝗈𝗎𝗋 𝗌𝗇𝖺𝖼𝗄𝗌, 𝗀𝖾𝗍 𝖼𝗈𝗆𝖿𝗒 𝖺𝗇𝖽 𝖾𝗇𝗃𝗈𝗒 𝗍𝗁𝖾 𝗀𝗈𝗈𝖽 𝗏𝗂𝖻𝖾𝗌!
-"""),
+            description=description,
             color=discord.Color.from_rgb(140, 110, 255),
             timestamp=datetime.utcnow(),
         )

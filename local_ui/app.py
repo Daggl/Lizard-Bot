@@ -278,7 +278,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             cfg["EXAMPLE_NAME"] = self.pv_name.text() or cfg.get("EXAMPLE_NAME", "NewMember")
             cfg["BANNER_PATH"] = self.pv_banner_path.text() or cfg.get("BANNER_PATH", cfg.get("BANNER_PATH", "assets/welcome.png"))
-            cfg["PREVIEW_MESSAGE"] = self.pv_message.toPlainText()
+            cfg["WELCOME_MESSAGE"] = self.pv_message.toPlainText()
 
             os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
             with open(cfg_path, "w", encoding="utf-8") as fh:
@@ -416,7 +416,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.pv_name.setText(str(cfg.get("EXAMPLE_NAME", "NewMember")))
             self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "")))
-            self.pv_message.setPlainText(str(cfg.get("PREVIEW_MESSAGE", "Welcome {mention}!")))
+            self.pv_message.setPlainText(str(cfg.get("WELCOME_MESSAGE", "Welcome {mention}!")))
             try:
                 self._apply_live_preview()
             except Exception:
