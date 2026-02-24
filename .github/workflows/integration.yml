@@ -25,6 +25,7 @@ jobs:
           context: .
           file: Dockerfile.python
           push: false
+          load: true
           tags: lizard-bot-backend:ci
 
       - name: Build frontend image
@@ -33,6 +34,7 @@ jobs:
           context: .
           file: Dockerfile.frontend
           push: false
+          load: true
           tags: lizard-bot-frontend:ci
 
       - name: Run backend container
