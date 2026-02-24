@@ -8,7 +8,7 @@ from mybot.utils.config import load_cog_config
 
 _CFG = load_cog_config("log_member")
 
-CHANNEL_ID = _CFG.get("CHANNEL_ID", 1472016429032275968)
+CHANNEL_ID = _CFG.get("CHANNEL_ID", 0)
 FILE = _CFG.get("FILE", "data/logs/member_logs.json")
 
 

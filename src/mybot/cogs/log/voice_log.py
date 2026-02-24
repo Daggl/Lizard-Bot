@@ -8,7 +8,7 @@ from mybot.utils.config import load_cog_config
 
 _CFG = load_cog_config("log_voice")
 
-CHANNEL_ID = _CFG.get("CHANNEL_ID", 1472016385725956108)
+CHANNEL_ID = _CFG.get("CHANNEL_ID", 0)
 FILE = _CFG.get("FILE", "data/logs/voice_logs.json")
 
 
