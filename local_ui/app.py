@@ -61,10 +61,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ping_btn = QtWidgets.QPushButton("Ping")
         self.refresh_btn = QtWidgets.QPushButton("Refresh Status")
         self.reload_btn = QtWidgets.QPushButton("Reload Cogs")
-        self.config_btn = QtWidgets.QPushButton("Edit Configs")
         self.shutdown_btn = QtWidgets.QPushButton("Shutdown Bot")
 
-        for w in (self.ping_btn, self.refresh_btn, self.reload_btn, self.config_btn, self.shutdown_btn):
+        for w in (self.ping_btn, self.refresh_btn, self.reload_btn, self.shutdown_btn):
             btn_row.addWidget(w)
 
         dash_layout.addLayout(btn_row)
@@ -73,7 +72,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ping_btn.clicked.connect(self.on_ping)
         self.refresh_btn.clicked.connect(self.on_refresh)
         self.reload_btn.clicked.connect(self.on_reload)
-        self.config_btn.clicked.connect(self.on_edit_configs)
+        # config editor is available as its own tab; dashboard button removed
         self.shutdown_btn.clicked.connect(self.on_shutdown)
 
         # Preview quick card
@@ -103,6 +102,50 @@ class MainWindow(QtWidgets.QMainWindow):
         # Config editor tab
         self.cfg_editor = ConfigEditor(self)
         tabs.addTab(self.cfg_editor, "Configs")
+
+        # Preview tab (detailed settings + render)
+        preview_w = QtWidgets.QWidget()
+        pv_layout = QtWidgets.QVBoxLayout(preview_w)
+
+        pv_top = QtWidgets.QHBoxLayout()
+        self.pv_banner = QtWidgets.QLabel()
+        self.pv_banner.setFixedSize(520, 180)
+        self.pv_banner.setScaledContents(True)
+        pv_top.addWidget(self.pv_banner, 0)
+
+        pv_form = QtWidgets.QFormLayout()
+        self.pv_name = QtWidgets.QLineEdit()
+        self.pv_banner_path = QtWidgets.QLineEdit()
+        self.pv_banner_browse = QtWidgets.QPushButton("Choose...")
+        h = QtWidgets.QHBoxLayout()
+        h.addWidget(self.pv_banner_path)
+        h.addWidget(self.pv_banner_browse)
+        pv_form.addRow("Example name:", self.pv_name)
+        pv_form.addRow("Banner image:", h)
+        self.pv_message = QtWidgets.QPlainTextEdit()
+        self.pv_message.setPlaceholderText("Welcome message template. Use {mention} for mention.")
+        pv_form.addRow("Message:", self.pv_message)
+
+        pv_top.addLayout(pv_form, 1)
+        pv_layout.addLayout(pv_top)
+
+        pv_row = QtWidgets.QHBoxLayout()
+        self.pv_save = QtWidgets.QPushButton("Save")
+        self.pv_save_reload = QtWidgets.QPushButton("Save + Reload")
+        self.pv_refresh = QtWidgets.QPushButton("Refresh Preview")
+        pv_row.addStretch()
+        pv_row.addWidget(self.pv_refresh)
+        pv_row.addWidget(self.pv_save)
+        pv_row.addWidget(self.pv_save_reload)
+        pv_layout.addLayout(pv_row)
+
+        tabs.addTab(preview_w, "Preview")
+
+        # wire preview controls
+        self.pv_banner_browse.clicked.connect(self._choose_banner)
+        self.pv_refresh.clicked.connect(self.update_preview)
+        self.pv_save.clicked.connect(lambda: self._save_preview(reload_after=False))
+        self.pv_save_reload.clicked.connect(lambda: self._save_preview(reload_after=True))
 
         self.setCentralWidget(tabs)
 
@@ -197,6 +240,52 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception:
             self._log_fp = None
 
+    def _choose_banner(self):
+        try:
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            start_dir = os.path.join(repo_root, "assets") if os.path.exists(os.path.join(repo_root, "assets")) else repo_root
+            path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Choose banner image", start_dir, "Images (*.png *.jpg *.jpeg *.bmp)")
+            if path:
+                self.pv_banner_path.setText(path)
+                pix = QtGui.QPixmap(path)
+                self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+        except Exception:
+            pass
+
+    def _save_preview(self, reload_after: bool = False):
+        try:
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            cfg_path = os.path.join(repo_root, "config", "welcome.json")
+            try:
+                with open(cfg_path, "r", encoding="utf-8") as fh:
+                    cfg = json.load(fh)
+            except Exception:
+                cfg = {}
+
+            cfg["EXAMPLE_NAME"] = self.pv_name.text() or cfg.get("EXAMPLE_NAME", "NewMember")
+            cfg["BANNER_PATH"] = self.pv_banner_path.text() or cfg.get("BANNER_PATH", cfg.get("BANNER_PATH", "assets/welcome.png"))
+            cfg["PREVIEW_MESSAGE"] = self.pv_message.toPlainText()
+
+            os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                json.dump(cfg, fh, indent=2, ensure_ascii=False)
+
+            # update preview immediately
+            try:
+                self.update_preview()
+            except Exception:
+                pass
+
+            if reload_after:
+                try:
+                    send_cmd({"action": "reload"}, timeout=3.0)
+                except Exception:
+                    pass
+
+            QtWidgets.QMessageBox.information(self, "Saved", "Preview settings saved")
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save preview settings: {e}")
+
     def tail_logs(self):
         if not self._log_fp:
             return
@@ -236,10 +325,30 @@ class MainWindow(QtWidgets.QMainWindow):
             if banner and os.path.exists(banner):
                 pix = QtGui.QPixmap(banner)
                 self.preview_image.setPixmap(pix.scaled(self.preview_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                try:
+                    self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                except Exception:
+                    pass
             else:
                 self.preview_image.clear()
+                try:
+                    self.pv_banner.clear()
+                except Exception:
+                    pass
         except Exception:
             self.preview_image.clear()
+            try:
+                self.pv_banner.clear()
+            except Exception:
+                pass
+
+        # update fields in Preview tab if present
+        try:
+            self.pv_name.setText(str(cfg.get("EXAMPLE_NAME", "NewMember")))
+            self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "")))
+            self.pv_message.setPlainText(str(cfg.get("PREVIEW_MESSAGE", f"Welcome { { 'mention' } }!")))
+        except Exception:
+            pass
 
 
 class ConfigEditor(QtWidgets.QDialog):
