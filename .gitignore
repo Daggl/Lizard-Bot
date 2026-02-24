@@ -18,6 +18,9 @@ data/tickets/*.txt
 # Python env
 .venv/
 
+# Pytest cache
+.pytest_cache/
+
 # Node
 node_modules/
 web/frontend/node_modules/
