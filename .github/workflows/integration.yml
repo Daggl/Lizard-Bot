@@ -83,6 +83,20 @@ jobs:
           python scripts/check_backend_ping.py
           python scripts/check_api.py
 
+      - name: Debug containers
+        if: always()
+        run: |
+          echo '--- docker ps -a ---'
+          docker ps -a || true
+          echo '--- backend inspect ---'
+          docker inspect lizard-ci-backend || true
+          echo '--- backend logs (tail 200) ---'
+          docker logs --tail 200 lizard-ci-backend || true
+          echo '--- frontend inspect ---'
+          docker inspect lizard-ci-frontend || true
+          echo '--- frontend logs (tail 200) ---'
+          docker logs --tail 200 lizard-ci-frontend || true
+
       - name: Tear down
         if: always()
         run: docker compose -f docker-compose.yml down
