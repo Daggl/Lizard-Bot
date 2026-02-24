@@ -8,7 +8,10 @@ Write-Host "Running start_all.py - starting bot and local UI in the current term
 $venvPython = Join-Path -Path $PSScriptRoot -ChildPath ".venv\Scripts\python.exe"
 if (Test-Path $venvPython) {
 	Write-Host "Using venv python: $venvPython"
-	& $venvPython start_all.py
+	# Force unbuffered output for Python processes
+	$env:PYTHONUNBUFFERED = '1'
+	& $venvPython -u start_all.py
 } else {
-	python start_all.py
+	$env:PYTHONUNBUFFERED = '1'
+	python -u start_all.py
 }

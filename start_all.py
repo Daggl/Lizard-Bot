@@ -50,6 +50,8 @@ def main():
 
     # Ensure UI control is enabled for bot (force enable)
     env["LOCAL_UI_ENABLE"] = "1"
+    # Force unbuffered output so logs appear immediately
+    env["PYTHONUNBUFFERED"] = "1"
 
     # If CONTROL_API_TOKEN not set, leave as-is (UI will also try to read it from env)
     print("Starting bot and local UI with the following env vars (hidden values not shown):")
@@ -60,8 +62,9 @@ def main():
             else:
                 print(f"  {key}={env[key]}")
 
-    bot_cmd = [sys.executable, "-m", "src.mybot"]
-    ui_cmd = [sys.executable, "local_ui/app.py"]
+    # Use -u to force unbuffered stdout/stderr in child Python processes
+    bot_cmd = [sys.executable, "-u", "-m", "src.mybot"]
+    ui_cmd = [sys.executable, "-u", "local_ui/app.py"]
 
     bot_proc = subprocess.Popen(bot_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env, text=True)
     ui_proc = subprocess.Popen(ui_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env, text=True)
