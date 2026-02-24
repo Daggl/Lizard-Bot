@@ -319,31 +319,39 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # substitute placeholder safely
             safe_name = _html.escape(name)
+            # preserve newlines as <br> and substitute mention
             rendered = _html.escape(message).replace("{mention}", f"<b>@{safe_name}</b>")
+            rendered = rendered.replace("\n", "<br>")
 
             # build Discord-like embed HTML using basic table layout (Qt supports a subset of HTML/CSS)
             # left colored bar, dark embed background, banner image below header
             banner_url = ""
             if banner and os.path.exists(banner):
                 # file URL must be absolute
-                banner_url = f"file:///{os.path.abspath(banner).replace('\\', '/')}"
+                        banner_url = f"file:///{os.path.abspath(banner).replace('\\', '/')}"
 
-            html = """
+                        html = """
 <div style="font-family:Segoe UI, Arial; color:#e6e6e6;">
-  <table cellpadding="0" cellspacing="0" width="100%" style="background:#2f3136; border-radius:8px;">
-    <tr>
-      <td width="6" style="background:#5865F2; border-top-left-radius:8px; border-bottom-left-radius:8px;"></td>
-      <td style="padding:12px; vertical-align:top;">
-        <div style="font-size:11pt; font-weight:700; color:#ffffff;">WELCOME</div>
-        <div style="font-size:9pt; color:#b9bbbe; margin-top:4px;">to the server — <b>@%s</b></div>
-      </td>
-    </tr>
-    <tr><td colspan="2" style="padding:8px 12px 12px 12px; color:#d8d8d8; font-size:10pt;">%s</td></tr>
+    <table cellpadding="0" cellspacing="0" width="100%" style="background:#2f3136; border-radius:8px;">
+        <tr>
+            <td width="6" style="background:#5865F2; border-top-left-radius:8px; border-bottom-left-radius:8px;"></td>
+            <td style="padding:12px; vertical-align:top;">
+                <div style="font-size:10pt; font-weight:700; color:#ffffff; letter-spacing:1px;">Lizard Bot</div>
+                <div style="font-size:9pt; color:#b9bbbe; margin-top:4px;">just checked in — welcome <b>@%s</b></div>
+            </td>
+        </tr>
+        <tr><td colspan="2" style="padding:10px 12px 6px 12px; color:#d8d8d8; font-size:10pt; line-height:1.35;">%s</td></tr>
 """ % (safe_name, rendered)
 
             if banner_url:
                 # responsive banner using max-width so it fits the preview widget
-                html += f"<tr><td colspan=\"2\" style=\"padding:0 12px 12px 12px;\"><img src=\"{banner_url}\" style=\"max-width:100%; height:auto; border-radius:6px; display:block;\"/></td></tr>"
+                html += f"<tr><td colspan=\"2\" style=\"padding:0 12px 12px 12px;\"><img src=\"{banner_url}\" style=\"width:100%; height:auto; border-radius:6px; display:block;\"/></td></tr>"
+
+            # Add a caption row to mimic large title under banner (helps approximate Discord-style composition)
+            html += "<tr><td colspan=\"2\" style=\"padding:6px 12px 12px 12px;\">"
+            html += "<div style=\"font-size:18pt; font-weight:800; color:#ffffff; margin-bottom:4px;\">WELCOME</div>"
+            html += f"<div style=\"font-size:12pt; color:#dcdcdc;\">{safe_name}</div>"
+            html += "</td></tr>"
 
             html += "</table></div>"
 
