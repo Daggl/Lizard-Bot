@@ -117,6 +117,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_message.setPlaceholderText("Welcome message template. Use {mention} for mention.")
         pv_form.addRow("Message:", self.pv_message)
 
+        # placeholder helper buttons
+        ph_row = QtWidgets.QHBoxLayout()
+        self.ph_mention = QtWidgets.QPushButton("{mention}")
+        self.ph_rules = QtWidgets.QPushButton("{rules_channel}")
+        self.ph_verify = QtWidgets.QPushButton("{verify_channel}")
+        self.ph_about = QtWidgets.QPushButton("{aboutme_channel}")
+        ph_row.addWidget(self.ph_mention)
+        ph_row.addWidget(self.ph_rules)
+        ph_row.addWidget(self.ph_verify)
+        ph_row.addWidget(self.ph_about)
+        pv_form.addRow("Placeholders:", ph_row)
+
+        # wire placeholder buttons to insert text at cursor
+        self.ph_mention.clicked.connect(lambda: self._insert_placeholder('{mention}'))
+        self.ph_rules.clicked.connect(lambda: self._insert_placeholder('{rules_channel}'))
+        self.ph_verify.clicked.connect(lambda: self._insert_placeholder('{verify_channel}'))
+        self.ph_about.clicked.connect(lambda: self._insert_placeholder('{aboutme_channel}'))
+
         pv_top.addLayout(pv_form, 1)
         pv_layout.addLayout(pv_top)
 
@@ -263,6 +281,19 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.pv_banner_path.setText(path)
                 pix = QtGui.QPixmap(path)
                 self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+        except Exception:
+            pass
+
+    def _insert_placeholder(self, text: str):
+        try:
+            cur = self.pv_message.textCursor()
+            cur.insertText(text)
+            self.pv_message.setTextCursor(cur)
+            # trigger live preview
+            try:
+                self._preview_debounce.start()
+            except Exception:
+                pass
         except Exception:
             pass
 

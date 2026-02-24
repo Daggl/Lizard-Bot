@@ -11,7 +11,7 @@ import discord
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
-from mybot.utils.config import load_cog_config
+from mybot.utils.config import load_cog_config, write_cog_config
 
 # ==========================================================
 # CONFIGURATION (loaded from config/welcome.json with fallbacks)
@@ -36,6 +36,31 @@ FONT_USERNAME = _CFG.get("FONT_USERNAME", "assets/fonts/Poppins-Regular.ttf")
 
 # if present in config/welcome.json, use this template (placeholders: {mention}, {rules_channel}, {verify_channel}, {aboutme_channel})
 WELCOME_MESSAGE = _CFG.get("WELCOME_MESSAGE")
+
+# If no WELCOME_MESSAGE is configured, write the original hard-coded template
+DEFAULT_TEMPLATE = (
+    "{mention} 𝗷𝘂𝘀𝘁 𝗰𝗵𝗲𝗰𝗸𝗲𝗱 𝗶𝗻! 🎔\n"
+    "you made it to our lovely community!\n"
+    "before you float around the server,\n"
+    "take a sec to read the {rules_channel}\n\n"
+    "˚◟𝗼𝗻𝗰𝗲 𝘆𝗈𝘂 𝗋𝖾𝖺𝘀 𝗍𝗁𝖾 𝗋𝖾𝗅𝖾𝘀◞˚\n\n"
+    "❀ 𝘃𝗲𝗋𝗂𝗳𝘆 𝘆𝗈𝘂𝗋𝘀𝗲𝗹𝗳 ❀\n"
+    "head to {verify_channel} so you can unlock the whole server\n"
+    "(yes, all the cozy & chaotic parts)\n\n"
+    "❀ 𝗶𝗻𝘁𝗋𝗈𝗱𝘂𝗰𝗲 𝘆𝗈𝘂𝗋𝘀𝗲𝗹𝗳 ❀\n"
+    "cruise over to {aboutme_channel} and tell us more about you!\n"
+    "we want to know who you are before we adopt you\n\n"
+    "❀ 𝗮𝗳𝘁𝗲𝗋 𝘆𝗈𝘂 𝗁𝗮𝘃𝗘 𝗖𝗈𝗆𝗉𝗅𝗘𝗧𝗘𝗗 𝗔𝗅𝗅 𝗍𝗁𝗘 𝗙𝗈𝗋𝗆𝗔𝗅𝗂𝗍𝗂𝗘𝗌 ❀\n"
+    "go, grab your snacks, get comfy and enjoy the good vibes!"
+)
+
+if WELCOME_MESSAGE is None:
+    # persist the default template to config so UI and bot share it
+    try:
+        write_cog_config("welcome", {"WELCOME_MESSAGE": DEFAULT_TEMPLATE})
+        WELCOME_MESSAGE = DEFAULT_TEMPLATE
+    except Exception:
+        WELCOME_MESSAGE = None
 
 
 # ==========================================================

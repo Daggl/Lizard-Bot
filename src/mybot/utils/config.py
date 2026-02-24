@@ -90,3 +90,32 @@ def ensure_configs_from_example() -> List[str]:
                 continue
 
     return created
+
+
+def write_cog_config(name: str, data: dict) -> bool:
+    """Write `data` to `config/{name}.json` and update the cache.
+
+    Returns True on success, False on failure.
+    """
+    repo_root = _find_repo_root_from_package()
+    cfg_path = os.path.join(repo_root, "config", f"{name}.json")
+    os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
+    try:
+        # merge with existing if present
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as fh:
+                existing = json.load(fh) or {}
+        except Exception:
+            existing = {}
+
+        # update existing with provided keys
+        existing.update(data or {})
+
+        with open(cfg_path, "w", encoding="utf-8") as fh:
+            json.dump(existing, fh, indent=2, ensure_ascii=False)
+
+        # update cache
+        _CACHE[name] = existing
+        return True
+    except Exception:
+        return False
