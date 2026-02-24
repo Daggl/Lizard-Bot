@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from mybot.cogs.leveling.utils.database import Database
-from mybot.cogs.leveling.utils.level_config import ACHIEVEMENT_CHANNEL_ID
+from mybot.cogs.leveling.utils.level_config import ACHIEVEMENT_CHANNEL_ID, EMOJI_WIN, EMOJI_HEART
 
 # ======================================================
 # XP FORMULA
@@ -66,11 +66,11 @@ class Levels(commands.Cog):
                 embed = discord.Embed(
                     description=(
                         f" \n\n"
-                        f"<:gg_wp:1473709030839943189> "
+                        f"{EMOJI_WIN} "
                         f"{member.mention}\n"
                         f"you just reached level {user['level']}!\n "
                         f"keep it up, cutie! "
-                        f"<a:AP_scribbleheart:1472809672946745519>"
+                        f"{EMOJI_HEART}"
                     ),
                     color=0x5865F2,
                 )

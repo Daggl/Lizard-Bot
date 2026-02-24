@@ -3,6 +3,8 @@ from mybot.utils.config import load_cog_config
 _CFG = load_cog_config("leveling")
 
 ACHIEVEMENT_CHANNEL_ID = _CFG.get("ACHIEVEMENT_CHANNEL_ID", 1471988884761088130)
+EMOJI_WIN = _CFG.get("EMOJI_WIN", "<:gg_wp:1473709030839943189>")
+EMOJI_HEART = _CFG.get("EMOJI_HEART", "<a:AP_scribbleheart:1472809672946745519>")
 
 XP_PER_MESSAGE = _CFG.get("XP_PER_MESSAGE", 15)
 VOICE_XP_PER_MINUTE = _CFG.get("VOICE_XP_PER_MINUTE", 10)

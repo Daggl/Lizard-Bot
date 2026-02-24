@@ -30,7 +30,11 @@
   "log_member": { "CHANNEL_ID": 0 },
   "log_voice": { "CHANNEL_ID": 0 },
   "log_server": { "CHANNEL_ID": 0 },
-  "leveling": { "ACHIEVEMENT_CHANNEL_ID": 0 },
+  "leveling": {
+    "ACHIEVEMENT_CHANNEL_ID": 0,
+    "EMOJI_WIN": "<:gg_wp:1473709030839943189>",
+    "EMOJI_HEART": "<a:AP_scribbleheart:1472809672946745519>"
+  },
   "count": { "COUNT_CHANNEL_ID": 0 }
   ,"birthdays": { "CHANNEL_ID": 0 }
 }
