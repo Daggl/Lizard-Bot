@@ -8,6 +8,7 @@ import sys
 import os
 import json
 import socket
+import html as _html
 from PySide6 import QtWidgets, QtCore, QtGui
 
 
@@ -75,17 +76,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # config editor is available as its own tab; dashboard button removed
         self.shutdown_btn.clicked.connect(self.on_shutdown)
 
-        # Preview quick card
-        self.preview_card = QtWidgets.QGroupBox("Preview")
-        self.preview_card.setMinimumHeight(220)
-        prev_layout = QtWidgets.QHBoxLayout(self.preview_card)
-        self.preview_image = QtWidgets.QLabel()
-        self.preview_image.setFixedSize(360, 120)
-        self.preview_image.setScaledContents(True)
-        prev_layout.addWidget(self.preview_image)
-        self.preview_text = QtWidgets.QLabel("No preview available")
-        prev_layout.addWidget(self.preview_text)
-        dash_layout.addWidget(self.preview_card)
+        # Dashboard quick summary removed — detailed preview is in the Preview tab
 
         dash_layout.addStretch()
 
@@ -129,6 +120,14 @@ class MainWindow(QtWidgets.QMainWindow):
         pv_top.addLayout(pv_form, 1)
         pv_layout.addLayout(pv_top)
 
+        # live rendered preview (message + simple embed look)
+        self.pv_render = QtWidgets.QLabel()
+        self.pv_render.setWordWrap(True)
+        self.pv_render.setMinimumHeight(120)
+        # make the rendered preview fit the dark theme and be readable
+        self.pv_render.setStyleSheet("background:#2b2b2b; color:#eeeeee; padding:10px; border-radius:6px;")
+        pv_layout.addWidget(self.pv_render)
+
         pv_row = QtWidgets.QHBoxLayout()
         self.pv_save = QtWidgets.QPushButton("Save")
         self.pv_save_reload = QtWidgets.QPushButton("Save + Reload")
@@ -146,6 +145,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_refresh.clicked.connect(self.update_preview)
         self.pv_save.clicked.connect(lambda: self._save_preview(reload_after=False))
         self.pv_save_reload.clicked.connect(lambda: self._save_preview(reload_after=True))
+
+        # live preview: debounce updates while typing
+        self._preview_debounce = QtCore.QTimer(self)
+        self._preview_debounce.setSingleShot(True)
+        self._preview_debounce.setInterval(250)
+        self._preview_debounce.timeout.connect(self._apply_live_preview)
+
+        # QLineEdit.textChanged provides the new text, QPlainTextEdit.textChanged provides no args
+        # Use an argless wrapper so signal/slot signatures match and avoid TypeError
+        self.pv_name.textChanged.connect(lambda: self._preview_debounce.start())
+        self.pv_banner_path.textChanged.connect(lambda: self._preview_debounce.start())
+        self.pv_message.textChanged.connect(lambda: self._preview_debounce.start())
 
         self.setCentralWidget(tabs)
 
@@ -286,6 +297,59 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save preview settings: {e}")
 
+    def _apply_live_preview(self):
+        # render preview from current fields (banner + formatted message)
+        try:
+            name = self.pv_name.text() or "NewMember"
+            banner = self.pv_banner_path.text() or ""
+            message = self.pv_message.toPlainText() or "Welcome {mention}!"
+
+            # update banner pixmap
+            try:
+                if banner and os.path.exists(banner):
+                    pix = QtGui.QPixmap(banner)
+                    self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                else:
+                    self.pv_banner.clear()
+            except Exception:
+                self.pv_banner.clear()
+
+            # substitute placeholder safely
+            safe_name = _html.escape(name)
+            rendered = _html.escape(message).replace("{mention}", f"<b>@{safe_name}</b>")
+
+            # build Discord-like embed HTML using basic table layout (Qt supports a subset of HTML/CSS)
+            # left colored bar, dark embed background, banner image below header
+            banner_url = ""
+            if banner and os.path.exists(banner):
+                # file URL must be absolute
+                banner_url = f"file:///{os.path.abspath(banner).replace('\\', '/')}"
+
+            html = """
+<div style="font-family:Segoe UI, Arial; color:#e6e6e6;">
+  <table cellpadding="0" cellspacing="0" width="100%" style="background:#2f3136; border-radius:8px;">
+    <tr>
+      <td width="6" style="background:#5865F2; border-top-left-radius:8px; border-bottom-left-radius:8px;"></td>
+      <td style="padding:12px; vertical-align:top;">
+        <div style="font-size:11pt; font-weight:700; color:#ffffff;">WELCOME</div>
+        <div style="font-size:9pt; color:#b9bbbe; margin-top:4px;">to the server — <b>@%s</b></div>
+      </td>
+    </tr>
+    <tr><td colspan="2" style="padding:8px 12px 12px 12px; color:#d8d8d8; font-size:10pt;">%s</td></tr>
+""" % (safe_name, rendered)
+
+            if banner_url:
+                # show large banner image below the embed content
+                html += f"<tr><td colspan=\"2\" style=\"padding:0 12px 12px 12px;\"><img src=\"{banner_url}\" width=\"520\" style=\"border-radius:6px;\"></td></tr>"
+
+            html += "</table></div>"
+
+            self.pv_render.setTextFormat(QtCore.Qt.RichText)
+            self.pv_render.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
+            self.pv_render.setText(html)
+        except Exception:
+            pass
+
     def tail_logs(self):
         if not self._log_fp:
             return
@@ -303,50 +367,46 @@ class MainWindow(QtWidgets.QMainWindow):
             repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             cfg_path = os.path.join(repo_root, "config", "welcome.json")
             if not os.path.exists(cfg_path):
-                self.preview_text.setText("No welcome config found")
-                self.preview_image.clear()
+                try:
+                    self.pv_render.setText("No welcome config found")
+                    self.pv_banner.clear()
+                except Exception:
+                    pass
                 return
             with open(cfg_path, "r", encoding="utf-8") as fh:
                 cfg = json.load(fh)
         except Exception:
             cfg = {}
 
-        name = cfg.get("EXAMPLE_NAME", "NewMember")
-        rules = cfg.get("RULES_CHANNEL_ID", 0)
-        verify = cfg.get("VERIFY_CHANNEL_ID", 0)
-        role = cfg.get("ROLE_ID", 0)
-
-        text = f"@{name} — Verify: {verify}\nRules: {rules}\nRole: {role}"
-        self.preview_text.setText(text)
-
-        # show banner image if available
+        # show banner image if available (for Preview tab)
         banner = cfg.get("BANNER_PATH") or os.path.join(repo_root, "assets", "welcome.png")
         try:
             if banner and os.path.exists(banner):
                 pix = QtGui.QPixmap(banner)
-                self.preview_image.setPixmap(pix.scaled(self.preview_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
                 try:
                     self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
                 except Exception:
                     pass
             else:
-                self.preview_image.clear()
                 try:
                     self.pv_banner.clear()
                 except Exception:
                     pass
         except Exception:
-            self.preview_image.clear()
             try:
                 self.pv_banner.clear()
             except Exception:
                 pass
 
-        # update fields in Preview tab if present
+        # update fields in Preview tab and render
         try:
             self.pv_name.setText(str(cfg.get("EXAMPLE_NAME", "NewMember")))
             self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "")))
-            self.pv_message.setPlainText(str(cfg.get("PREVIEW_MESSAGE", f"Welcome { { 'mention' } }!")))
+            self.pv_message.setPlainText(str(cfg.get("PREVIEW_MESSAGE", "Welcome {mention}!")))
+            try:
+                self._apply_live_preview()
+            except Exception:
+                pass
         except Exception:
             pass
 
