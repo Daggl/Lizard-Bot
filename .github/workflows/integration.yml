@@ -125,4 +125,7 @@ jobs:
 
       - name: Tear down
         if: always()
-        run: docker compose -f docker-compose.yml down
+        run: |
+          # ensure missing .env doesn't cause `down` to fail
+          touch .env || true
+          docker compose -f docker-compose.yml down || true
