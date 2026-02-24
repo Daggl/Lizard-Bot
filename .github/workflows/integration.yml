@@ -37,7 +37,7 @@ jobs:
           file: Dockerfile.python
           push: true
           load: true
-          tags: ghcr.io/${{ github.repository_owner }}/lizard-bot-backend:ci, lizard-bot-backend:ci
+          tags: ghcr.io/${{ toLower(github.repository_owner) }}/lizard-bot-backend:ci, lizard-bot-backend:ci
 
       - name: Build & push frontend image
         uses: docker/build-push-action@v4
@@ -46,7 +46,7 @@ jobs:
           file: Dockerfile.frontend
           push: true
           load: true
-          tags: ghcr.io/${{ github.repository_owner }}/lizard-bot-frontend:ci, lizard-bot-frontend:ci
+          tags: ghcr.io/${{ toLower(github.repository_owner) }}/lizard-bot-frontend:ci, lizard-bot-frontend:ci
 
       - name: Run backend container
         run: |
