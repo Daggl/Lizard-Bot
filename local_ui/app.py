@@ -85,40 +85,41 @@ class MainWindow(QtWidgets.QMainWindow):
 
         tabs.addTab(dash, "Dashboard")
 
-            # Logs tab (live tail)
-            logs = QtWidgets.QWidget()
-            logs_layout = QtWidgets.QVBoxLayout(logs)
-            self.log_text = QtWidgets.QPlainTextEdit()
-            self.log_text.setReadOnly(True)
-            logs_layout.addWidget(self.log_text)
-            tabs.addTab(logs, "Logs")
+        # Logs tab (live tail)
+        logs = QtWidgets.QWidget()
+        logs_layout = QtWidgets.QVBoxLayout(logs)
+        self.log_text = QtWidgets.QPlainTextEdit()
+        self.log_text.setReadOnly(True)
+        logs_layout.addWidget(self.log_text)
+        tabs.addTab(logs, "Logs")
 
-            # Config editor tab
-            self.cfg_editor = ConfigEditor(self)
-            tabs.addTab(self.cfg_editor, "Configs")
+        # Config editor tab
+        self.cfg_editor = ConfigEditor(self)
+        tabs.addTab(self.cfg_editor, "Configs")
 
-            self.setCentralWidget(tabs)
+        self.setCentralWidget(tabs)
 
-            # styling
-            self.setStyleSheet("""
-            QWidget { font-family: Segoe UI, Arial, Helvetica, sans-serif; }
-            #statusLabel { font-weight: bold; font-size: 14px; }
-            QGroupBox { border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
-            QPushButton { padding: 6px 10px; }
-            """)
+        # styling
+        self.setStyleSheet("""
+        QWidget { font-family: Segoe UI, Arial, Helvetica, sans-serif; }
+        #statusLabel { font-weight: bold; font-size: 14px; }
+        QGroupBox { border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
+        QPushButton { padding: 6px 10px; }
+        """)
 
-            # timers
-            self.status_timer = QtCore.QTimer(self)
-            self.status_timer.timeout.connect(self.on_refresh)
-            self.status_timer.start(3000)
+        # timers
+        self.status_timer = QtCore.QTimer(self)
+        self.status_timer.timeout.connect(self.on_refresh)
+        self.status_timer.start(3000)
 
-            self.log_timer = QtCore.QTimer(self)
-            self.log_timer.timeout.connect(self.tail_logs)
-            self.log_timer.start(1000)
+        self.log_timer = QtCore.QTimer(self)
+        self.log_timer.timeout.connect(self.tail_logs)
+        self.log_timer.start(1000)
 
-            # initialize
-            self._log_fp = None
-            self._open_log()
+        # initialize
+        self._log_fp = None
+        self._open_log()
+        self.on_refresh()
     def on_ping(self):
         r = send_cmd({"action": "ping"})
         QtWidgets.QMessageBox.information(self, "Ping", str(r))
