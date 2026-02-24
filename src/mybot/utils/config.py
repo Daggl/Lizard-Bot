@@ -34,6 +34,26 @@ def load_cog_config(name: str) -> dict:
     return data
 
 
+def clear_cog_config_cache(name: str = None) -> None:
+    """Clear cached config for `name` or all caches if name is None.
+
+    This is useful when config files are edited at runtime and the bot
+    should pick up new values without a full restart.
+    """
+
+    global _CACHE
+    if name is None:
+        _CACHE.clear()
+    else:
+        _CACHE.pop(name, None)
+
+
+def get_cached_configs() -> dict:
+    """Return a shallow copy of the current config cache (for debugging)."""
+
+    return dict(_CACHE)
+
+
 def ensure_configs_from_example() -> List[str]:
     """Create per-cog config files in `config/` from `config.example.json` if missing.
 

@@ -16,6 +16,17 @@ from typing import Dict
 import inspect
 from discord.ext import commands as _commands
 
+# helper: clear config cache when reloading so UI edits take effect
+def _clear_config_cache():
+    try:
+        try:
+            from mybot.utils import config as _cfg
+        except Exception:
+            from src.mybot.utils import config as _cfg
+        _cfg.clear_cog_config_cache()
+    except Exception:
+        pass
+
 # simple auth token read from env
 CONTROL_API_TOKEN = os.getenv("CONTROL_API_TOKEN")
 
@@ -68,6 +79,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             return
 
         elif action in ("reload", "reload_cogs"):
+            # ensure any updated JSON configs are re-read by clearing cache
+            _clear_config_cache()
             # Unload existing cogs first to avoid "Cog already loaded" errors
             reloaded = []
             failed = {}
