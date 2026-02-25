@@ -1,45 +1,39 @@
-Local UI (PySide6) — Quick Start
+# Local UI
 
-Prerequisites
-- Python 3.10+ installed
-- PySide6 available (install globally or in a venv)
+Native desktop UI (PySide6) for controlling the bot over local JSON-over-TCP API.
 
-Environment
-- `CONTROL_API_TOKEN` — shared secret for the control API (set same value for bot and UI)
-- `LOCAL_UI_ENABLE=1` — set before starting the bot so the control API is started
+## Requirements
 
-Run the bot (in one terminal):
+- Python 3.10+
+- Dependencies from [requirements.txt](requirements.txt)
+- Bot started with `LOCAL_UI_ENABLE=1`
+
+## Start
+
+Bot terminal:
+
 ```powershell
 $env:CONTROL_API_TOKEN='your-token'
 $env:LOCAL_UI_ENABLE='1'
-python -m src.mybot
+.\.venv\Scripts\python -m src.mybot
 ```
 
-Run the UI (other terminal):
+UI terminal:
+
 ```powershell
 $env:CONTROL_API_TOKEN='your-token'
-python local_ui\app.py
+.\.venv\Scripts\python local_ui\app.py
 ```
 
-Features
-- Status polling (every 3s)
-- Ping
-- Reload Cogs (reloads `mybot.cogs.*` modules and calls their `setup()` if present)
-- Shutdown bot
+## Features
 
-Security
-- Keep `CONTROL_API_TOKEN` secret. The UI sends it from the environment when present.
-- For higher security consider using a local-only Unix socket, HMAC, or client certs.
-# Local UI
+- Bot status, ping, reload, shutdown
+- Welcome banner preview and save flow
+- Rankcard preview and config save
+- Live log tailing (file + sqlite mode)
 
-This is a simple native desktop UI for the bot. It communicates with the bot
-via a local JSON-over-TCP control API (127.0.0.1:8765). To enable the API,
-start the bot with the environment variable `LOCAL_UI_ENABLE=1`.
+## Notes
 
-Quick start (Windows PowerShell):
-
-```powershell
-python -m src.mybot  # in one terminal, with LOCAL_UI_ENABLE=1
-# in another terminal
-python local_ui/app.py
-```
+- `CONTROL_API_TOKEN` must match between bot and UI.
+- Runtime trace/log output is written to [../data/logs](../data/logs).
+- Dev helper scripts are in [../scripts/dev](../scripts/dev).

@@ -9,6 +9,7 @@ data/logs/*.db
 # Ignore local per-cog configuration folder
 config/
 config/*.json
+config/*.bak.*
 
 # New data layout
 data/db/
@@ -33,6 +34,9 @@ discord.log
 *.log
 data/logs/tickets/
 data/logs/*.txt
+data/logs/tracked.log*
+data/logs/ui_run_trace.log
+data/logs/ui_start.log
 
 # Audit reports
 pip_audit_post_upgrade.json
