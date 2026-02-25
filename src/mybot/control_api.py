@@ -245,6 +245,60 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         else:
             resp = {"ok": False, "error": "unknown action"}
 
+        # Rank card preview: generate rank image for a dummy member using Rank cog
+        if action == "rank_preview":
+            name = req.get("name") or "NewMember"
+            avatar_url = req.get("avatar_url")
+            try:
+                rank_cog = bot.get_cog("Rank") or bot.cogs.get("Rank")
+                if rank_cog is None:
+                    resp = {"ok": False, "error": "rank cog not loaded"}
+                else:
+                    class _Avatar:
+                        def __init__(self, url):
+                            self.url = url
+
+                    class _DummyMember:
+                        def __init__(self, uid, name, avatar_url):
+                            self.id = uid
+                            self.display_name = name
+                            self.name = name
+                            self.mention = f"@{name}"
+                            self.display_avatar = _Avatar(avatar_url)
+
+                    if not avatar_url:
+                        try:
+                            avatar_url = getattr(bot.user, "display_avatar", None)
+                            if avatar_url is not None:
+                                avatar_url = getattr(avatar_url, "url", None)
+                        except Exception:
+                            avatar_url = None
+
+                    if not avatar_url:
+                        avatar_url = "https://httpbin.org/image/png"
+
+                    dummy = _DummyMember(123456789, name, avatar_url)
+                    try:
+                        card_file = await rank_cog.generate_rankcard(dummy)
+                    except Exception as e:
+                        resp = {"ok": False, "error": f"rank generation failed: {e}"}
+                    else:
+                        fp = getattr(card_file, "fp", None)
+                        if fp is None:
+                            resp = {"ok": False, "error": "no file buffer returned"}
+                        else:
+                            try:
+                                fp.seek(0)
+                            except Exception:
+                                pass
+                            import base64
+
+                            data = fp.read()
+                            b64 = base64.b64encode(data).decode()
+                            resp = {"ok": True, "png_base64": b64}
+            except Exception as e:
+                resp = {"ok": False, "error": str(e)}
+
         writer.write((json.dumps(resp) + "\n").encode())
         await writer.drain()
 

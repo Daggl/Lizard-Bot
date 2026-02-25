@@ -161,6 +161,30 @@ class MainWindow(QtWidgets.QMainWindow):
 
         tabs.addTab(preview_w, "Preview")
 
+        # Rankcard preview tab
+        rank_w = QtWidgets.QWidget()
+        rank_layout = QtWidgets.QVBoxLayout(rank_w)
+
+        rk_top = QtWidgets.QHBoxLayout()
+        self.rk_image = QtWidgets.QLabel()
+        self.rk_image.setFixedSize(700, 210)
+        self.rk_image.setScaledContents(True)
+        rk_top.addWidget(self.rk_image, 0)
+
+        rk_form = QtWidgets.QFormLayout()
+        self.rk_name = QtWidgets.QLineEdit()
+        self.rk_refresh = QtWidgets.QPushButton("Refresh Rankcard")
+        rk_form.addRow("Example name:", self.rk_name)
+        rk_form.addRow("", self.rk_refresh)
+
+        rk_top.addLayout(rk_form, 1)
+        rank_layout.addLayout(rk_top)
+
+        tabs.addTab(rank_w, "Rankcard")
+
+        # wire rankcard controls
+        self.rk_refresh.clicked.connect(self.on_refresh_rankpreview)
+
         # wire preview controls
         self.pv_banner_browse.clicked.connect(self._choose_banner)
         self.pv_refresh.clicked.connect(self.on_refresh_preview)
@@ -178,6 +202,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_name.textChanged.connect(lambda: self._preview_debounce.start())
         self.pv_banner_path.textChanged.connect(lambda: self._preview_debounce.start())
         self.pv_message.textChanged.connect(lambda: self._preview_debounce.start())
+        self.rk_name.textChanged.connect(lambda: self._preview_debounce.start())
 
         self.setCentralWidget(tabs)
 
@@ -253,6 +278,27 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Preview error", str(e))
         else:
             self.status_label.setText(f"Status: offline ({r.get('error')})")
+
+    def on_refresh_rankpreview(self):
+        """Request a rankcard from the bot and display it in the Rankcard tab."""
+        try:
+            name = self.rk_name.text() or (self.pv_name.text() or "NewMember")
+            r = send_cmd({"action": "rank_preview", "name": name}, timeout=3.0)
+            if r.get("ok") and r.get("png_base64"):
+                b64 = r.get("png_base64")
+                data = QtCore.QByteArray.fromBase64(b64.encode())
+                pix = QtGui.QPixmap()
+                if pix.loadFromData(data):
+                    try:
+                        self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                    except Exception:
+                        self.rk_image.setPixmap(pix)
+                    # store for persistence if needed
+                    self._rank_preview_data_url = f"data:image/png;base64,{b64}"
+                    return
+            QtWidgets.QMessageBox.warning(self, "Rank Preview", f"Failed to get rankcard from bot: {r}")
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Rank Preview error", str(e))
 
     def on_shutdown(self):
         r = send_cmd({"action": "shutdown"})
