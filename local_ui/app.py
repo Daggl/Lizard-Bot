@@ -263,6 +263,17 @@ class MainWindow(QtWidgets.QMainWindow):
         pv_top.addWidget(self.pv_banner, 0)
 
         pv_form = QtWidgets.QFormLayout()
+        pv_form.setFieldGrowthPolicy(QtWidgets.QFormLayout.ExpandingFieldsGrow)
+        pv_form.setLabelAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        pv_form.setHorizontalSpacing(12)
+        pv_form.setVerticalSpacing(8)
+
+        def _pv_section(text: str) -> QtWidgets.QLabel:
+            label = QtWidgets.QLabel(text)
+            label.setObjectName("sectionLabel")
+            return label
+
+        pv_form.addRow(_pv_section("General"))
         self.pv_name = QtWidgets.QLineEdit()
         self.pv_banner_path = QtWidgets.QLineEdit()
         self.pv_banner_browse = QtWidgets.QPushButton("Choose...")
@@ -272,9 +283,11 @@ class MainWindow(QtWidgets.QMainWindow):
         pv_form.addRow("Example name:", self.pv_name)
         pv_form.addRow("Banner image:", h)
         self.pv_message = QtWidgets.QPlainTextEdit()
+        self.pv_message.setMaximumHeight(100)
         self.pv_message.setPlaceholderText("Welcome message template. Use {mention} for mention.")
         pv_form.addRow("Message:", self.pv_message)
 
+        pv_form.addRow(_pv_section("Typography"))
         self.pv_title = QtWidgets.QLineEdit()
         self.pv_title.setPlaceholderText("WELCOME")
         pv_form.addRow("Banner title:", self.pv_title)
@@ -292,11 +305,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_title_size = QtWidgets.QSpinBox()
         self.pv_title_size.setRange(8, 400)
         self.pv_title_size.setValue(140)
+        self.pv_title_size.setFixedWidth(120)
         pv_form.addRow("Title size:", self.pv_title_size)
 
         self.pv_user_size = QtWidgets.QSpinBox()
         self.pv_user_size.setRange(8, 300)
         self.pv_user_size.setValue(64)
+        self.pv_user_size.setFixedWidth(120)
         pv_form.addRow("Username size:", self.pv_user_size)
 
         self.pv_title_color = QtWidgets.QLineEdit()
@@ -307,13 +322,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_user_color.setPlaceholderText("#E6E6E6")
         pv_form.addRow("Username color:", self.pv_user_color)
 
+        pv_form.addRow(_pv_section("Position"))
         title_pos_row = QtWidgets.QHBoxLayout()
         self.pv_title_x = QtWidgets.QSpinBox()
         self.pv_title_x.setRange(-2000, 2000)
         self.pv_title_x.setSingleStep(5)
+        self.pv_title_x.setFixedWidth(110)
         self.pv_title_y = QtWidgets.QSpinBox()
         self.pv_title_y.setRange(-2000, 2000)
         self.pv_title_y.setSingleStep(5)
+        self.pv_title_y.setFixedWidth(110)
         title_pos_row.addWidget(QtWidgets.QLabel("X"))
         title_pos_row.addWidget(self.pv_title_x)
         title_pos_row.addSpacing(10)
@@ -326,9 +344,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_user_x = QtWidgets.QSpinBox()
         self.pv_user_x.setRange(-2000, 2000)
         self.pv_user_x.setSingleStep(5)
+        self.pv_user_x.setFixedWidth(110)
         self.pv_user_y = QtWidgets.QSpinBox()
         self.pv_user_y.setRange(-2000, 2000)
         self.pv_user_y.setSingleStep(5)
+        self.pv_user_y.setFixedWidth(110)
         user_pos_row.addWidget(QtWidgets.QLabel("X"))
         user_pos_row.addWidget(self.pv_user_x)
         user_pos_row.addSpacing(10)
@@ -341,9 +361,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_text_x = QtWidgets.QSpinBox()
         self.pv_text_x.setRange(-2000, 2000)
         self.pv_text_x.setSingleStep(5)
+        self.pv_text_x.setFixedWidth(110)
         self.pv_text_y = QtWidgets.QSpinBox()
         self.pv_text_y.setRange(-2000, 2000)
         self.pv_text_y.setSingleStep(5)
+        self.pv_text_y.setFixedWidth(110)
         text_pos_row.addWidget(QtWidgets.QLabel("X"))
         text_pos_row.addWidget(self.pv_text_x)
         text_pos_row.addSpacing(10)
@@ -356,9 +378,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_avatar_x = QtWidgets.QSpinBox()
         self.pv_avatar_x.setRange(-2000, 2000)
         self.pv_avatar_x.setSingleStep(5)
+        self.pv_avatar_x.setFixedWidth(110)
         self.pv_avatar_y = QtWidgets.QSpinBox()
         self.pv_avatar_y.setRange(-2000, 2000)
         self.pv_avatar_y.setSingleStep(5)
+        self.pv_avatar_y.setFixedWidth(110)
         pos_row.addWidget(QtWidgets.QLabel("X"))
         pos_row.addWidget(self.pv_avatar_x)
         pos_row.addSpacing(10)
@@ -385,7 +409,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ph_verify.clicked.connect(lambda: self._insert_placeholder('{verify_channel}'))
         self.ph_about.clicked.connect(lambda: self._insert_placeholder('{aboutme_channel}'))
 
-        pv_top.addLayout(pv_form, 1)
+        pv_controls_w = QtWidgets.QWidget()
+        pv_controls_w.setLayout(pv_form)
+        pv_scroll = QtWidgets.QScrollArea()
+        pv_scroll.setWidgetResizable(True)
+        pv_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        pv_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        pv_scroll.setWidget(pv_controls_w)
+        pv_top.addWidget(pv_scroll, 1)
         pv_layout.addLayout(pv_top)
 
         # Toolbar row for preview actions
@@ -626,6 +657,12 @@ class MainWindow(QtWidgets.QMainWindow):
         }
         QLabel {
             color: #DCE5F5;
+        }
+        QLabel#sectionLabel {
+            color: #8FB6FF;
+            font-weight: 700;
+            padding-top: 8px;
+            padding-bottom: 2px;
         }
         QStatusBar {
             background: #151B24;
