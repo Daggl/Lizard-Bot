@@ -173,8 +173,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         rk_form = QtWidgets.QFormLayout()
         self.rk_name = QtWidgets.QLineEdit()
+        self.rk_bg_path = QtWidgets.QLineEdit()
+        self.rk_bg_browse = QtWidgets.QPushButton("Choose...")
+        hbg = QtWidgets.QHBoxLayout()
+        hbg.addWidget(self.rk_bg_path)
+        hbg.addWidget(self.rk_bg_browse)
         self.rk_refresh = QtWidgets.QPushButton("Refresh Rankcard")
         rk_form.addRow("Example name:", self.rk_name)
+        rk_form.addRow("Background PNG:", hbg)
         rk_form.addRow("", self.rk_refresh)
 
         rk_top.addLayout(rk_form, 1)
@@ -184,6 +190,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # wire rankcard controls
         self.rk_refresh.clicked.connect(self.on_refresh_rankpreview)
+        self.rk_bg_browse.clicked.connect(self._choose_rank_bg)
 
         # wire preview controls
         self.pv_banner_browse.clicked.connect(self._choose_banner)
@@ -203,6 +210,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_banner_path.textChanged.connect(lambda: self._preview_debounce.start())
         self.pv_message.textChanged.connect(lambda: self._preview_debounce.start())
         self.rk_name.textChanged.connect(lambda: self._preview_debounce.start())
+        # ensure rank preview doesn't get clobbered when other previews update
 
         self.setCentralWidget(tabs)
 
@@ -360,6 +368,22 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.pv_banner_path.setText(path)
                 pix = QtGui.QPixmap(path)
                 self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+        except Exception:
+            pass
+
+    def _choose_rank_bg(self):
+        try:
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            start_dir = os.path.join(repo_root, "assets") if os.path.exists(os.path.join(repo_root, "assets")) else repo_root
+            path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Choose rank background image", start_dir, "Images (*.png *.jpg *.jpeg *.bmp)")
+            if path:
+                self.rk_bg_path.setText(path)
+                # optional: show it scaled in the rank image preview area
+                try:
+                    pix = QtGui.QPixmap(path)
+                    self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                except Exception:
+                    pass
         except Exception:
             pass
 

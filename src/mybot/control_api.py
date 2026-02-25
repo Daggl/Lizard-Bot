@@ -278,8 +278,10 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         avatar_url = "https://httpbin.org/image/png"
 
                     dummy = _DummyMember(123456789, name, avatar_url)
+                    bg_path = req.get("bg_path")
                     try:
-                        card_file = await rank_cog.generate_rankcard(dummy)
+                        # pass bg_path through to rank cog (bot and UI typically run on same host)
+                        card_file = await rank_cog.generate_rankcard(dummy, bg_path=bg_path)
                     except Exception as e:
                         resp = {"ok": False, "error": f"rank generation failed: {e}"}
                     else:

@@ -1,4 +1,5 @@
 import io
+import os
 
 import aiohttp
 import discord
@@ -56,7 +57,7 @@ class Rank(commands.Cog):
     # GENERATE CARD
     # ======================================================
 
-    async def generate_rankcard(self, member):
+    async def generate_rankcard(self, member, bg_path: str = None):
 
         user = self.bot.db.get_user(member.id)
 
@@ -70,7 +71,15 @@ class Rank(commands.Cog):
         voice_minutes = user["voice_time"] // 60
         achievements = len(user["achievements"])
 
-        card = Image.open("assets/rankcard.png").convert("RGB")
+        # allow overriding the default background with a provided PNG path
+        try:
+            if bg_path and os.path.exists(bg_path):
+                card = Image.open(bg_path).convert("RGB")
+            else:
+                card = Image.open("assets/rankcard.png").convert("RGB")
+        except Exception:
+            # fallback: create a blank base if loading fails
+            card = Image.new("RGB", (CARD_WIDTH, CARD_HEIGHT), (18, 18, 18))
 
         card = card.resize((CARD_WIDTH, CARD_HEIGHT))
 
