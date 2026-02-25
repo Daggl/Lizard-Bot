@@ -10,6 +10,7 @@ import sys
 import os
 import json
 import socket
+import threading
 import sqlite3
 import subprocess
 import traceback
@@ -177,6 +178,8 @@ sys.excepthook = _handle_uncaught_exception
 
 
 class MainWindow(QtWidgets.QMainWindow):
+    _async_done = QtCore.Signal(object)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DC Bot — Local UI")
@@ -269,6 +272,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_message = QtWidgets.QPlainTextEdit()
         self.pv_message.setPlaceholderText("Welcome message template. Use {mention} for mention.")
         pv_form.addRow("Message:", self.pv_message)
+
+        self.pv_title = QtWidgets.QLineEdit()
+        self.pv_title.setPlaceholderText("WELCOME")
+        pv_form.addRow("Banner title:", self.pv_title)
+
+        pos_row = QtWidgets.QHBoxLayout()
+        self.pv_avatar_x = QtWidgets.QSpinBox()
+        self.pv_avatar_x.setRange(-2000, 2000)
+        self.pv_avatar_x.setSingleStep(5)
+        self.pv_avatar_y = QtWidgets.QSpinBox()
+        self.pv_avatar_y.setRange(-2000, 2000)
+        self.pv_avatar_y.setSingleStep(5)
+        pos_row.addWidget(QtWidgets.QLabel("X"))
+        pos_row.addWidget(self.pv_avatar_x)
+        pos_row.addSpacing(10)
+        pos_row.addWidget(QtWidgets.QLabel("Y"))
+        pos_row.addWidget(self.pv_avatar_y)
+        pos_row.addStretch()
+        pv_form.addRow("Avatar offset:", pos_row)
 
         # placeholder helper buttons
         ph_row = QtWidgets.QHBoxLayout()
@@ -383,6 +405,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_name.textChanged.connect(lambda: self._preview_debounce.start())
         self.pv_banner_path.textChanged.connect(lambda: self._preview_debounce.start())
         self.pv_message.textChanged.connect(lambda: self._preview_debounce.start())
+        self.pv_title.textChanged.connect(lambda: self._preview_debounce.start())
+        self.pv_avatar_x.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_avatar_y.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_name.textChanged.connect(self._mark_preview_dirty)
+        self.pv_banner_path.textChanged.connect(self._mark_preview_dirty)
+        self.pv_message.textChanged.connect(self._mark_preview_dirty)
+        self.pv_title.textChanged.connect(self._mark_preview_dirty)
+        self.pv_avatar_x.valueChanged.connect(self._mark_preview_dirty)
+        self.pv_avatar_y.valueChanged.connect(self._mark_preview_dirty)
         self.rk_name.textChanged.connect(lambda: self._preview_debounce.start())
         # ensure rank preview doesn't get clobbered when other previews update
 
@@ -408,6 +439,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # background poller for logs (db or tail); created when a log is chosen
         self._log_poller = None
+        self._status_inflight = False
 
         # initialize
         self._log_fp = None
@@ -421,6 +453,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # rank preview persisted settings
         self._rank_config = {}
         self._rank_config_path = None
+        self._preview_dirty = False
+        self._preview_syncing = False
         self._open_log()
         self.on_refresh()
         # load rank config if present
@@ -446,6 +480,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
         # attach helper to instance for use in handlers
         self._set_status = _set_status
+        try:
+            self._async_done.connect(self._process_async_result)
+        except Exception:
+            pass
         # write a startup marker so the user can confirm the UI launched
         try:
             try:
@@ -468,22 +506,94 @@ class MainWindow(QtWidgets.QMainWindow):
             self._alive_timer.start(2000)
         except Exception:
             pass
+
+    def closeEvent(self, event):
+        try:
+            try:
+                self.status_timer.stop()
+            except Exception:
+                pass
+            try:
+                self.log_timer.stop()
+            except Exception:
+                pass
+            try:
+                if getattr(self, "_alive_timer", None):
+                    self._alive_timer.stop()
+            except Exception:
+                pass
+            try:
+                if getattr(self, "_log_poller", None):
+                    self._log_poller.stop()
+            except Exception:
+                pass
+            try:
+                if getattr(self, "_log_fp", None):
+                    self._log_fp.close()
+            except Exception:
+                pass
+            try:
+                if getattr(self, "_tracked_fp", None):
+                    self._tracked_fp.close()
+            except Exception:
+                pass
+            try:
+                if getattr(self, "_db_conn", None):
+                    self._db_conn.close()
+            except Exception:
+                pass
+        except Exception:
+            pass
+        return super().closeEvent(event)
+
+    def send_cmd_async(self, cmd: dict, timeout: float = 1.0, cb=None):
+        def _worker():
+            try:
+                res = send_cmd(cmd, timeout=timeout)
+            except Exception as e:
+                res = {"ok": False, "error": str(e)}
+            try:
+                self._async_done.emit((cb, res))
+            except Exception:
+                pass
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _process_async_result(self, payload):
+        try:
+            cb, res = payload
+            if cb:
+                cb(res)
+        except Exception:
+            pass
+
     def on_ping(self):
-        r = send_cmd({"action": "ping"})
+        self.send_cmd_async({"action": "ping"}, timeout=0.8, cb=self._on_ping_result)
+
+    def _on_ping_result(self, r: dict):
         QtWidgets.QMessageBox.information(self, "Ping", str(r))
 
     def on_refresh(self):
-        r = send_cmd({"action": "status"})
-        if r.get("ok"):
-            user = r.get("user") or "(no user)"
-            ready = r.get("ready")
-            cogs = r.get("cogs", [])
-            self.status_label.setText(f"User: {user} — Ready: {ready} — Cogs: {len(cogs)}")
-            # update preview when status refreshed
-            try:
-                self.update_preview()
-            except Exception:
-                pass
+        if self._status_inflight:
+            return
+        self._status_inflight = True
+        self.send_cmd_async({"action": "status"}, timeout=1.0, cb=self._on_refresh_result)
+
+    def _on_refresh_result(self, r: dict):
+        try:
+            if r and r.get("ok"):
+                user = r.get("user") or "(no user)"
+                ready = r.get("ready")
+                cogs = r.get("cogs", [])
+                self.status_label.setText(f"User: {user} — Ready: {ready} — Cogs: {len(cogs)}")
+                try:
+                    self.update_preview()
+                except Exception:
+                    pass
+            else:
+                self.status_label.setText(f"Status: offline ({(r or {}).get('error')})")
+        finally:
+            self._status_inflight = False
 
     def on_refresh_preview(self):
         """Request a banner preview from the bot and update the preview widgets."""
@@ -493,19 +603,39 @@ class MainWindow(QtWidgets.QMainWindow):
             except Exception:
                 pass
             name = self.pv_name.text() or "NewMember"
-            # quick ping to avoid long waits when the bot control API is not running
-            ping = send_cmd({"action": "ping"}, timeout=0.6)
+            overrides = {
+                "BANNER_PATH": self.pv_banner_path.text() or None,
+                "BANNER_TITLE": self.pv_title.text() or "WELCOME",
+                "OFFSET_X": int(self.pv_avatar_x.value()),
+                "OFFSET_Y": int(self.pv_avatar_y.value()),
+            }
+            self.send_cmd_async(
+                {"action": "ping"},
+                timeout=0.6,
+                cb=lambda ping, name=name, overrides=overrides: self._on_preview_ping_result(ping, name, overrides),
+            )
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Preview error", str(e))
+
+    def _on_preview_ping_result(self, ping: dict, name: str, overrides: dict):
+        try:
             if not ping.get("ok"):
-                # fallback to local preview immediately
                 QtWidgets.QMessageBox.warning(self, "Preview", f"Control API not available, using local banner ({ping.get('error')})")
                 try:
                     self.update_preview()
                 except Exception:
                     pass
                 return
+            self.send_cmd_async(
+                {"action": "banner_preview", "name": name, "overrides": overrides},
+                timeout=5.0,
+                cb=self._on_preview_banner_result,
+            )
+        except Exception:
+            pass
 
-            # API reachable — request the generated banner (give it more time)
-            r = send_cmd({"action": "banner_preview", "name": name}, timeout=5.0)
+    def _on_preview_banner_result(self, r: dict):
+        try:
             if r.get("ok") and r.get("png_base64"):
                 b64 = r.get("png_base64")
                 data = QtCore.QByteArray.fromBase64(b64.encode())
@@ -516,24 +646,19 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.pv_banner.setPixmap(scaled)
                     except Exception:
                         self.pv_banner.setPixmap(pix)
-                    # store data URL for embedding into the HTML preview
                     self._preview_banner_data_url = f"data:image/png;base64,{b64}"
-                    # re-render live preview using this banner
                     try:
                         self._apply_live_preview()
                     except Exception:
                         pass
                     return
-            # if we get here, fallback to existing update_preview behaviour
             QtWidgets.QMessageBox.warning(self, "Preview", f"Failed to get banner from bot: {r}")
             try:
                 self.update_preview()
             except Exception:
                 pass
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Preview error", str(e))
-        else:
-            self.status_label.setText(f"Status: offline ({r.get('error')})")
+        except Exception:
+            pass
 
     def on_refresh_rankpreview(self):
         """Request a rankcard from the bot and display it in the Rankcard tab."""
@@ -548,7 +673,12 @@ class MainWindow(QtWidgets.QMainWindow):
             req = {"action": "rank_preview", "name": name}
             if bg:
                 req["bg_path"] = bg
-            r = send_cmd(req, timeout=3.0)
+            self.send_cmd_async(req, timeout=3.0, cb=self._on_rankpreview_result)
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Rank Preview error", str(e))
+
+    def _on_rankpreview_result(self, r: dict):
+        try:
             if r.get("ok") and r.get("png_base64"):
                 b64 = r.get("png_base64")
                 data = QtCore.QByteArray.fromBase64(b64.encode())
@@ -558,15 +688,16 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
                     except Exception:
                         self.rk_image.setPixmap(pix)
-                    # store for persistence if needed
                     self._rank_preview_data_url = f"data:image/png;base64,{b64}"
                     return
             QtWidgets.QMessageBox.warning(self, "Rank Preview", f"Failed to get rankcard from bot: {r}")
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Rank Preview error", str(e))
+        except Exception:
+            pass
 
     def on_shutdown(self):
-        r = send_cmd({"action": "shutdown"})
+        self.send_cmd_async({"action": "shutdown"}, timeout=2.0, cb=self._on_shutdown_result)
+
+    def _on_shutdown_result(self, r: dict):
         if r.get("ok"):
             QtWidgets.QMessageBox.information(self, "Shutdown", "Bot is shutting down")
         else:
@@ -589,9 +720,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # 1) request bot shutdown via control API (best-effort)
         try:
-            r = send_cmd({"action": "shutdown"}, timeout=2.0)
+            self.send_cmd_async({"action": "shutdown"}, timeout=2.0, cb=None)
         except Exception:
-            r = {"ok": False}
+            pass
 
         # 2) attempt to start bot.py if present
         try:
@@ -622,7 +753,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
 
     def on_reload(self):
-        r = send_cmd({"action": "reload"})
+        self.send_cmd_async({"action": "reload"}, timeout=3.0, cb=self._on_reload_result)
+
+    def _on_reload_result(self, r: dict):
         if r.get("ok"):
             reloaded = r.get("reloaded", [])
             failed = r.get("failed", {})
@@ -634,6 +767,42 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.information(self, "Reload Cogs", msg)
         else:
             QtWidgets.QMessageBox.warning(self, "Reload Cogs", f"Failed: {r}")
+
+    def _on_reload_after_save_rank(self, r: dict):
+        try:
+            if r.get("ok"):
+                try:
+                    self._load_rank_config()
+                except Exception:
+                    pass
+                reloaded = r.get("reloaded", [])
+                failed = r.get("failed", {})
+                msg = f"Reloaded: {len(reloaded)} modules. Failed: {len(failed)}"
+                if failed:
+                    msg = msg + "\n" + "\n".join(f"{k}: {v}" for k, v in failed.items())
+                QtWidgets.QMessageBox.information(self, "Reload", msg)
+            else:
+                QtWidgets.QMessageBox.warning(self, "Reload failed", f"{r}")
+        except Exception:
+            pass
+
+    def _on_reload_after_save_preview(self, r: dict):
+        try:
+            if r.get("ok"):
+                try:
+                    self._load_welcome_message_from_file()
+                except Exception:
+                    pass
+                reloaded = r.get("reloaded", [])
+                failed = r.get("failed", {})
+                msg = f"Reloaded: {len(reloaded)} modules. Failed: {len(failed)}"
+                if failed:
+                    msg = msg + "\n" + "\n".join(f"{k}: {v}" for k, v in failed.items())
+                QtWidgets.QMessageBox.information(self, "Reload", msg)
+            else:
+                QtWidgets.QMessageBox.warning(self, "Reload failed", f"{r}")
+        except Exception:
+            pass
 
     def on_edit_configs(self):
         # switch to Configs tab (if available) or open modal
@@ -648,6 +817,59 @@ class MainWindow(QtWidgets.QMainWindow):
                     return
         dlg = ConfigEditor(self)
         dlg.exec()
+
+    def _stop_log_poller(self):
+        try:
+            if getattr(self, "_log_poller", None):
+                try:
+                    self._log_poller.stop()
+                except Exception:
+                    pass
+                self._log_poller = None
+        except Exception:
+            pass
+
+    def _start_log_poller(self, path: str, mode: str = "file", table: str = None):
+        try:
+            self._stop_log_poller()
+            if not path:
+                return
+            if mode == "db":
+                poller = LogPoller(
+                    path,
+                    mode="db",
+                    table=table,
+                    last_rowid=self._db_last_rowid,
+                    interval=2.0,
+                )
+            else:
+                poller = LogPoller(path, mode="file", interval=1.0)
+            poller.new_line.connect(self._on_new_log_line)
+            poller.start()
+            self._log_poller = poller
+        except Exception:
+            pass
+
+    def _on_new_log_line(self, line: str):
+        try:
+            try:
+                self.log_text.appendPlainText(line)
+            except Exception:
+                pass
+            try:
+                if getattr(self, "_tracked_fp", None):
+                    self._tracked_fp.write(line + "\n")
+                    self._tracked_fp.flush()
+            except Exception:
+                pass
+            try:
+                self.log_text.verticalScrollBar().setValue(
+                    self.log_text.verticalScrollBar().maximum()
+                )
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     # ==================================================
     # Log tailing & preview helpers
@@ -701,25 +923,15 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.log_text.appendPlainText(f"Tailing: {log_path}")
                         # ensure tracked logs dir exists and open tracked writer
                         try:
-                            tracked_dir = os.path.join(self._repo_root, "data", "logs")
-                            os.makedirs(tracked_dir, exist_ok=True)
-                            # open tracked file in append mode
-                            tracked_path = os.path.join(tracked_dir, "tracked.log")
-                            # close previous tracked fp if present
-                            if getattr(self, "_tracked_fp", None):
-                                try:
-                                    self._tracked_fp.close()
-                                except Exception:
-                                    pass
-                            self._tracked_fp = open(tracked_path, "a", encoding="utf-8", errors="ignore")
-                            # write header about source
-                            try:
-                                self._tracked_fp.write(f"\n--- Tailing: {log_path} (started at {QtCore.QDateTime.currentDateTime().toString()}) ---\n")
-                                self._tracked_fp.flush()
-                            except Exception:
-                                pass
+                            self._open_tracked_writer(
+                                f"\n--- Tailing: {log_path} (started at {QtCore.QDateTime.currentDateTime().toString()}) ---"
+                            )
                         except Exception:
                             pass
+                    except Exception:
+                        pass
+                    try:
+                        self._start_log_poller(log_path, mode="file")
                     except Exception:
                         pass
                     return
@@ -739,7 +951,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _choose_log_file(self):
         try:
             try:
-                self._set_status("Banner: choosing image...")
+                self._set_status("Logs: choosing file...")
             except Exception:
                 pass
             repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -749,6 +961,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 try:
                     # close any previous file or DB connection
                     try:
+                        self._stop_log_poller()
                         if getattr(self, "_db_conn", None):
                             try:
                                 self._db_conn.close()
@@ -815,20 +1028,13 @@ class MainWindow(QtWidgets.QMainWindow):
                                 QtWidgets.QMessageBox.warning(self, "Open DB", f"Fehler beim Lesen der Tabelle: {e}")
                             # open tracked writer
                             try:
-                                tracked_dir = os.path.join(self._repo_root, "data", "logs")
-                                os.makedirs(tracked_dir, exist_ok=True)
-                                tracked_path = os.path.join(tracked_dir, "tracked.log")
-                                if getattr(self, "_tracked_fp", None):
-                                    try:
-                                        self._tracked_fp.close()
-                                    except Exception:
-                                        pass
-                                self._tracked_fp = open(tracked_path, "a", encoding="utf-8", errors="ignore")
-                                try:
-                                    self._tracked_fp.write(f"\n--- Tailing DB: {path} table: {table} (started at {QtCore.QDateTime.currentDateTime().toString()}) ---\n")
-                                    self._tracked_fp.flush()
-                                except Exception:
-                                    pass
+                                self._open_tracked_writer(
+                                    f"\n--- Tailing DB: {path} table: {table} (started at {QtCore.QDateTime.currentDateTime().toString()}) ---"
+                                )
+                            except Exception:
+                                pass
+                            try:
+                                self._start_log_poller(path, mode="db", table=table)
                             except Exception:
                                 pass
                             return
@@ -843,20 +1049,13 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.log_text.appendPlainText(f"Tailing: {path}")
                     # ensure tracked logs dir exists and open tracked writer
                     try:
-                        tracked_dir = os.path.join(self._repo_root, "data", "logs")
-                        os.makedirs(tracked_dir, exist_ok=True)
-                        tracked_path = os.path.join(tracked_dir, "tracked.log")
-                        if getattr(self, "_tracked_fp", None):
-                            try:
-                                self._tracked_fp.close()
-                            except Exception:
-                                pass
-                        self._tracked_fp = open(tracked_path, "a", encoding="utf-8", errors="ignore")
-                        try:
-                            self._tracked_fp.write(f"\n--- Tailing: {path} (started at {QtCore.QDateTime.currentDateTime().toString()}) ---\n")
-                            self._tracked_fp.flush()
-                        except Exception:
-                            pass
+                        self._open_tracked_writer(
+                            f"\n--- Tailing: {path} (started at {QtCore.QDateTime.currentDateTime().toString()}) ---"
+                        )
+                    except Exception:
+                        pass
+                    try:
+                        self._start_log_poller(path, mode="file")
                     except Exception:
                         pass
                 except Exception as e:
@@ -867,7 +1066,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _choose_banner(self):
         try:
             try:
-                self._set_status("Rank: choosing background...")
+                self._set_status("Banner: choosing image...")
             except Exception:
                 pass
             repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1004,7 +1203,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _choose_rank_bg(self):
         try:
             try:
-                self._set_status("Preview: saving...")
+                self._set_status("Rank: choosing background...")
             except Exception:
                 pass
             repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1094,20 +1293,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
             if reload_after:
                 try:
-                    r2 = send_cmd({"action": "reload"}, timeout=3.0)
-                    if r2.get("ok"):
-                        try:
-                            self._load_rank_config()
-                        except Exception:
-                            pass
-                        reloaded = r2.get("reloaded", [])
-                        failed = r2.get("failed", {})
-                        msg = f"Reloaded: {len(reloaded)} modules. Failed: {len(failed)}"
-                        if failed:
-                            msg = msg + "\n" + "\n".join(f"{k}: {v}" for k, v in failed.items())
-                        QtWidgets.QMessageBox.information(self, "Reload", msg)
-                    else:
-                        QtWidgets.QMessageBox.warning(self, "Reload failed", f"{r2}")
+                    self.send_cmd_async(
+                        {"action": "reload"},
+                        timeout=3.0,
+                        cb=self._on_reload_after_save_rank,
+                    )
                 except Exception as e:
                     QtWidgets.QMessageBox.warning(self, "Reload error", str(e))
 
@@ -1128,6 +1318,75 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception:
             pass
 
+    def _mark_preview_dirty(self, *_args):
+        try:
+            if getattr(self, "_preview_syncing", False):
+                return
+            self._preview_dirty = True
+        except Exception:
+            pass
+
+    def _prune_backups(self, target_path: str, keep: int = 5):
+        try:
+            folder = os.path.dirname(target_path)
+            base = os.path.basename(target_path)
+            prefix = f"{base}.bak."
+            backups = []
+            for name in os.listdir(folder):
+                if not name.startswith(prefix):
+                    continue
+                full = os.path.join(folder, name)
+                try:
+                    mtime = os.path.getmtime(full)
+                except Exception:
+                    mtime = 0
+                backups.append((mtime, full))
+
+            backups.sort(key=lambda item: item[0], reverse=True)
+            for _, old_path in backups[max(0, int(keep)):]:
+                try:
+                    os.remove(old_path)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def _rotate_log_file(self, log_path: str, max_bytes: int = 2_000_000, keep: int = 5):
+        try:
+            if not log_path or not os.path.exists(log_path):
+                return
+            if os.path.getsize(log_path) < int(max_bytes):
+                return
+            import time
+
+            rotated = f"{log_path}.bak.{int(time.time())}"
+            os.replace(log_path, rotated)
+            self._prune_backups(log_path, keep=keep)
+        except Exception:
+            pass
+
+    def _open_tracked_writer(self, header: str):
+        try:
+            tracked_dir = os.path.join(self._repo_root, "data", "logs")
+            os.makedirs(tracked_dir, exist_ok=True)
+            tracked_path = os.path.join(tracked_dir, "tracked.log")
+            self._rotate_log_file(tracked_path, max_bytes=2_000_000, keep=5)
+
+            if getattr(self, "_tracked_fp", None):
+                try:
+                    self._tracked_fp.close()
+                except Exception:
+                    pass
+
+            self._tracked_fp = open(tracked_path, "a", encoding="utf-8", errors="ignore")
+            try:
+                self._tracked_fp.write(header + "\n")
+                self._tracked_fp.flush()
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     def _save_preview(self, reload_after: bool = False):
         try:
             try:
@@ -1143,7 +1402,31 @@ class MainWindow(QtWidgets.QMainWindow):
                 cfg = {}
 
             cfg["EXAMPLE_NAME"] = self.pv_name.text() or cfg.get("EXAMPLE_NAME", "NewMember")
-            cfg["BANNER_PATH"] = self.pv_banner_path.text() or cfg.get("BANNER_PATH", cfg.get("BANNER_PATH", "assets/welcome.png"))
+            cfg["BANNER_TITLE"] = self.pv_title.text() or cfg.get("BANNER_TITLE", "WELCOME")
+            cfg["OFFSET_X"] = int(self.pv_avatar_x.value())
+            cfg["OFFSET_Y"] = int(self.pv_avatar_y.value())
+
+            banner_path_input = self.pv_banner_path.text() or cfg.get("BANNER_PATH", "assets/welcome.png")
+            banner_path_saved = banner_path_input
+            try:
+                if banner_path_input and os.path.exists(banner_path_input):
+                    assets_dir = os.path.join(repo_root, "assets")
+                    os.makedirs(assets_dir, exist_ok=True)
+                    _, ext = os.path.splitext(banner_path_input)
+                    ext = ext.lower() if ext else ".png"
+                    if ext not in (".png", ".jpg", ".jpeg", ".bmp"):
+                        ext = ".png"
+                    target_name = f"welcome_custom{ext}"
+                    target_path = os.path.join(assets_dir, target_name)
+                    import shutil
+
+                    shutil.copy2(banner_path_input, target_path)
+                    banner_path_saved = os.path.join("assets", target_name).replace("\\", "/")
+                    self.pv_banner_path.setText(banner_path_saved)
+            except Exception:
+                pass
+
+            cfg["BANNER_PATH"] = banner_path_saved or cfg.get("BANNER_PATH", "assets/welcome.png")
             # Prevent accidental deletion: do not overwrite WELCOME_MESSAGE with an empty value.
             new_msg = self.pv_message.toPlainText()
             if new_msg and new_msg.strip():
@@ -1159,10 +1442,13 @@ class MainWindow(QtWidgets.QMainWindow):
                     import shutil, time
                     bak = cfg_path + ".bak." + str(int(time.time()))
                     shutil.copy2(cfg_path, bak)
+                    self._prune_backups(cfg_path, keep=5)
             except Exception:
                 pass
             with open(cfg_path, "w", encoding="utf-8") as fh:
                 json.dump(cfg, fh, indent=2, ensure_ascii=False)
+
+            self._preview_dirty = False
 
             # update preview immediately
             try:
@@ -1172,22 +1458,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
             if reload_after:
                 try:
-                    r2 = send_cmd({"action": "reload"}, timeout=3.0)
-                    # show reload result to user
-                    if r2.get("ok"):
-                        # on success, load the persisted welcome message into the preview
-                        try:
-                            self._load_welcome_message_from_file()
-                        except Exception:
-                            pass
-                        reloaded = r2.get("reloaded", [])
-                        failed = r2.get("failed", {})
-                        msg = f"Reloaded: {len(reloaded)} modules. Failed: {len(failed)}"
-                        if failed:
-                            msg = msg + "\n" + "\n".join(f"{k}: {v}" for k, v in failed.items())
-                        QtWidgets.QMessageBox.information(self, "Reload", msg)
-                    else:
-                        QtWidgets.QMessageBox.warning(self, "Reload failed", f"{r2}")
+                    self.send_cmd_async(
+                        {"action": "reload"},
+                        timeout=3.0,
+                        cb=self._on_reload_after_save_preview,
+                    )
                 except Exception as e:
                     QtWidgets.QMessageBox.warning(self, "Reload error", str(e))
 
@@ -1244,6 +1519,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def tail_logs(self):
         try:
+            # Prefer background poller when active to keep UI thread light.
+            if getattr(self, "_log_poller", None):
+                return
             # if tailing a sqlite DB
             if getattr(self, "_db_conn", None) and getattr(self, "_db_table", None):
                 try:
@@ -1347,23 +1625,32 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # update fields in Preview tab and render
         try:
-            # Only update fields if the user is not actively editing them (avoid clobbering)
-            if not self.pv_name.hasFocus():
-                self.pv_name.setText(str(cfg.get("EXAMPLE_NAME", "NewMember")))
-            if not self.pv_banner_path.hasFocus():
-                self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "")))
+            # Do not clobber manual edits: while unsaved changes exist, keep UI values.
+            if not getattr(self, "_preview_dirty", False):
+                self._preview_syncing = True
+                try:
+                    if not self.pv_name.hasFocus():
+                        self.pv_name.setText(str(cfg.get("EXAMPLE_NAME", "NewMember")))
+                    if not self.pv_banner_path.hasFocus():
+                        self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "")))
+                    if not self.pv_title.hasFocus():
+                        self.pv_title.setText(str(cfg.get("BANNER_TITLE", "WELCOME")))
+                    if not self.pv_avatar_x.hasFocus():
+                        self.pv_avatar_x.setValue(int(cfg.get("OFFSET_X", 0) or 0))
+                    if not self.pv_avatar_y.hasFocus():
+                        self.pv_avatar_y.setValue(int(cfg.get("OFFSET_Y", 0) or 0))
 
-                # Load the canonical `WELCOME_MESSAGE` into the message field
-                # unless the user is currently editing it. Only populate when
-                # the field is empty to avoid overwriting user edits.
-                welcome_msg = cfg.get("WELCOME_MESSAGE")
-                if welcome_msg and not self.pv_message.hasFocus():
-                    cur_text = self.pv_message.toPlainText()
-                    if not cur_text or not cur_text.strip():
-                        try:
-                            self.pv_message.setPlainText(str(welcome_msg))
-                        except Exception:
-                            pass
+                    # Load canonical message when not actively edited.
+                    welcome_msg = cfg.get("WELCOME_MESSAGE")
+                    if welcome_msg and not self.pv_message.hasFocus():
+                        cur_text = self.pv_message.toPlainText()
+                        if not cur_text or not cur_text.strip():
+                            try:
+                                self.pv_message.setPlainText(str(welcome_msg))
+                            except Exception:
+                                pass
+                finally:
+                    self._preview_syncing = False
 
             try:
                 self._apply_live_preview()
@@ -1387,9 +1674,13 @@ class MainWindow(QtWidgets.QMainWindow):
             msg = str(cfg.get("WELCOME_MESSAGE", cfg.get("PREVIEW_MESSAGE", "Welcome {mention}!")))
             # overwrite regardless of focus because the user explicitly requested reload
             try:
+                self._preview_syncing = True
                 self.pv_message.setPlainText(msg)
             except Exception:
                 pass
+            finally:
+                self._preview_syncing = False
+            self._preview_dirty = False
             try:
                 self._apply_live_preview()
             except Exception:

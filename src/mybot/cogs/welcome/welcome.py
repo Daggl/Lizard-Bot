@@ -1,8 +1,6 @@
-"""Welcome cog: uses the canonical `WELCOME_MESSAGE` from config/welcome.json.
+"""Welcome cog: uses config/welcome.json as source of truth.
 
-This version deliberately does NOT include an in-code default template.
-If `WELCOME_MESSAGE` is missing from the config the cog will send the
-banner image only (no fallback text).
+If `WELCOME_MESSAGE` is missing from the config the cog sends the banner only.
 """
 
 from typing import Optional
@@ -16,7 +14,7 @@ import discord
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
-from mybot.utils.config import load_cog_config
+from mybot.utils.config import clear_cog_config_cache, load_cog_config
 import sys
 
 
@@ -33,21 +31,15 @@ def safe_print(*args, **kwargs):
     print(*safe_args, **kwargs)
 
 
-_CFG = load_cog_config("welcome")
-
-VERIFY_CHANNEL_ID = _CFG.get("VERIFY_CHANNEL_ID", 0)
-WELCOME_CHANNEL_ID = _CFG.get("WELCOME_CHANNEL_ID", 0)
-RULES_CHANNEL_ID = _CFG.get("RULES_CHANNEL_ID", 0)
-ABOUTME_CHANNEL_ID = _CFG.get("ABOUTME_CHANNEL_ID", 0)
-ROLE_ID = _CFG.get("ROLE_ID", 0)
-
-BANNER_PATH = _CFG.get("BANNER_PATH", "assets/welcome.png")
-
-FONT_WELCOME = _CFG.get("FONT_WELCOME", "assets/fonts/Poppins-Bold.ttf")
-FONT_USERNAME = _CFG.get("FONT_USERNAME", "assets/fonts/Poppins-Regular.ttf")
-
-# Only read the message from config; do NOT provide a built-in default.
-WELCOME_MESSAGE: Optional[str] = _CFG.get("WELCOME_MESSAGE")
+def _load_welcome_cfg() -> dict:
+    try:
+        clear_cog_config_cache("welcome")
+    except Exception:
+        pass
+    try:
+        return load_cog_config("welcome") or {}
+    except Exception:
+        return {}
 
 
 def clean_username(member: discord.Member) -> str:
@@ -64,8 +56,19 @@ class Welcome(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    async def create_banner(self, member: discord.Member) -> discord.File:
+    async def create_banner(self, member: discord.Member, overrides: Optional[dict] = None) -> discord.File:
         """Generate the welcome banner image."""
+        cfg = _load_welcome_cfg()
+        if isinstance(overrides, dict):
+            cfg = {**cfg, **overrides}
+
+        banner_path = cfg.get("BANNER_PATH", "assets/welcome.png")
+        font_welcome_path = cfg.get("FONT_WELCOME", "assets/fonts/Poppins-Bold.ttf")
+        font_username_path = cfg.get("FONT_USERNAME", "assets/fonts/Poppins-Regular.ttf")
+        banner_title = str(cfg.get("BANNER_TITLE", "WELCOME") or "WELCOME")
+        offset_x = int(cfg.get("OFFSET_X", 0) or 0)
+        offset_y = int(cfg.get("OFFSET_Y", 0) or 0)
+
         username = clean_username(member)
 
         safe_print("[DEBUG] Loading avatar...")
@@ -75,7 +78,7 @@ class Welcome(commands.Cog):
 
         safe_print("[DEBUG] Loading banner image...")
         try:
-            banner = Image.open(BANNER_PATH).convert("RGBA")
+            banner = Image.open(banner_path).convert("RGBA")
             width, height = banner.size
         except Exception:
             width, height = 1400, 420
@@ -90,21 +93,21 @@ class Welcome(commands.Cog):
         ImageDraw.Draw(mask).ellipse((0, 0, avatar_size, avatar_size), fill=255)
         avatar.putalpha(mask)
 
-        avatar_y = (height - avatar_size) // 2
+        avatar_y = (height - avatar_size) // 2 + offset_y
 
-        font_welcome = ImageFont.truetype(FONT_WELCOME, 140) if FONT_WELCOME else ImageFont.load_default()
-        font_user = ImageFont.truetype(FONT_WELCOME, 64) if FONT_WELCOME else ImageFont.load_default()
+        font_welcome = ImageFont.truetype(font_welcome_path, 140) if font_welcome_path else ImageFont.load_default()
+        font_user = ImageFont.truetype(font_username_path, 64) if font_username_path else ImageFont.load_default()
 
         draw = ImageDraw.Draw(banner)
-        welcome_text = "WELCOME"
+        welcome_text = banner_title
         bbox_w = draw.textbbox((0, 0), welcome_text, font=font_welcome)
         w_width = bbox_w[2] - bbox_w[0]
 
-        S = 40
-        avatar_x_calc = int((width - avatar_size - S + margin - w_width) / 3)
-        avatar_x = max(margin, avatar_x_calc)
+        spacing = 40
+        avatar_x_calc = int((width - avatar_size - spacing + margin - w_width) / 3)
+        avatar_x = max(margin, avatar_x_calc + offset_x)
 
-        text_area_x = avatar_x + avatar_size + S
+        text_area_x = avatar_x + avatar_size + spacing
         text_area_width = width - text_area_x - margin
         welcome_x = text_area_x + max(0, (text_area_width - w_width) // 2)
         welcome_y = avatar_y + 40
@@ -135,19 +138,27 @@ class Welcome(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
+        cfg = _load_welcome_cfg()
+        verify_channel_id = cfg.get("VERIFY_CHANNEL_ID", 0)
+        welcome_channel_id = cfg.get("WELCOME_CHANNEL_ID", 0)
+        rules_channel_id = cfg.get("RULES_CHANNEL_ID", 0)
+        aboutme_channel_id = cfg.get("ABOUTME_CHANNEL_ID", 0)
+        role_id = cfg.get("ROLE_ID", 0)
+        welcome_message: Optional[str] = cfg.get("WELCOME_MESSAGE")
+
         safe_print(f"[DEBUG] Join erkannt: {member}")
         guild = member.guild
-        welcome_channel = guild.get_channel(WELCOME_CHANNEL_ID)
+        welcome_channel = guild.get_channel(welcome_channel_id)
         if welcome_channel is None:
             safe_print("[ERROR] Welcome Channel ist None!")
             return
 
         safe_print(f"[DEBUG] Welcome Channel gefunden: {welcome_channel.name}")
 
-        rules_channel = guild.get_channel(RULES_CHANNEL_ID)
-        aboutme_channel = guild.get_channel(ABOUTME_CHANNEL_ID)
-        verify_channel = guild.get_channel(VERIFY_CHANNEL_ID)
-        role = guild.get_role(ROLE_ID)
+        rules_channel = guild.get_channel(rules_channel_id)
+        aboutme_channel = guild.get_channel(aboutme_channel_id)
+        verify_channel = guild.get_channel(verify_channel_id)
+        role = guild.get_role(role_id)
         if role:
             await member.add_roles(role)
             safe_print("[DEBUG] Role assigned")
@@ -155,19 +166,17 @@ class Welcome(commands.Cog):
         banner = await self.create_banner(member)
         safe_print("[DEBUG] Banner erstellt")
 
-        # If no WELCOME_MESSAGE configured, do not use a built-in default.
-        if not WELCOME_MESSAGE:
+        if not welcome_message:
             safe_print("[WARN] No WELCOME_MESSAGE configured; sending banner only.")
             await welcome_channel.send(file=banner)
             return
 
-        # prepare placeholders
         rules_mention = rules_channel.mention if rules_channel is not None else "#rules"
         verify_mention = verify_channel.mention if verify_channel is not None else "#verify"
         aboutme_mention = aboutme_channel.mention if aboutme_channel is not None else "#aboutme"
 
         try:
-            description = WELCOME_MESSAGE.format(
+            description = welcome_message.format(
                 mention=member.mention,
                 rules_channel=rules_mention,
                 verify_channel=verify_mention,

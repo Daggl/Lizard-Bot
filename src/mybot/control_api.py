@@ -174,6 +174,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             # would send.
             name = req.get("name") or "NewMember"
             avatar_url = req.get("avatar_url")
+            overrides = req.get("overrides") if isinstance(req.get("overrides"), dict) else None
 
             try:
                 # find welcome cog
@@ -218,7 +219,11 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     dummy = _DummyMember(name, avatar_url)
                     # call create_banner (coroutine) on the cog
                     try:
-                        banner_file = await welcome_cog.create_banner(dummy)
+                        sig = inspect.signature(welcome_cog.create_banner)
+                        if "overrides" in sig.parameters:
+                            banner_file = await welcome_cog.create_banner(dummy, overrides=overrides)
+                        else:
+                            banner_file = await welcome_cog.create_banner(dummy)
                     except Exception as e:
                         resp = {"ok": False, "error": f"banner generation failed: {e}"}
                     else:
