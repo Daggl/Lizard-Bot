@@ -617,16 +617,33 @@ class MainWindow(QtWidgets.QMainWindow):
             html = """
 <div style="font-family:Segoe UI, Arial; color:#e6e6e6;">
     <table cellpadding="0" cellspacing="0" width="100%" style="background:#2f3136; border-radius:8px;">
-        <tr>
-            <td width="6" style="background:#5865F2; border-top-left-radius:8px; border-bottom-left-radius:8px;"></td>
-            <td style="padding:12px; vertical-align:top;">
-                <div style="font-size:10pt; font-weight:700; color:#ffffff; letter-spacing:1px;">Lizard Bot</div>
-                <div style="font-size:9pt; color:#b9bbbe; margin-top:4px;">just checked in — welcome <b>@%s</b></div>
-            </td>
-        </tr>
-        <tr><td colspan="2" style="padding:10px 12px 6px 12px; color:#d8d8d8; font-size:10pt; line-height:1.35;">%s</td></tr>
-""" % (safe_name, rendered)
+                try:
+                    welcome_msg = cfg.get("WELCOME_MESSAGE")
+                    if welcome_msg and not self.pv_message.hasFocus():
+                        cur_text = self.pv_message.toPlainText()
+                        if not cur_text or not cur_text.strip():
+                            try:
+                                self.pv_message.setPlainText(str(welcome_msg))
+                            except Exception:
+                                pass
 
+                # show persisted rank example name similar to Preview behavior
+                try:
+                    if not getattr(self, "rk_name", None) is None and not self.rk_name.hasFocus():
+                        rk_example = None
+                        try:
+                            rk_example = self._rank_config.get("EXAMPLE_NAME") if getattr(self, "_rank_config", None) else None
+                        except Exception:
+                            rk_example = None
+                        if not rk_example:
+                            rk_example = cfg.get("EXAMPLE_NAME")
+                        if rk_example:
+                            try:
+                                self.rk_name.setText(str(rk_example))
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
             if banner_url:
                 # responsive banner using max-width so it fits the preview widget
                 html += f"<tr><td colspan=\"2\" style=\"padding:0 12px 12px 12px;\"><img src=\"{banner_url}\" style=\"width:100%; height:auto; border-radius:6px; display:block;\"/></td></tr>"
