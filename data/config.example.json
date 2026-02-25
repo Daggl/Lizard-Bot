@@ -7,7 +7,12 @@
     "ROLE_ID": 0,
     "BANNER_PATH": "assets/welcome.png",
     "FONT_WELCOME": "assets/fonts/Poppins-Bold.ttf",
-    "FONT_USERNAME": "assets/fonts/Poppins-Regular.ttf"
+    "FONT_USERNAME": "assets/fonts/Poppins-Regular.ttf",
+    "BANNER_TITLE": "WELCOME",
+    "OFFSET_X": 0,
+    "OFFSET_Y": 0,
+    "EXAMPLE_NAME": "NewMember",
+    "WELCOME_MESSAGE": "Welcome {mention}!"
   },
   "autorole": {
     "VERIFY_CHANNEL_ID": 0,

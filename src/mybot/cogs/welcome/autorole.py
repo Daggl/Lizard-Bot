@@ -1,3 +1,4 @@
+import os
 import sqlite3
 
 from discord.ext import commands
@@ -31,6 +32,9 @@ DB_PATH = _CFG.get("DB_PATH", "data/autorole.db")
 
 
 def setup_database():
+
+    db_dir = os.path.dirname(DB_PATH) or "."
+    os.makedirs(db_dir, exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()

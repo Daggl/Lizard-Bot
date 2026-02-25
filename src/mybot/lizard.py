@@ -23,7 +23,7 @@ if os.path.isdir(_src) and _src not in sys.path:
 # custom database for logs
 from data.logs import database  # noqa: E402
 # ensure per-cog config files exist before loading cogs
-from mybot.utils import ensure_configs_from_example  # noqa: E402
+from mybot.utils import sync_cog_configs_from_example  # noqa: E402
 
 # ==========================================================
 # LOAD ENVIRONMENT / TOKEN
@@ -141,47 +141,16 @@ async def main():
     try:
         async with bot:
 
-            # Ensure per-cog config files exist (created from config.example.json)
-            created = ensure_configs_from_example()
-            if created:
-                print("Created missing config files:", ", ".join(created))
-
-            # Ensure the welcome config retains a WELCOME_MESSAGE across restarts.
-            # If the welcome config exists but lacks WELCOME_MESSAGE and the
-            # example contains one, copy that single key into the persisted config
-            # without overwriting other keys.
+            # Ensure per-cog config files exist and missing keys are backfilled
+            # from data/config.example.json without overwriting existing values.
             try:
-                import json
-                example_path = os.path.join(_project_root, "data", "config.example.json")
-                cfg_path = os.path.join(_project_root, "config", "welcome.json")
-                if os.path.exists(example_path) and os.path.exists(cfg_path):
-                    try:
-                        with open(example_path, "r", encoding="utf-8") as fh:
-                            example = json.load(fh) or {}
-                    except Exception:
-                        example = {}
-
-                    try:
-                        with open(cfg_path, "r", encoding="utf-8") as fh:
-                            existing = json.load(fh) or {}
-                    except Exception:
-                        existing = {}
-
-                    example_welcome = None
-                    try:
-                        example_welcome = example.get("welcome", {}).get("WELCOME_MESSAGE")
-                    except Exception:
-                        example_welcome = None
-
-                    if "WELCOME_MESSAGE" not in existing and example_welcome:
-                        # write only this key to avoid clobbering any user settings
-                        try:
-                            from mybot.utils.config import write_cog_config
-                            write_cog_config("welcome", {"WELCOME_MESSAGE": example_welcome})
-                            print("Preserved WELCOME_MESSAGE into config/welcome.json")
-                        except Exception:
-                            # best-effort only
-                            pass
+                sync_result = sync_cog_configs_from_example()
+                created = sync_result.get("created", [])
+                updated = sync_result.get("updated", [])
+                if created:
+                    print("Created missing config files:", ", ".join(created))
+                if updated:
+                    print("Backfilled missing config keys:", ", ".join(updated))
             except Exception:
                 pass
 

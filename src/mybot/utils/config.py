@@ -92,6 +92,76 @@ def ensure_configs_from_example() -> List[str]:
     return created
 
 
+def sync_cog_configs_from_example() -> dict:
+    """Ensure config files exist and backfill missing top-level keys from example.
+
+    Returns a dict with lists: {"created": [...], "updated": [...]} where each
+    item is a path relative to repository root.
+    """
+
+    repo_root = _find_repo_root_from_package()
+    example_path = os.path.join(repo_root, "data", "config.example.json")
+    config_dir = os.path.join(repo_root, "config")
+
+    result = {"created": [], "updated": []}
+
+    if not os.path.exists(example_path):
+        return result
+
+    try:
+        with open(example_path, "r", encoding="utf-8") as fh:
+            example = json.load(fh)
+    except Exception:
+        return result
+
+    os.makedirs(config_dir, exist_ok=True)
+
+    if not isinstance(example, dict):
+        return result
+
+    for key, val in example.items():
+        target = os.path.join(config_dir, f"{key}.json")
+        rel_target = os.path.relpath(target, repo_root)
+
+        if not os.path.exists(target):
+            try:
+                with open(target, "w", encoding="utf-8") as out:
+                    json.dump(val or {}, out, indent=2, ensure_ascii=False)
+                result["created"].append(rel_target)
+                _CACHE[key] = val or {}
+            except Exception:
+                continue
+            continue
+
+        # Backfill missing top-level keys for existing files.
+        try:
+            with open(target, "r", encoding="utf-8") as fh:
+                existing = json.load(fh) or {}
+        except Exception:
+            existing = {}
+
+        if not isinstance(existing, dict):
+            existing = {}
+
+        changed = False
+        if isinstance(val, dict):
+            for sub_key, sub_val in val.items():
+                if sub_key not in existing:
+                    existing[sub_key] = sub_val
+                    changed = True
+
+        if changed:
+            try:
+                with open(target, "w", encoding="utf-8") as out:
+                    json.dump(existing, out, indent=2, ensure_ascii=False)
+                result["updated"].append(rel_target)
+                _CACHE[key] = existing
+            except Exception:
+                pass
+
+    return result
+
+
 def write_cog_config(name: str, data: dict) -> bool:
     """Write `data` to `config/{name}.json` and update the cache.
 
