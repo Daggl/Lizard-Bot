@@ -184,7 +184,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("DC Bot — Local UI")
+        self.setWindowTitle("Lizard UI")
         self.resize(1220, 780)
         self.setMinimumSize(1160, 740)
         # Repo root path for data/logs tracking
@@ -202,14 +202,52 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_label.setObjectName("statusLabel")
         dash_layout.addWidget(self.status_label)
 
+        monitor_box = QtWidgets.QGroupBox("Bot Monitor")
+        monitor_grid = QtWidgets.QGridLayout(monitor_box)
+        monitor_grid.setHorizontalSpacing(12)
+        monitor_grid.setVerticalSpacing(6)
+
+        self.mon_ready = QtWidgets.QLabel("—")
+        self.mon_user = QtWidgets.QLabel("—")
+        self.mon_ping = QtWidgets.QLabel("—")
+        self.mon_uptime = QtWidgets.QLabel("—")
+        self.mon_cpu = QtWidgets.QLabel("—")
+        self.mon_mem = QtWidgets.QLabel("—")
+        self.mon_cogs = QtWidgets.QLabel("—")
+
+        monitor_grid.addWidget(QtWidgets.QLabel("Ready:"), 0, 0)
+        monitor_grid.addWidget(self.mon_ready, 0, 1)
+        monitor_grid.addWidget(QtWidgets.QLabel("User:"), 0, 2)
+        monitor_grid.addWidget(self.mon_user, 0, 3)
+        monitor_grid.addWidget(QtWidgets.QLabel("Ping:"), 1, 0)
+        monitor_grid.addWidget(self.mon_ping, 1, 1)
+        monitor_grid.addWidget(QtWidgets.QLabel("Uptime:"), 1, 2)
+        monitor_grid.addWidget(self.mon_uptime, 1, 3)
+        monitor_grid.addWidget(QtWidgets.QLabel("CPU:"), 2, 0)
+        monitor_grid.addWidget(self.mon_cpu, 2, 1)
+        monitor_grid.addWidget(QtWidgets.QLabel("Memory:"), 2, 2)
+        monitor_grid.addWidget(self.mon_mem, 2, 3)
+        monitor_grid.addWidget(QtWidgets.QLabel("Cogs:"), 3, 0)
+        monitor_grid.addWidget(self.mon_cogs, 3, 1)
+
+        dash_layout.addWidget(monitor_box)
+
+        console_box = QtWidgets.QGroupBox("Live Console")
+        console_layout = QtWidgets.QVBoxLayout(console_box)
+        self.dash_console = QtWidgets.QPlainTextEdit()
+        self.dash_console.setReadOnly(True)
+        self.dash_console.setMaximumBlockCount(1200)
+        self.dash_console.setPlaceholderText("Start the app via start_all.bat/start_all.py to see terminal output here.")
+        console_layout.addWidget(self.dash_console)
+        dash_layout.addWidget(console_box)
+
         btn_row = QtWidgets.QHBoxLayout()
-        self.ping_btn = QtWidgets.QPushButton("Ping")
         self.refresh_btn = QtWidgets.QPushButton("Refresh Status")
         self.reload_btn = QtWidgets.QPushButton("Reload Cogs")
         self.shutdown_btn = QtWidgets.QPushButton("Shutdown Bot")
         self.restart_btn = QtWidgets.QPushButton("Restart Bot & UI")
 
-        for w in (self.ping_btn, self.refresh_btn, self.reload_btn, self.shutdown_btn):
+        for w in (self.refresh_btn, self.reload_btn, self.shutdown_btn):
             btn_row.addWidget(w)
         # place restart button to the right of shutdown
         btn_row.addWidget(self.restart_btn)
@@ -217,7 +255,6 @@ class MainWindow(QtWidgets.QMainWindow):
         dash_layout.addLayout(btn_row)
 
         # connect dashboard buttons
-        self.ping_btn.clicked.connect(self.on_ping)
         self.refresh_btn.clicked.connect(self.on_refresh)
         self.reload_btn.clicked.connect(self.on_reload)
         # config editor is available as its own tab; dashboard button removed
@@ -866,6 +903,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._preview_dirty = False
         self._preview_syncing = False
         self._title_font_lookup = {}
+        self._dash_console_path = os.path.join(self._repo_root, "data", "logs", "start_all_console.log")
+        self._dash_console_pos = 0
         try:
             self._load_title_font_choices()
             self._load_user_font_choices()
@@ -925,6 +964,15 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception:
             pass
 
+        # dashboard live console poller (reads start_all supervisor output)
+        try:
+            self._dash_console_timer = QtCore.QTimer(self)
+            self._dash_console_timer.timeout.connect(self._poll_dashboard_console)
+            self._dash_console_timer.start(1000)
+            self._poll_dashboard_console()
+        except Exception:
+            pass
+
     def closeEvent(self, event):
         try:
             try:
@@ -938,6 +986,11 @@ class MainWindow(QtWidgets.QMainWindow):
             try:
                 if getattr(self, "_alive_timer", None):
                     self._alive_timer.stop()
+            except Exception:
+                pass
+            try:
+                if getattr(self, "_dash_console_timer", None):
+                    self._dash_console_timer.stop()
             except Exception:
                 pass
             try:
@@ -985,6 +1038,30 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception:
             pass
 
+    def _format_uptime(self, seconds: int) -> str:
+        try:
+            s = int(max(0, seconds or 0))
+            days, rem = divmod(s, 86400)
+            hours, rem = divmod(rem, 3600)
+            minutes, secs = divmod(rem, 60)
+            if days > 0:
+                return f"{days}d {hours:02d}:{minutes:02d}:{secs:02d}"
+            return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+        except Exception:
+            return "—"
+
+    def _set_monitor_offline(self):
+        try:
+            self.mon_ready.setText("No")
+            self.mon_user.setText("—")
+            self.mon_ping.setText("—")
+            self.mon_uptime.setText("—")
+            self.mon_cpu.setText("—")
+            self.mon_mem.setText("—")
+            self.mon_cogs.setText("—")
+        except Exception:
+            pass
+
     def on_ping(self):
         self.send_cmd_async({"action": "ping"}, timeout=0.8, cb=self._on_ping_result)
 
@@ -1001,15 +1078,38 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             if r and r.get("ok"):
                 user = r.get("user") or "(no user)"
-                ready = r.get("ready")
+                ready = bool(r.get("ready"))
                 cogs = r.get("cogs", [])
+                ping_ms = r.get("gateway_ping_ms")
+                uptime_seconds = r.get("uptime_seconds")
+                cpu_percent = r.get("cpu_percent")
+                mem_mb = r.get("memory_rss_mb")
+
                 self.status_label.setText(f"User: {user} — Ready: {ready} — Cogs: {len(cogs)}")
+                try:
+                    self.mon_ready.setText("Yes" if ready else "No")
+                    self.mon_user.setText(str(user))
+                    self.mon_ping.setText(f"{int(ping_ms)} ms" if isinstance(ping_ms, (int, float)) else "—")
+                    self.mon_uptime.setText(self._format_uptime(int(uptime_seconds or 0)))
+                    if isinstance(cpu_percent, (int, float)):
+                        cpu_v = float(cpu_percent)
+                        if cpu_v > 0 and cpu_v < 0.01:
+                            self.mon_cpu.setText("<0.01%")
+                        else:
+                            self.mon_cpu.setText(f"{cpu_v:.2f}%")
+                    else:
+                        self.mon_cpu.setText("—")
+                    self.mon_mem.setText(f"{float(mem_mb):.1f} MB" if isinstance(mem_mb, (int, float)) else "—")
+                    self.mon_cogs.setText(str(len(cogs)))
+                except Exception:
+                    pass
                 try:
                     self.update_preview()
                 except Exception:
                     pass
             else:
                 self.status_label.setText(f"Status: offline ({(r or {}).get('error')})")
+                self._set_monitor_offline()
         finally:
             self._status_inflight = False
 
@@ -2333,6 +2433,41 @@ class MainWindow(QtWidgets.QMainWindow):
                     pass
             # keep the view scrolled to bottom
             self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
+        except Exception:
+            pass
+
+    def _poll_dashboard_console(self):
+        try:
+            path = getattr(self, "_dash_console_path", None)
+            if not path:
+                return
+            if not os.path.exists(path):
+                self._dash_console_pos = 0
+                return
+
+            try:
+                size = os.path.getsize(path)
+            except Exception:
+                size = None
+
+            pos = int(getattr(self, "_dash_console_pos", 0) or 0)
+            if size is not None and pos > size:
+                pos = 0
+
+            with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                if pos > 0:
+                    fh.seek(pos)
+                chunk = fh.read()
+                self._dash_console_pos = fh.tell()
+
+            if not chunk:
+                return
+
+            lines = chunk.splitlines()
+            if lines:
+                self.dash_console.appendPlainText("\n".join(lines))
+                sb = self.dash_console.verticalScrollBar()
+                sb.setValue(sb.maximum())
         except Exception:
             pass
 

@@ -18,6 +18,8 @@ import time
 
 
 UI_RESTART_EXIT_CODE = 42
+_CONSOLE_LOG_PATH = None
+_CONSOLE_LOCK = threading.Lock()
 
 
 def load_dotenv(path):
@@ -41,17 +43,32 @@ def stream_reader(prefix, stream):
         for line in iter(stream.readline, ""):
             if not line:
                 break
-            print(f"[{prefix}] {line.rstrip()}")
+            msg = f"[{prefix}] {line.rstrip()}"
+            print(msg)
+            try:
+                if _CONSOLE_LOG_PATH:
+                    with _CONSOLE_LOCK:
+                        with open(_CONSOLE_LOG_PATH, "a", encoding="utf-8", errors="ignore") as fh:
+                            fh.write(msg + "\n")
+            except Exception:
+                pass
     except Exception:
         pass
 
 
 def main():
+    global _CONSOLE_LOG_PATH
     here = os.path.dirname(os.path.abspath(__file__))
     dotenv_path = os.path.join(here, ".env")
     env = os.environ.copy()
     env.update(load_dotenv(dotenv_path))
     restart_marker = os.path.join(here, "data", "logs", "ui_restart.request")
+    try:
+        logs_dir = os.path.join(here, "data", "logs")
+        os.makedirs(logs_dir, exist_ok=True)
+        _CONSOLE_LOG_PATH = os.path.join(logs_dir, "start_all_console.log")
+    except Exception:
+        _CONSOLE_LOG_PATH = None
 
     # Ensure UI control is enabled for bot (force enable)
     env["LOCAL_UI_ENABLE"] = "1"
@@ -60,6 +77,13 @@ def main():
 
     # If CONTROL_API_TOKEN not set, leave as-is (UI will also try to read it from env)
     print("Starting bot and local UI with the following env vars (hidden values not shown):")
+    try:
+        if _CONSOLE_LOG_PATH:
+            with _CONSOLE_LOCK:
+                with open(_CONSOLE_LOG_PATH, "a", encoding="utf-8", errors="ignore") as fh:
+                    fh.write("\n--- start_all session ---\n")
+    except Exception:
+        pass
     for key in ("LOCAL_UI_ENABLE", "CONTROL_API_TOKEN", "WEB_INTERNAL_TOKEN"):
         if key in env:
             if key.endswith("TOKEN") or key.endswith("SECRET"):

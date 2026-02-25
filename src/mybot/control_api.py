@@ -12,9 +12,23 @@ import json
 import os
 import importlib
 import sys
+import time
 from typing import Dict
 import inspect
 from discord.ext import commands as _commands
+
+try:
+    import psutil  # type: ignore
+except Exception:
+    psutil = None
+
+_PROC_HANDLE = None
+_CPU_PRIMED = False
+if psutil is not None:
+    try:
+        _PROC_HANDLE = psutil.Process(os.getpid())
+    except Exception:
+        _PROC_HANDLE = None
 
 # helper: clear config cache when reloading so UI edits take effect
 def _clear_config_cache():
@@ -29,6 +43,7 @@ def _clear_config_cache():
 
 # simple auth token read from env
 CONTROL_API_TOKEN = os.getenv("CONTROL_API_TOKEN")
+CONTROL_API_STARTED_AT = time.time()
 
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, bot):
@@ -58,11 +73,41 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             resp = {"ok": True, "msg": "pong"}
 
         elif action == "status":
+            uptime_seconds = int(max(0, time.time() - CONTROL_API_STARTED_AT))
+            gateway_ping_ms = None
+            try:
+                latency = getattr(bot, "latency", None)
+                if isinstance(latency, (int, float)):
+                    gateway_ping_ms = int(max(0, latency * 1000.0))
+            except Exception:
+                gateway_ping_ms = None
+
+            cpu_percent = None
+            memory_rss_mb = None
+            try:
+                global _CPU_PRIMED
+                if _PROC_HANDLE is not None:
+                    if not _CPU_PRIMED:
+                        try:
+                            _PROC_HANDLE.cpu_percent(interval=None)
+                        except Exception:
+                            pass
+                        _CPU_PRIMED = True
+                    cpu_percent = float(_PROC_HANDLE.cpu_percent(interval=0.05))
+                    memory_rss_mb = float(_PROC_HANDLE.memory_info().rss) / (1024.0 * 1024.0)
+            except Exception:
+                cpu_percent = None
+                memory_rss_mb = None
+
             resp = {
                 "ok": True,
                 "ready": getattr(bot, "is_ready", lambda: False)(),
                 "user": getattr(bot.user, "name", None),
                 "cogs": list(getattr(bot, "cogs", {}).keys()),
+                "uptime_seconds": uptime_seconds,
+                "gateway_ping_ms": gateway_ping_ms,
+                "cpu_percent": cpu_percent,
+                "memory_rss_mb": memory_rss_mb,
             }
 
         elif action == "shutdown":
