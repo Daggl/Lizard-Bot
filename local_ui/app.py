@@ -580,21 +580,21 @@ class MainWindow(QtWidgets.QMainWindow):
             border-color: #3A4352;
             background: #1A1F27;
         }
-        QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QSpinBox {
+        QLineEdit, QPlainTextEdit, QTextEdit, QComboBox {
             background: #0F141B;
             color: #EAF1FF;
             border: 1px solid #334258;
             border-radius: 7px;
             selection-background-color: #3B5D9A;
         }
-        QLineEdit, QComboBox, QSpinBox {
+        QLineEdit, QComboBox {
             min-height: 28px;
             padding: 4px 8px;
         }
         QPlainTextEdit, QTextEdit {
             padding: 8px;
         }
-        QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus {
+        QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus {
             border: 1px solid #5D8BE0;
             background: #101722;
         }
