@@ -183,6 +183,15 @@ class MainWindow(QtWidgets.QMainWindow):
         rk_form.addRow("Background PNG:", hbg)
         rk_form.addRow("", self.rk_refresh)
 
+        rk_row = QtWidgets.QHBoxLayout()
+        self.rk_save = QtWidgets.QPushButton("Save")
+        self.rk_save_reload = QtWidgets.QPushButton("Save + Reload")
+        rk_row.addStretch()
+        rk_row.addWidget(self.rk_refresh)
+        rk_row.addWidget(self.rk_save)
+        rk_row.addWidget(self.rk_save_reload)
+        rank_layout.addLayout(rk_row)
+
         rk_top.addLayout(rk_form, 1)
         rank_layout.addLayout(rk_top)
 
@@ -191,6 +200,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # wire rankcard controls
         self.rk_refresh.clicked.connect(self.on_refresh_rankpreview)
         self.rk_bg_browse.clicked.connect(self._choose_rank_bg)
+        self.rk_save.clicked.connect(lambda: self._save_rank_preview(reload_after=False))
+        self.rk_save_reload.clicked.connect(lambda: self._save_rank_preview(reload_after=True))
 
         # wire preview controls
         self.pv_banner_browse.clicked.connect(self._choose_banner)
@@ -451,6 +462,41 @@ class MainWindow(QtWidgets.QMainWindow):
             self._rank_config = existing
         except Exception:
             pass
+
+    def _save_rank_preview(self, reload_after: bool = False):
+        try:
+            data = {}
+            name = self.rk_name.text() or None
+            bg = self.rk_bg_path.text() or None
+            if name:
+                data["EXAMPLE_NAME"] = name
+            if bg:
+                data["BG_PATH"] = bg
+            if data:
+                self._save_rank_config(data)
+
+            if reload_after:
+                try:
+                    r2 = send_cmd({"action": "reload"}, timeout=3.0)
+                    if r2.get("ok"):
+                        try:
+                            self._load_rank_config()
+                        except Exception:
+                            pass
+                        reloaded = r2.get("reloaded", [])
+                        failed = r2.get("failed", {})
+                        msg = f"Reloaded: {len(reloaded)} modules. Failed: {len(failed)}"
+                        if failed:
+                            msg = msg + "\n" + "\n".join(f"{k}: {v}" for k, v in failed.items())
+                        QtWidgets.QMessageBox.information(self, "Reload", msg)
+                    else:
+                        QtWidgets.QMessageBox.warning(self, "Reload failed", f"{r2}")
+                except Exception as e:
+                    QtWidgets.QMessageBox.warning(self, "Reload error", str(e))
+
+            QtWidgets.QMessageBox.information(self, "Saved", "Rank settings saved")
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save rank settings: {e}")
 
     def _insert_placeholder(self, text: str):
         try:
