@@ -181,7 +181,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rk_refresh = QtWidgets.QPushButton("Refresh Rankcard")
         rk_form.addRow("Example name:", self.rk_name)
         rk_form.addRow("Background PNG:", hbg)
-        rk_form.addRow("", self.rk_refresh)
 
         rk_row = QtWidgets.QHBoxLayout()
         self.rk_save = QtWidgets.QPushButton("Save")
