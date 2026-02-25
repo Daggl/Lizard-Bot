@@ -235,8 +235,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self._log_fp = None
         # data URL for a banner received via the Refresh Preview button
         self._preview_banner_data_url = None
+        # rank preview persisted settings
+        self._rank_config = {}
+        self._rank_config_path = None
         self._open_log()
         self.on_refresh()
+        # load rank config if present
+        try:
+            self._load_rank_config()
+        except Exception:
+            pass
     def on_ping(self):
         r = send_cmd({"action": "ping"})
         QtWidgets.QMessageBox.information(self, "Ping", str(r))
@@ -291,7 +299,12 @@ class MainWindow(QtWidgets.QMainWindow):
         """Request a rankcard from the bot and display it in the Rankcard tab."""
         try:
             name = self.rk_name.text() or (self.pv_name.text() or "NewMember")
-            r = send_cmd({"action": "rank_preview", "name": name}, timeout=3.0)
+            # prefer explicit field; if empty, use persisted config
+            bg = self.rk_bg_path.text() or self._rank_config.get("BG_PATH") if getattr(self, "_rank_config", None) is not None else None
+            req = {"action": "rank_preview", "name": name}
+            if bg:
+                req["bg_path"] = bg
+            r = send_cmd(req, timeout=3.0)
             if r.get("ok") and r.get("png_base64"):
                 b64 = r.get("png_base64")
                 data = QtCore.QByteArray.fromBase64(b64.encode())
@@ -384,6 +397,58 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
                 except Exception:
                     pass
+                # persist selection immediately
+                try:
+                    self._save_rank_config({"BG_PATH": path})
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def _rank_config_paths(self):
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cfg_dir = os.path.join(repo_root, "config")
+        os.makedirs(cfg_dir, exist_ok=True)
+        cfg_path = os.path.join(cfg_dir, "rank.json")
+        return cfg_path
+
+    def _load_rank_config(self):
+        cfg_path = self._rank_config_paths()
+        self._rank_config_path = cfg_path
+        try:
+            if os.path.exists(cfg_path):
+                with open(cfg_path, "r", encoding="utf-8") as fh:
+                    cfg = json.load(fh) or {}
+            else:
+                cfg = {}
+        except Exception:
+            cfg = {}
+        self._rank_config = cfg
+        # populate UI fields if empty
+        try:
+            bg = cfg.get("BG_PATH")
+            if bg and (not self.rk_bg_path.text()):
+                self.rk_bg_path.setText(str(bg))
+                try:
+                    pix = QtGui.QPixmap(bg)
+                    self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def _save_rank_config(self, data: dict):
+        cfg_path = self._rank_config_paths()
+        try:
+            try:
+                with open(cfg_path, "r", encoding="utf-8") as fh:
+                    existing = json.load(fh) or {}
+            except Exception:
+                existing = {}
+            existing.update(data or {})
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                json.dump(existing, fh, indent=2, ensure_ascii=False)
+            self._rank_config = existing
         except Exception:
             pass
 
