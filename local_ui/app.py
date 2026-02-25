@@ -4,15 +4,117 @@ It sends single-line JSON requests to 127.0.0.1:8765 and expects a single-line
 JSON response. This is a minimal example to get started.
 """
 
+
+
 import sys
 import os
 import json
 import socket
-import html as _html
+import sqlite3
+import subprocess
+import traceback
+from datetime import datetime
+# HTML embed removed; no html module required
 from PySide6 import QtWidgets, QtCore, QtGui
 
 
 API_ADDR = ("127.0.0.1", 8765)
+
+
+# Background thread to poll log files or sqlite DBs without blocking the UI
+class LogPoller(QtCore.QThread):
+    new_line = QtCore.Signal(str)
+
+    def __init__(self, path: str, mode: str = "file", table: str = None, last_rowid: int = 0, interval: float = 5.0):
+        super().__init__()
+        self.path = path
+        self.mode = mode  # 'file' or 'db'
+        self.table = table
+        self._last_rowid = int(last_rowid or 0)
+        self._interval = float(interval)
+        self._stopped = False
+
+    def stop(self):
+        self._stopped = True
+        try:
+            self.wait(2000)
+        except Exception:
+            pass
+
+    def run(self):
+        try:
+            if self.mode == "db":
+                # open local sqlite connection here
+                try:
+                    conn = sqlite3.connect(self.path)
+                    conn.row_factory = sqlite3.Row
+                    cur = conn.cursor()
+                except Exception:
+                    return
+
+                while not self._stopped:
+                    try:
+                        cur.execute(f"SELECT rowid, * FROM '{self.table}' WHERE rowid > ? ORDER BY rowid ASC", (self._last_rowid,))
+                        rows = cur.fetchall()
+                        for row in rows:
+                            try:
+                                # emit formatted row as string; caller will format further if needed
+                                try:
+                                    data = dict(row)
+                                    s = json.dumps(data, ensure_ascii=False)
+                                except Exception:
+                                    s = str(tuple(row))
+                                self.new_line.emit(s)
+                            except Exception:
+                                pass
+                            try:
+                                self._last_rowid = int(row['rowid'])
+                            except Exception:
+                                try:
+                                    self._last_rowid = int(row[0])
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
+                    # sleep in ms-aware chunks
+                    for _ in range(int(self._interval * 10)):
+                        if self._stopped:
+                            break
+                        self.msleep(100)
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            else:
+                # file mode: tail the file
+                try:
+                    with open(self.path, 'r', encoding='utf-8', errors='ignore') as fh:
+                        fh.seek(0, os.SEEK_END)
+                        while not self._stopped:
+                            line = fh.readline()
+                            if line:
+                                self.new_line.emit(line.rstrip('\n'))
+                            else:
+                                self.msleep(int(self._interval * 1000))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+
+# Event tracing is expensive; enable only when UI_EVENT_TRACE=1 is set in the environment.
+if os.environ.get("UI_EVENT_TRACE") == "1":
+    try:
+        _trace_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "logs")
+        os.makedirs(_trace_dir, exist_ok=True)
+        with open(os.path.join(_trace_dir, "ui_run_trace.log"), "a", encoding="utf-8") as _tf:
+            _tf.write(f"startup: {datetime.now().isoformat()}\n")
+        print("UI startup: trace written", flush=True)
+    except Exception:
+        try:
+            print("UI startup: trace failed", flush=True)
+        except Exception:
+            pass
 
 
 def send_cmd(cmd: dict, timeout: float = 1.0):
@@ -40,11 +142,47 @@ def send_cmd(cmd: dict, timeout: float = 1.0):
         return {"ok": False, "error": str(e)}
 
 
+# Global exception handler so click-time crashes show a dialog and are logged
+def _handle_uncaught_exception(exc_type, exc_value, exc_tb):
+    tb = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    try:
+        # print to stderr/console
+        print(tb, file=sys.stderr)
+    except Exception:
+        pass
+    try:
+        # attempt to show a dialog if Qt is running
+        app = QtWidgets.QApplication.instance()
+        if app:
+            try:
+                QtWidgets.QMessageBox.critical(None, "Unhandled Exception", tb)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    try:
+        # write to a persistent ui crash log
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        log_dir = os.path.join(repo_root, "data", "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        path = os.path.join(log_dir, "ui_crash.log")
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(f"--- {datetime.now().isoformat()} ---\n")
+            fh.write(tb + "\n")
+    except Exception:
+        pass
+
+
+sys.excepthook = _handle_uncaught_exception
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DC Bot — Local UI")
         self.resize(900, 600)
+        # Repo root path for data/logs tracking
+        self._repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         # central tabs
         tabs = QtWidgets.QTabWidget()
@@ -63,9 +201,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refresh_btn = QtWidgets.QPushButton("Refresh Status")
         self.reload_btn = QtWidgets.QPushButton("Reload Cogs")
         self.shutdown_btn = QtWidgets.QPushButton("Shutdown Bot")
+        self.restart_btn = QtWidgets.QPushButton("Restart Bot & UI")
 
         for w in (self.ping_btn, self.refresh_btn, self.reload_btn, self.shutdown_btn):
             btn_row.addWidget(w)
+        # place restart button to the right of shutdown
+        btn_row.addWidget(self.restart_btn)
 
         dash_layout.addLayout(btn_row)
 
@@ -75,6 +216,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.reload_btn.clicked.connect(self.on_reload)
         # config editor is available as its own tab; dashboard button removed
         self.shutdown_btn.clicked.connect(self.on_shutdown)
+        self.restart_btn.clicked.connect(self.on_restart_and_restart_ui)
 
         # Dashboard quick summary removed — detailed preview is in the Preview tab
 
@@ -85,9 +227,20 @@ class MainWindow(QtWidgets.QMainWindow):
         # Logs tab (live tail)
         logs = QtWidgets.QWidget()
         logs_layout = QtWidgets.QVBoxLayout(logs)
+        top_row = QtWidgets.QHBoxLayout()
+        self.choose_log_btn = QtWidgets.QPushButton("Choose Log...")
+        self.clear_log_btn = QtWidgets.QPushButton("Clear")
+        top_row.addWidget(self.choose_log_btn)
+        top_row.addWidget(self.clear_log_btn)
+        top_row.addStretch()
+        logs_layout.addLayout(top_row)
+
         self.log_text = QtWidgets.QPlainTextEdit()
         self.log_text.setReadOnly(True)
         logs_layout.addWidget(self.log_text)
+        # wire buttons
+        self.choose_log_btn.clicked.connect(self._choose_log_file)
+        self.clear_log_btn.clicked.connect(lambda: self.log_text.clear())
         tabs.addTab(logs, "Logs")
 
         # Config editor tab
@@ -138,17 +291,7 @@ class MainWindow(QtWidgets.QMainWindow):
         pv_top.addLayout(pv_form, 1)
         pv_layout.addLayout(pv_top)
 
-        # live rendered preview (message + simple embed look)
-        # use QTextBrowser for richer HTML support and better image handling
-        self.pv_render = QtWidgets.QTextBrowser()
-        self.pv_render.setReadOnly(True)
-        self.pv_render.setMinimumHeight(160)
-        self.pv_render.setFrameShape(QtWidgets.QFrame.NoFrame)
-        # keep the embed styling but make the widget background transparent so the embed HTML controls appearance
-        self.pv_render.setStyleSheet("background: transparent; color: #e6e6e6;")
-        self.pv_render.setOpenExternalLinks(False)
-        pv_layout.addWidget(self.pv_render)
-
+        # Toolbar row for preview actions
         pv_row = QtWidgets.QHBoxLayout()
         self.pv_save = QtWidgets.QPushButton("Save")
         self.pv_save_reload = QtWidgets.QPushButton("Save + Reload")
@@ -159,18 +302,29 @@ class MainWindow(QtWidgets.QMainWindow):
         pv_row.addWidget(self.pv_save_reload)
         pv_layout.addLayout(pv_row)
 
-        tabs.addTab(preview_w, "Preview")
+        tabs.addTab(preview_w, "Welcome")
 
         # Rankcard preview tab
         rank_w = QtWidgets.QWidget()
         rank_layout = QtWidgets.QVBoxLayout(rank_w)
 
-        rk_top = QtWidgets.QHBoxLayout()
+        # Rankcard layout: preview on the left, controls on the right
+        rk_main = QtWidgets.QHBoxLayout()
+
+        # Left: preview area with header
+        rk_left = QtWidgets.QVBoxLayout()
+        lbl_preview = QtWidgets.QLabel("Preview")
+        lbl_preview.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        lbl_preview.setStyleSheet("font-weight:700; font-size:14px; margin-bottom:6px;")
+        rk_left.addWidget(lbl_preview)
         self.rk_image = QtWidgets.QLabel()
         self.rk_image.setFixedSize(700, 210)
         self.rk_image.setScaledContents(True)
-        rk_top.addWidget(self.rk_image, 0)
+        rk_left.addWidget(self.rk_image)
+        rk_left.addStretch()
 
+        # Right: form controls and actions
+        rk_right = QtWidgets.QVBoxLayout()
         rk_form = QtWidgets.QFormLayout()
         self.rk_name = QtWidgets.QLineEdit()
         self.rk_bg_path = QtWidgets.QLineEdit()
@@ -178,23 +332,31 @@ class MainWindow(QtWidgets.QMainWindow):
         hbg = QtWidgets.QHBoxLayout()
         hbg.addWidget(self.rk_bg_path)
         hbg.addWidget(self.rk_bg_browse)
-        self.rk_refresh = QtWidgets.QPushButton("Refresh Rankcard")
         rk_form.addRow("Example name:", self.rk_name)
         rk_form.addRow("Background PNG:", hbg)
+        rk_right.addLayout(rk_form)
 
-        rk_row = QtWidgets.QHBoxLayout()
+        # Add a small info label under the form
+        info = QtWidgets.QLabel("Choose a background PNG to preview the rankcard. Use Save + Reload to apply to the bot.")
+        info.setWordWrap(True)
+        info.setStyleSheet("color:#9aa0a6; font-size:11px; margin-top:8px;")
+        rk_right.addWidget(info)
+        rk_right.addStretch()
+
+        # action buttons (aligned right)
+        rk_buttons = QtWidgets.QHBoxLayout()
+        self.rk_refresh = QtWidgets.QPushButton("Refresh Rankcard")
         self.rk_save = QtWidgets.QPushButton("Save")
         self.rk_save_reload = QtWidgets.QPushButton("Save + Reload")
-        rk_row.addStretch()
-        rk_row.addWidget(self.rk_refresh)
-        rk_row.addWidget(self.rk_save)
-        rk_row.addWidget(self.rk_save_reload)
+        rk_buttons.addStretch()
+        rk_buttons.addWidget(self.rk_refresh)
+        rk_buttons.addWidget(self.rk_save)
+        rk_buttons.addWidget(self.rk_save_reload)
+        rk_right.addLayout(rk_buttons)
 
-        rk_top.addLayout(rk_form, 1)
-        rank_layout.addLayout(rk_top)
-        # push buttons to bottom
-        rank_layout.addStretch()
-        rank_layout.addLayout(rk_row)
+        rk_main.addLayout(rk_left, 1)
+        rk_main.addLayout(rk_right, 0)
+        rank_layout.addLayout(rk_main)
 
         tabs.addTab(rank_w, "Rankcard")
 
@@ -240,11 +402,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_timer.start(3000)
 
         self.log_timer = QtCore.QTimer(self)
+        # keep a fallback timer but increase interval to reduce load
         self.log_timer.timeout.connect(self.tail_logs)
-        self.log_timer.start(1000)
+        self.log_timer.start(5000)
+
+        # background poller for logs (db or tail); created when a log is chosen
+        self._log_poller = None
 
         # initialize
         self._log_fp = None
+        # sqlite support
+        self._db_conn = None
+        self._db_table = None
+        self._db_last_rowid = 0
+        self._tracked_fp = None
         # data URL for a banner received via the Refresh Preview button
         self._preview_banner_data_url = None
         # rank preview persisted settings
@@ -255,6 +426,46 @@ class MainWindow(QtWidgets.QMainWindow):
         # load rank config if present
         try:
             self._load_rank_config()
+        except Exception:
+            pass
+        # helper to update status label and force UI repaint
+        def _set_status(msg: str):
+            try:
+                # update dashboard label
+                try:
+                    self.status_label.setText(msg)
+                except Exception:
+                    pass
+                # also show in the main window status bar for stronger feedback
+                try:
+                    self.statusBar().showMessage(msg, 5000)
+                except Exception:
+                    pass
+                QtWidgets.QApplication.processEvents()
+            except Exception:
+                pass
+        # attach helper to instance for use in handlers
+        self._set_status = _set_status
+        # write a startup marker so the user can confirm the UI launched
+        try:
+            try:
+                start_dir = os.path.join(self._repo_root, "data", "logs")
+                os.makedirs(start_dir, exist_ok=True)
+                with open(os.path.join(start_dir, "ui_start.log"), "a", encoding="utf-8") as fh:
+                    fh.write(f"UI started at {datetime.now().isoformat()}\n")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+        # heartbeat timer to show the UI is alive every 2s
+        # NOTE: use the status bar only for the periodic "Alive" message so
+        # it doesn't overwrite the dashboard `status_label` which is updated
+        # by refresh/status actions.
+        try:
+            self._alive_timer = QtCore.QTimer(self)
+            self._alive_timer.timeout.connect(lambda: self.statusBar().showMessage(f"Alive {datetime.now().strftime('%H:%M:%S')}", 2000))
+            self._alive_timer.start(2000)
         except Exception:
             pass
     def on_ping(self):
@@ -277,15 +488,32 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_refresh_preview(self):
         """Request a banner preview from the bot and update the preview widgets."""
         try:
+            try:
+                self._set_status("Preview: requesting...")
+            except Exception:
+                pass
             name = self.pv_name.text() or "NewMember"
-            r = send_cmd({"action": "banner_preview", "name": name}, timeout=2.0)
+            # quick ping to avoid long waits when the bot control API is not running
+            ping = send_cmd({"action": "ping"}, timeout=0.6)
+            if not ping.get("ok"):
+                # fallback to local preview immediately
+                QtWidgets.QMessageBox.warning(self, "Preview", f"Control API not available, using local banner ({ping.get('error')})")
+                try:
+                    self.update_preview()
+                except Exception:
+                    pass
+                return
+
+            # API reachable — request the generated banner (give it more time)
+            r = send_cmd({"action": "banner_preview", "name": name}, timeout=5.0)
             if r.get("ok") and r.get("png_base64"):
                 b64 = r.get("png_base64")
                 data = QtCore.QByteArray.fromBase64(b64.encode())
                 pix = QtGui.QPixmap()
                 if pix.loadFromData(data):
                     try:
-                        self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                        scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
+                        self.pv_banner.setPixmap(scaled)
                     except Exception:
                         self.pv_banner.setPixmap(pix)
                     # store data URL for embedding into the HTML preview
@@ -310,6 +538,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_refresh_rankpreview(self):
         """Request a rankcard from the bot and display it in the Rankcard tab."""
         try:
+            try:
+                self._set_status("Rank Preview: requesting...")
+            except Exception:
+                pass
             name = self.rk_name.text() or (self.pv_name.text() or "NewMember")
             # prefer explicit field; if empty, use persisted config
             bg = self.rk_bg_path.text() or self._rank_config.get("BG_PATH") if getattr(self, "_rank_config", None) is not None else None
@@ -339,6 +571,55 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.information(self, "Shutdown", "Bot is shutting down")
         else:
             QtWidgets.QMessageBox.warning(self, "Shutdown", f"Failed: {r}")
+
+    def on_restart_and_restart_ui(self):
+        """Shutdown the bot (via control API), attempt to start bot.py, then relaunch the UI.
+
+        This method will: 1) ask for confirmation, 2) request bot shutdown, 3) spawn a new bot process
+        if `bot.py` exists in the repo root, 4) spawn a new UI process running this script, and
+        5) quit the current UI.
+        """
+        try:
+            self._set_status("Restart: preparing...")
+        except Exception:
+            pass
+        ok = QtWidgets.QMessageBox.question(self, "Restart", "Restart the bot and the UI? This will stop the bot and relaunch both.", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        if ok != QtWidgets.QMessageBox.Yes:
+            return
+
+        # 1) request bot shutdown via control API (best-effort)
+        try:
+            r = send_cmd({"action": "shutdown"}, timeout=2.0)
+        except Exception:
+            r = {"ok": False}
+
+        # 2) attempt to start bot.py if present
+        try:
+            bot_path = os.path.join(self._repo_root, "bot.py")
+            if os.path.exists(bot_path):
+                try:
+                    subprocess.Popen([sys.executable, bot_path], cwd=self._repo_root)
+                except Exception as e:
+                    QtWidgets.QMessageBox.warning(self, "Restart", f"Failed to start bot.py: {e}")
+            else:
+                QtWidgets.QMessageBox.information(self, "Restart", "bot.py not found — UI will restart only.")
+        except Exception:
+            pass
+
+        # 3) spawn a new UI process running this script
+        try:
+            subprocess.Popen([sys.executable, os.path.abspath(__file__)], cwd=self._repo_root)
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Restart", f"Failed to relaunch UI: {e}")
+
+        # 4) quit current application
+        try:
+            QtWidgets.QApplication.quit()
+        except Exception:
+            try:
+                sys.exit(0)
+            except Exception:
+                pass
 
     def on_reload(self):
         r = send_cmd({"action": "reload"})
@@ -373,31 +654,359 @@ class MainWindow(QtWidgets.QMainWindow):
     # ==================================================
 
     def _open_log(self):
-        # try to open repo-level `discord.log` if present
+        # Try to open a log file. Search common locations and pick the most
+        # recently modified .log file if multiple candidates exist.
         try:
+            try:
+                self._set_status("Logs: choosing file...")
+            except Exception:
+                pass
             repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            log_path = os.path.join(repo_root, "discord.log")
-            if os.path.exists(log_path):
-                self._log_fp = open(log_path, "r", encoding="utf-8", errors="ignore")
-                # seek to end
-                self._log_fp.seek(0, os.SEEK_END)
+            candidates = []
+            # common locations
+            candidates.append(os.path.join(repo_root, "discord.log"))
+            candidates.append(os.path.join(repo_root, "logs"))
+            candidates.append(os.path.join(repo_root, "log"))
+            candidates.append(os.path.join(repo_root, "data", "logs"))
+
+            log_files = []
+            for p in candidates:
+                if os.path.isdir(p):
+                    for fn in os.listdir(p):
+                        if fn.lower().endswith(('.log', '.txt')):
+                            full = os.path.join(p, fn)
+                            try:
+                                mtime = os.path.getmtime(full)
+                                log_files.append((mtime, full))
+                            except Exception:
+                                pass
+                else:
+                    if os.path.exists(p) and os.path.isfile(p):
+                        try:
+                            mtime = os.path.getmtime(p)
+                            log_files.append((mtime, p))
+                        except Exception:
+                            pass
+
+            # choose the most recent log file
+            if log_files:
+                log_files.sort(reverse=True)
+                _, log_path = log_files[0]
+                try:
+                    self._log_fp = open(log_path, "r", encoding="utf-8", errors="ignore")
+                    self._log_fp.seek(0, os.SEEK_END)
+                    # clear any previous message and show which file is tailed
+                    try:
+                        self.log_text.clear()
+                        self.log_text.appendPlainText(f"Tailing: {log_path}")
+                        # ensure tracked logs dir exists and open tracked writer
+                        try:
+                            tracked_dir = os.path.join(self._repo_root, "data", "logs")
+                            os.makedirs(tracked_dir, exist_ok=True)
+                            # open tracked file in append mode
+                            tracked_path = os.path.join(tracked_dir, "tracked.log")
+                            # close previous tracked fp if present
+                            if getattr(self, "_tracked_fp", None):
+                                try:
+                                    self._tracked_fp.close()
+                                except Exception:
+                                    pass
+                            self._tracked_fp = open(tracked_path, "a", encoding="utf-8", errors="ignore")
+                            # write header about source
+                            try:
+                                self._tracked_fp.write(f"\n--- Tailing: {log_path} (started at {QtCore.QDateTime.currentDateTime().toString()}) ---\n")
+                                self._tracked_fp.flush()
+                            except Exception:
+                                pass
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
+                    return
+                except Exception:
+                    self._log_fp = None
+
+            # no log file found
+            self._log_fp = None
+            try:
+                self.log_text.clear()
+                self.log_text.appendPlainText("No log file found in common locations.\nStart the bot or place a log file named 'discord.log' in the repo root or a 'logs' folder.")
+            except Exception:
+                pass
         except Exception:
             self._log_fp = None
 
+    def _choose_log_file(self):
+        try:
+            try:
+                self._set_status("Banner: choosing image...")
+            except Exception:
+                pass
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            start_dir = repo_root
+            path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Choose log file", start_dir, "Log files (*.log *.txt);;All files (*)")
+            if path:
+                try:
+                    # close any previous file or DB connection
+                    try:
+                        if getattr(self, "_db_conn", None):
+                            try:
+                                self._db_conn.close()
+                            except Exception:
+                                pass
+                            self._db_conn = None
+                            self._db_table = None
+                            self._db_last_rowid = 0
+                        if getattr(self, "_log_fp", None):
+                            try:
+                                self._log_fp.close()
+                            except Exception:
+                                pass
+                            self._log_fp = None
+                    except Exception:
+                        pass
+
+                    # handle sqlite DB files
+                    if path.lower().endswith(('.db', '.sqlite')):
+                        try:
+                            # open sqlite connection
+                            conn = sqlite3.connect(path)
+                            conn.row_factory = sqlite3.Row
+                            self._db_conn = conn
+                            # find user tables
+                            cur = conn.cursor()
+                            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+                            tables = [r[0] for r in cur.fetchall()]
+                            if not tables:
+                                QtWidgets.QMessageBox.warning(self, "Open DB", "Keine Tabellen in der Datenbank gefunden.")
+                                return
+                            # if multiple tables, ask user to pick
+                            table = tables[0]
+                            if len(tables) > 1:
+                                table, ok = QtWidgets.QInputDialog.getItem(self, "Wähle Tabelle", "Tabelle:", tables, 0, False)
+                                if not ok:
+                                    return
+                            self._db_table = table
+                            # get last rowid
+                            try:
+                                cur.execute(f"SELECT max(rowid) as m FROM '{table}';")
+                                r = cur.fetchone()
+                                self._db_last_rowid = int(r['m']) if r and r['m'] is not None else 0
+                            except Exception:
+                                self._db_last_rowid = 0
+                            # initial load: show last 200 rows
+                            try:
+                                cur.execute(f"SELECT rowid, * FROM '{table}' ORDER BY rowid DESC LIMIT 200;")
+                                rows = cur.fetchall()
+                                self.log_text.clear()
+                                self.log_text.appendPlainText(f"Tailing DB: {path} table: {table}")
+                                for row in reversed(rows):
+                                    # format row using smart formatter
+                                    try:
+                                        line = self._format_db_row(row)
+                                        self.log_text.appendPlainText(line)
+                                    except Exception:
+                                        try:
+                                            values = dict(row)
+                                            self.log_text.appendPlainText(str(values))
+                                        except Exception:
+                                            self.log_text.appendPlainText(str(tuple(row)))
+                            except Exception as e:
+                                QtWidgets.QMessageBox.warning(self, "Open DB", f"Fehler beim Lesen der Tabelle: {e}")
+                            # open tracked writer
+                            try:
+                                tracked_dir = os.path.join(self._repo_root, "data", "logs")
+                                os.makedirs(tracked_dir, exist_ok=True)
+                                tracked_path = os.path.join(tracked_dir, "tracked.log")
+                                if getattr(self, "_tracked_fp", None):
+                                    try:
+                                        self._tracked_fp.close()
+                                    except Exception:
+                                        pass
+                                self._tracked_fp = open(tracked_path, "a", encoding="utf-8", errors="ignore")
+                                try:
+                                    self._tracked_fp.write(f"\n--- Tailing DB: {path} table: {table} (started at {QtCore.QDateTime.currentDateTime().toString()}) ---\n")
+                                    self._tracked_fp.flush()
+                                except Exception:
+                                    pass
+                            except Exception:
+                                pass
+                            return
+                        except Exception as e:
+                            QtWidgets.QMessageBox.warning(self, "Open DB", f"Fehler beim Öffnen der Datenbank: {e}")
+                            return
+
+                    # otherwise open as plain text file
+                    self._log_fp = open(path, "r", encoding="utf-8", errors="ignore")
+                    self._log_fp.seek(0, os.SEEK_END)
+                    self.log_text.clear()
+                    self.log_text.appendPlainText(f"Tailing: {path}")
+                    # ensure tracked logs dir exists and open tracked writer
+                    try:
+                        tracked_dir = os.path.join(self._repo_root, "data", "logs")
+                        os.makedirs(tracked_dir, exist_ok=True)
+                        tracked_path = os.path.join(tracked_dir, "tracked.log")
+                        if getattr(self, "_tracked_fp", None):
+                            try:
+                                self._tracked_fp.close()
+                            except Exception:
+                                pass
+                        self._tracked_fp = open(tracked_path, "a", encoding="utf-8", errors="ignore")
+                        try:
+                            self._tracked_fp.write(f"\n--- Tailing: {path} (started at {QtCore.QDateTime.currentDateTime().toString()}) ---\n")
+                            self._tracked_fp.flush()
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
+                except Exception as e:
+                    QtWidgets.QMessageBox.warning(self, "Open log", f"Failed to open log file: {e}")
+        except Exception:
+            pass
+
     def _choose_banner(self):
         try:
+            try:
+                self._set_status("Rank: choosing background...")
+            except Exception:
+                pass
             repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             start_dir = os.path.join(repo_root, "assets") if os.path.exists(os.path.join(repo_root, "assets")) else repo_root
             path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Choose banner image", start_dir, "Images (*.png *.jpg *.jpeg *.bmp)")
             if path:
                 self.pv_banner_path.setText(path)
                 pix = QtGui.QPixmap(path)
-                self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                try:
+                    scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
+                    self.pv_banner.setPixmap(scaled)
+                except Exception:
+                    self.pv_banner.setPixmap(pix)
         except Exception:
             pass
 
+    def _format_db_row(self, row: sqlite3.Row) -> str:
+        """Format a sqlite3.Row by detecting common message/timestamp columns.
+
+        Returns a single-line string like "[time] message" when possible,
+        otherwise falls back to a dict/string representation.
+        """
+        try:
+            data = dict(row)
+        except Exception:
+            try:
+                return str(tuple(row))
+            except Exception:
+                return str(row)
+
+        # prioritized keys commonly used for messages and timestamps
+        msg_priority = ("message", "msg", "text", "content", "body", "payload", "data")
+        ts_priority = ("created_at", "timestamp", "ts", "time", "date", "created")
+
+        def _extract_message(d):
+            # direct matches
+            for k in msg_priority:
+                if k in d and d.get(k) is not None:
+                    return d.get(k)
+            # substring matches
+            for k in d.keys():
+                lk = k.lower()
+                if any(x in lk for x in ("message", "text", "content", "body", "payload")):
+                    return d.get(k)
+            return None
+
+        def _extract_timestamp(d):
+            for k in ts_priority:
+                if k in d and d.get(k) is not None:
+                    return d.get(k)
+            for k in d.keys():
+                lk = k.lower()
+                if "time" in lk or "date" in lk or lk in ("ts", "timestamp", "created_at", "created"):
+                    return d.get(k)
+            return None
+
+        msg_val = _extract_message(data)
+        ts_val = _extract_timestamp(data)
+
+        # if message looks like JSON string, try to parse and extract inner message
+        if isinstance(msg_val, str):
+            s = msg_val.strip()
+            if (s.startswith('{') and s.endswith('}')) or (s.startswith('[') and s.endswith(']')):
+                try:
+                    inner = json.loads(s)
+                    if isinstance(inner, dict):
+                        m2 = _extract_message(inner)
+                        if m2 is not None:
+                            msg_val = m2
+                        else:
+                            msg_val = inner
+                except Exception:
+                    pass
+
+        # timestamp parsing helpers
+        ts_str = None
+        if ts_val is not None:
+            try:
+                if isinstance(ts_val, (int, float)):
+                    # handle milliseconds vs seconds
+                    v = float(ts_val)
+                    if v > 1e12:
+                        v = v / 1000.0
+                    ts_str = datetime.fromtimestamp(v).isoformat(sep=' ')
+                else:
+                    s = str(ts_val).strip()
+                    # numeric string
+                    if s.isdigit():
+                        v = float(s)
+                        if v > 1e12:
+                            v = v / 1000.0
+                        ts_str = datetime.fromtimestamp(v).isoformat(sep=' ')
+                    else:
+                        # try ISO parser
+                        try:
+                            # handle trailing Z
+                            s2 = s.replace('Z', '+00:00') if s.endswith('Z') else s
+                            ts_str = datetime.fromisoformat(s2).isoformat(sep=' ')
+                        except Exception:
+                            ts_str = s
+            except Exception:
+                try:
+                    ts_str = str(ts_val)
+                except Exception:
+                    ts_str = None
+
+        # normalize message into a single-line string
+        if msg_val is not None:
+            try:
+                if isinstance(msg_val, (dict, list)):
+                    m = json.dumps(msg_val, ensure_ascii=False)
+                else:
+                    m = str(msg_val)
+                m = m.replace('\n', ' ').strip()
+            except Exception:
+                m = str(msg_val)
+            if ts_str:
+                return f"[{ts_str}] {m}"
+            return m
+
+        # fallback: include timestamp if present
+        if ts_str:
+            try:
+                return f"[{ts_str}] {json.dumps(data, ensure_ascii=False)}"
+            except Exception:
+                return f"[{ts_str}] {str(data)}"
+
+        # last fallback
+        try:
+            return json.dumps(data, ensure_ascii=False)
+        except Exception:
+            return str(data)
+
     def _choose_rank_bg(self):
         try:
+            try:
+                self._set_status("Preview: saving...")
+            except Exception:
+                pass
             repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             start_dir = os.path.join(repo_root, "assets") if os.path.exists(os.path.join(repo_root, "assets")) else repo_root
             path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Choose rank background image", start_dir, "Images (*.png *.jpg *.jpeg *.bmp)")
@@ -444,6 +1053,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 try:
                     pix = QtGui.QPixmap(bg)
                     self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                except Exception:
+                    pass
+            # populate example name if present and user not editing
+            name = cfg.get("EXAMPLE_NAME")
+            if name and (not self.rk_name.text()):
+                try:
+                    self.rk_name.setText(str(name))
                 except Exception:
                     pass
         except Exception:
@@ -514,6 +1130,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _save_preview(self, reload_after: bool = False):
         try:
+            try:
+                self._set_status("Preview: saving...")
+            except Exception:
+                pass
             repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             cfg_path = os.path.join(repo_root, "config", "welcome.json")
             try:
@@ -590,87 +1210,90 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
             else:
                 # fall back to local file if provided
-                try:
-                    if banner and os.path.exists(banner):
+                if banner and os.path.exists(banner):
+                    try:
                         pix = QtGui.QPixmap(banner)
                         try:
-                            self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                            scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
+                            self.pv_banner.setPixmap(scaled)
                         except Exception:
                             self.pv_banner.setPixmap(pix)
-                        banner_url = f"file:///{os.path.abspath(banner).replace('\\', '/')}"
-                    else:
-                        self.pv_banner.clear()
-                except Exception:
+                    except Exception:
+                        try:
+                            self.pv_banner.clear()
+                        except Exception:
+                            pass
+                    banner_url = f"file:///{os.path.abspath(banner).replace('\\', '/')}"
+                else:
                     try:
                         self.pv_banner.clear()
                     except Exception:
                         pass
 
-            # substitute placeholder safely
-            safe_name = _html.escape(name)
-            # preserve newlines as <br> and substitute mention
-            rendered = _html.escape(message).replace("{mention}", f"<b>@{safe_name}</b>")
-            rendered = rendered.replace("\n", "<br>")
-
-            # build Discord-like embed HTML using basic table layout (Qt supports a subset of HTML/CSS)
-            # left colored bar, dark embed background, banner image below header
-            html = """
-<div style="font-family:Segoe UI, Arial; color:#e6e6e6;">
-    <table cellpadding="0" cellspacing="0" width="100%" style="background:#2f3136; border-radius:8px;">
-                try:
-                    welcome_msg = cfg.get("WELCOME_MESSAGE")
-                    if welcome_msg and not self.pv_message.hasFocus():
-                        cur_text = self.pv_message.toPlainText()
-                        if not cur_text or not cur_text.strip():
-                            try:
-                                self.pv_message.setPlainText(str(welcome_msg))
-                            except Exception:
-                                pass
-
-                # show persisted rank example name similar to Preview behavior
-                try:
-                    if not getattr(self, "rk_name", None) is None and not self.rk_name.hasFocus():
-                        rk_example = None
-                        try:
-                            rk_example = self._rank_config.get("EXAMPLE_NAME") if getattr(self, "_rank_config", None) else None
-                        except Exception:
-                            rk_example = None
-                        if not rk_example:
-                            rk_example = cfg.get("EXAMPLE_NAME")
-                        if rk_example:
-                            try:
-                                self.rk_name.setText(str(rk_example))
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
-            if banner_url:
-                # responsive banner using max-width so it fits the preview widget
-                html += f"<tr><td colspan=\"2\" style=\"padding:0 12px 12px 12px;\"><img src=\"{banner_url}\" style=\"width:100%; height:auto; border-radius:6px; display:block;\"/></td></tr>"
-
-            # Add a caption row to mimic large title under banner (helps approximate Discord-style composition)
-            html += "<tr><td colspan=\"2\" style=\"padding:6px 12px 12px 12px;\">"
-            html += "<div style=\"font-size:18pt; font-weight:800; color:#ffffff; margin-bottom:4px;\">WELCOME</div>"
-            html += f"<div style=\"font-size:12pt; color:#dcdcdc;\">{safe_name}</div>"
-            html += "</td></tr>"
-
-            html += "</table></div>"
-
-            # set HTML into QTextBrowser
+            # substitute placeholder in plain text (no HTML embed)
+            rendered = message.replace("{mention}", f"@{name}")
             try:
-                self.pv_render.setHtml(html)
+                self.pv_banner.setToolTip(rendered)
             except Exception:
-                # fallback to plain text
-                self.pv_render.setPlainText(_html.unescape(rendered))
+                pass
+
+            # No rich embed is rendered; banner tooltip is used for message preview.
+            pass
         except Exception:
             pass
 
     def tail_logs(self):
-        if not self._log_fp:
-            return
         try:
+            # if tailing a sqlite DB
+            if getattr(self, "_db_conn", None) and getattr(self, "_db_table", None):
+                try:
+                    cur = self._db_conn.cursor()
+                    cur.execute(f"SELECT rowid, * FROM '{self._db_table}' WHERE rowid > ? ORDER BY rowid ASC", (self._db_last_rowid,))
+                    rows = cur.fetchall()
+                    for row in rows:
+                        try:
+                            line = self._format_db_row(row)
+                        except Exception:
+                            try:
+                                line = str(dict(row))
+                            except Exception:
+                                line = str(tuple(row))
+                        self.log_text.appendPlainText(line)
+                        try:
+                            if getattr(self, "_tracked_fp", None):
+                                self._tracked_fp.write(line + "\n")
+                                self._tracked_fp.flush()
+                        except Exception:
+                            pass
+                        try:
+                            self._db_last_rowid = int(row['rowid'])
+                        except Exception:
+                            try:
+                                self._db_last_rowid = int(row[0])
+                            except Exception:
+                                pass
+                    # scroll
+                    self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
+                except Exception:
+                    pass
+                return
+
+            # otherwise tail a plain file
+            if not getattr(self, "_log_fp", None):
+                return
             for line in self._log_fp:
-                self.log_text.appendPlainText(line.rstrip())
+                txt = line.rstrip()
+                self.log_text.appendPlainText(txt)
+                # also append to tracked log if available
+                try:
+                    if getattr(self, "_tracked_fp", None):
+                        try:
+                            self._tracked_fp.write(txt + "\n")
+                            self._tracked_fp.flush()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
             # keep the view scrolled to bottom
             self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
         except Exception:
@@ -683,7 +1306,7 @@ class MainWindow(QtWidgets.QMainWindow):
             cfg_path = os.path.join(repo_root, "config", "welcome.json")
             if not os.path.exists(cfg_path):
                 try:
-                    self.pv_render.setText("No welcome config found")
+                    self.status_label.setText("No welcome config found")
                     self.pv_banner.clear()
                 except Exception:
                     pass
@@ -704,9 +1327,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 if banner and os.path.exists(banner):
                     pix = QtGui.QPixmap(banner)
                     try:
-                        self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                        scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
+                        self.pv_banner.setPixmap(scaled)
                     except Exception:
-                        pass
+                        try:
+                            self.pv_banner.setPixmap(pix)
+                        except Exception:
+                            pass
                 else:
                     try:
                         self.pv_banner.clear()
@@ -905,7 +1532,119 @@ class ConfigEditor(QtWidgets.QDialog):
 
 
 def main():
+    # Prevent running multiple UI instances: try to bind an internal lock port.
+    # If the port is already in use, assume another UI is running and exit.
+    _lock_sock = None
+    try:
+        _lock_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _lock_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        _lock_sock.bind(("127.0.0.1", 8766))
+        _lock_sock.listen(1)
+    except Exception:
+        try:
+            print("Another UI instance seems to be running; exiting.")
+        except Exception:
+            pass
+        try:
+            if _lock_sock:
+                _lock_sock.close()
+        except Exception:
+            pass
+        return
+
     app = QtWidgets.QApplication(sys.argv)
+    # Install a global event filter to trace mouse/key events for debugging
+    class _EventLogger(QtCore.QObject):
+        def eventFilter(self, obj, event):
+            try:
+                t = event.type()
+            except Exception:
+                t = None
+
+            # Only log discrete input events (avoid high-frequency events like MouseMove)
+            try:
+                interesting = (
+                    QtCore.QEvent.MouseButtonPress,
+                    QtCore.QEvent.MouseButtonRelease,
+                    QtCore.QEvent.KeyPress,
+                    QtCore.QEvent.KeyRelease,
+                    QtCore.QEvent.FocusIn,
+                    QtCore.QEvent.FocusOut,
+                )
+            except Exception:
+                interesting = ()
+
+            if t in interesting:
+                try:
+                    name = None
+                    if hasattr(QtCore.QEvent, 'typeToString'):
+                        try:
+                            name = QtCore.QEvent.typeToString(t)
+                        except Exception:
+                            name = str(t)
+                    else:
+                        name = str(t)
+                    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                    objname = getattr(obj, '__class__', type(obj)).__name__
+                    line = f"EVENT {datetime.now().isoformat()} {name} obj={objname}\n"
+                    # buffer instead of writing immediately
+                    try:
+                        buf = getattr(self, '_evbuf', None)
+                        if buf is None:
+                            self._evbuf = []
+                            buf = self._evbuf
+                        buf.append(line)
+                    except Exception:
+                        # best-effort fallback to direct append
+                        try:
+                            trace = os.path.join(repo_root, 'data', 'logs', 'ui_run_trace.log')
+                            with open(trace, 'a', encoding='utf-8') as fh:
+                                fh.write(line)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
+            return super().eventFilter(obj, event)
+
+    # Only enable event tracing if specifically requested via environment
+    if os.environ.get("UI_EVENT_TRACE") == "1":
+        try:
+            evlogger = _EventLogger(app)
+            app.installEventFilter(evlogger)
+        except Exception:
+            evlogger = None
+        # setup periodic flush of the event buffer to file to avoid blocking
+        def _flush_events():
+            try:
+                buf = getattr(evlogger, '_evbuf', None)
+                if not buf:
+                    return
+                repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                trace = os.path.join(repo_root, 'data', 'logs', 'ui_run_trace.log')
+                # swap buffer
+                towrite = None
+                try:
+                    towrite = list(buf)
+                    evlogger._evbuf.clear()
+                except Exception:
+                    towrite = buf
+                    evlogger._evbuf = []
+                try:
+                    with open(trace, 'a', encoding='utf-8') as fh:
+                        fh.writelines(towrite)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+        try:
+            flush_timer = QtCore.QTimer(app)
+            flush_timer.setInterval(700)
+            flush_timer.timeout.connect(_flush_events)
+            flush_timer.start()
+        except Exception:
+            pass
     w = MainWindow()
     w.show()
     sys.exit(app.exec())
