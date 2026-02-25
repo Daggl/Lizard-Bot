@@ -190,10 +190,12 @@ class MainWindow(QtWidgets.QMainWindow):
         rk_row.addWidget(self.rk_refresh)
         rk_row.addWidget(self.rk_save)
         rk_row.addWidget(self.rk_save_reload)
-        rank_layout.addLayout(rk_row)
 
         rk_top.addLayout(rk_form, 1)
         rank_layout.addLayout(rk_top)
+        # push buttons to bottom
+        rank_layout.addStretch()
+        rank_layout.addLayout(rk_row)
 
         tabs.addTab(rank_w, "Rankcard")
 
