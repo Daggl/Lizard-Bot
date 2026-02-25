@@ -42,6 +42,29 @@ def _load_welcome_cfg() -> dict:
         return {}
 
 
+def _safe_truetype(path: Optional[str], size: int):
+    try:
+        if path:
+            return ImageFont.truetype(path, size)
+    except Exception:
+        pass
+    return ImageFont.load_default()
+
+
+def _parse_hex_color(value: Optional[str], fallback: tuple[int, int, int]) -> tuple[int, int, int]:
+    try:
+        s = str(value or "").strip()
+        if s.startswith("#"):
+            s = s[1:]
+        if len(s) == 3:
+            s = "".join(ch * 2 for ch in s)
+        if len(s) != 6:
+            return fallback
+        return tuple(int(s[i : i + 2], 16) for i in (0, 2, 4))
+    except Exception:
+        return fallback
+
+
 def clean_username(member: discord.Member) -> str:
     name = member.display_name
     name = re.sub(r"\d+", "", name)
@@ -68,6 +91,16 @@ class Welcome(commands.Cog):
         banner_title = str(cfg.get("BANNER_TITLE", "WELCOME") or "WELCOME")
         offset_x = int(cfg.get("OFFSET_X", 0) or 0)
         offset_y = int(cfg.get("OFFSET_Y", 0) or 0)
+        title_font_size = int(cfg.get("TITLE_FONT_SIZE", 140) or 140)
+        username_font_size = int(cfg.get("USERNAME_FONT_SIZE", 64) or 64)
+        title_color = _parse_hex_color(cfg.get("TITLE_COLOR", "#FFFFFF"), (255, 255, 255))
+        username_color = _parse_hex_color(cfg.get("USERNAME_COLOR", "#E6E6E6"), (230, 230, 230))
+        title_offset_x = int(cfg.get("TITLE_OFFSET_X", 0) or 0)
+        title_offset_y = int(cfg.get("TITLE_OFFSET_Y", 0) or 0)
+        username_offset_x = int(cfg.get("USERNAME_OFFSET_X", 0) or 0)
+        username_offset_y = int(cfg.get("USERNAME_OFFSET_Y", 0) or 0)
+        text_offset_x = int(cfg.get("TEXT_OFFSET_X", 0) or 0)
+        text_offset_y = int(cfg.get("TEXT_OFFSET_Y", 0) or 0)
 
         username = clean_username(member)
 
@@ -93,10 +126,12 @@ class Welcome(commands.Cog):
         ImageDraw.Draw(mask).ellipse((0, 0, avatar_size, avatar_size), fill=255)
         avatar.putalpha(mask)
 
-        avatar_y = (height - avatar_size) // 2 + offset_y
+        avatar_base_x = margin
+        avatar_base_y = (height - avatar_size) // 2
+        avatar_y = avatar_base_y + offset_y
 
-        font_welcome = ImageFont.truetype(font_welcome_path, 140) if font_welcome_path else ImageFont.load_default()
-        font_user = ImageFont.truetype(font_username_path, 64) if font_username_path else ImageFont.load_default()
+        font_welcome = _safe_truetype(font_welcome_path, max(8, title_font_size))
+        font_user = _safe_truetype(font_username_path, max(8, username_font_size))
 
         draw = ImageDraw.Draw(banner)
         welcome_text = banner_title
@@ -104,23 +139,32 @@ class Welcome(commands.Cog):
         w_width = bbox_w[2] - bbox_w[0]
 
         spacing = 40
-        avatar_x_calc = int((width - avatar_size - spacing + margin - w_width) / 3)
-        avatar_x = max(margin, avatar_x_calc + offset_x)
+        # Keep avatar position independent from title font size.
+        avatar_x = avatar_base_x + offset_x
 
-        text_area_x = avatar_x + avatar_size + spacing
+        # Keep text area independent from avatar offsets.
+        text_area_x = avatar_base_x + avatar_size + spacing
         text_area_width = width - text_area_x - margin
         welcome_x = text_area_x + max(0, (text_area_width - w_width) // 2)
-        welcome_y = avatar_y + 40
+        welcome_y = avatar_base_y + 40
+        welcome_x += text_offset_x
+        welcome_y += text_offset_y
+        welcome_x += title_offset_x
+        welcome_y += title_offset_y
 
-        draw.text((welcome_x, welcome_y), welcome_text, font=font_welcome, fill=(255, 255, 255))
+        draw.text((welcome_x, welcome_y), welcome_text, font=font_welcome, fill=title_color)
         banner.paste(avatar, (avatar_x, avatar_y), avatar)
 
         bbox_u = draw.textbbox((0, 0), username, font=font_user)
         u_width = bbox_u[2] - bbox_u[0]
         user_x = text_area_x + max(0, (text_area_width - u_width) // 2)
-        extra_spacing = 80
-        user_y = welcome_y + (bbox_w[3] - bbox_w[1]) + extra_spacing
-        draw.text((user_x, user_y), username, font=font_user, fill=(230, 230, 230))
+        # Keep username baseline independent from title font size.
+        user_y = avatar_base_y + 220
+        user_x += text_offset_x
+        user_y += text_offset_y
+        user_x += username_offset_x
+        user_y += username_offset_y
+        draw.text((user_x, user_y), username, font=font_user, fill=username_color)
 
         if banner.mode == "RGBA":
             background_rgb = Image.new("RGB", banner.size, (18, 18, 18))

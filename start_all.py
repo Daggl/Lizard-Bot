@@ -14,6 +14,10 @@ import sys
 import threading
 import subprocess
 import signal
+import time
+
+
+UI_RESTART_EXIT_CODE = 42
 
 
 def load_dotenv(path):
@@ -47,6 +51,7 @@ def main():
     dotenv_path = os.path.join(here, ".env")
     env = os.environ.copy()
     env.update(load_dotenv(dotenv_path))
+    restart_marker = os.path.join(here, "data", "logs", "ui_restart.request")
 
     # Ensure UI control is enabled for bot (force enable)
     env["LOCAL_UI_ENABLE"] = "1"
@@ -74,16 +79,25 @@ def main():
     bot_cmd = [sys.executable, "-u", "-m", "src.mybot"]
     ui_cmd = [sys.executable, "-u", "local_ui/app.py"]
 
-    bot_proc = subprocess.Popen(bot_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env, text=True)
-    ui_proc = subprocess.Popen(ui_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env, text=True)
+    def _start_children():
+        bot_env = env.copy()
+        ui_env = env.copy()
+        # Signal to UI that start_all.py supervises restart/shutdown lifecycle.
+        ui_env["LOCAL_UI_SUPERVISED"] = "1"
 
-    threads = []
-    t = threading.Thread(target=stream_reader, args=("BOT", bot_proc.stdout), daemon=True)
-    t.start()
-    threads.append(t)
-    t2 = threading.Thread(target=stream_reader, args=("UI", ui_proc.stdout), daemon=True)
-    t2.start()
-    threads.append(t2)
+        bot_proc_local = subprocess.Popen(bot_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=bot_env, text=True)
+        ui_proc_local = subprocess.Popen(ui_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=ui_env, text=True)
+
+        threads_local = []
+        t_bot = threading.Thread(target=stream_reader, args=("BOT", bot_proc_local.stdout), daemon=True)
+        t_bot.start()
+        threads_local.append(t_bot)
+        t_ui = threading.Thread(target=stream_reader, args=("UI", ui_proc_local.stdout), daemon=True)
+        t_ui.start()
+        threads_local.append(t_ui)
+        return bot_proc_local, ui_proc_local, threads_local
+
+    bot_proc, ui_proc, threads = _start_children()
 
     def handle_sigint(signum, frame):
         print("Shutting down processes...")
@@ -98,16 +112,54 @@ def main():
 
     signal.signal(signal.SIGINT, handle_sigint)
 
-    # wait for both to exit
-    try:
-        bot_proc.wait()
-    except KeyboardInterrupt:
-        handle_sigint(None, None)
+    # supervise lifecycle; UI can request full restart by exiting with UI_RESTART_EXIT_CODE
+    while True:
+        try:
+            ui_code = ui_proc.wait()
+        except KeyboardInterrupt:
+            handle_sigint(None, None)
+            break
 
-    try:
-        ui_proc.wait()
-    except KeyboardInterrupt:
-        handle_sigint(None, None)
+        restart_requested = (ui_code == UI_RESTART_EXIT_CODE)
+        if not restart_requested:
+            try:
+                restart_requested = os.path.exists(restart_marker)
+            except Exception:
+                restart_requested = False
+
+        if restart_requested:
+            print("UI requested full restart (bot + UI) in current terminal...")
+            try:
+                if os.path.exists(restart_marker):
+                    os.remove(restart_marker)
+            except Exception:
+                pass
+            try:
+                if bot_proc.poll() is None:
+                    bot_proc.terminate()
+                    try:
+                        bot_proc.wait(timeout=6)
+                    except Exception:
+                        bot_proc.kill()
+            except Exception:
+                pass
+
+            # short cooldown to free ports cleanly
+            time.sleep(0.6)
+            bot_proc, ui_proc, threads = _start_children()
+            continue
+
+        # normal exit path: stop bot too and finish
+        try:
+            if bot_proc.poll() is None:
+                bot_proc.terminate()
+                try:
+                    bot_proc.wait(timeout=6)
+                except Exception:
+                    bot_proc.kill()
+        except Exception:
+            pass
+        break
 
 
 if __name__ == "__main__":

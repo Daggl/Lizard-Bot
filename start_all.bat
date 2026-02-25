@@ -21,5 +21,3 @@ if exist "%VENV_PY%" (
   set PYTHONUNBUFFERED=1
   python -u "%~dp0\start_all.py"
 )
-
-pause

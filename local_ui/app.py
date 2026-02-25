@@ -14,12 +14,14 @@ import threading
 import sqlite3
 import subprocess
 import traceback
+import time
 from datetime import datetime
 # HTML embed removed; no html module required
 from PySide6 import QtWidgets, QtCore, QtGui
 
 
 API_ADDR = ("127.0.0.1", 8765)
+UI_RESTART_EXIT_CODE = 42
 
 
 # Background thread to poll log files or sqlite DBs without blocking the UI
@@ -277,6 +279,79 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_title.setPlaceholderText("WELCOME")
         pv_form.addRow("Banner title:", self.pv_title)
 
+        self.pv_title_font = QtWidgets.QComboBox()
+        self.pv_title_font.setEditable(True)
+        self.pv_title_font.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
+        pv_form.addRow("Title font:", self.pv_title_font)
+
+        self.pv_user_font = QtWidgets.QComboBox()
+        self.pv_user_font.setEditable(True)
+        self.pv_user_font.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
+        pv_form.addRow("Username font:", self.pv_user_font)
+
+        self.pv_title_size = QtWidgets.QSpinBox()
+        self.pv_title_size.setRange(8, 400)
+        self.pv_title_size.setValue(140)
+        pv_form.addRow("Title size:", self.pv_title_size)
+
+        self.pv_user_size = QtWidgets.QSpinBox()
+        self.pv_user_size.setRange(8, 300)
+        self.pv_user_size.setValue(64)
+        pv_form.addRow("Username size:", self.pv_user_size)
+
+        self.pv_title_color = QtWidgets.QLineEdit()
+        self.pv_title_color.setPlaceholderText("#FFFFFF")
+        pv_form.addRow("Title color:", self.pv_title_color)
+
+        self.pv_user_color = QtWidgets.QLineEdit()
+        self.pv_user_color.setPlaceholderText("#E6E6E6")
+        pv_form.addRow("Username color:", self.pv_user_color)
+
+        title_pos_row = QtWidgets.QHBoxLayout()
+        self.pv_title_x = QtWidgets.QSpinBox()
+        self.pv_title_x.setRange(-2000, 2000)
+        self.pv_title_x.setSingleStep(5)
+        self.pv_title_y = QtWidgets.QSpinBox()
+        self.pv_title_y.setRange(-2000, 2000)
+        self.pv_title_y.setSingleStep(5)
+        title_pos_row.addWidget(QtWidgets.QLabel("X"))
+        title_pos_row.addWidget(self.pv_title_x)
+        title_pos_row.addSpacing(10)
+        title_pos_row.addWidget(QtWidgets.QLabel("Y"))
+        title_pos_row.addWidget(self.pv_title_y)
+        title_pos_row.addStretch()
+        pv_form.addRow("Title offset:", title_pos_row)
+
+        user_pos_row = QtWidgets.QHBoxLayout()
+        self.pv_user_x = QtWidgets.QSpinBox()
+        self.pv_user_x.setRange(-2000, 2000)
+        self.pv_user_x.setSingleStep(5)
+        self.pv_user_y = QtWidgets.QSpinBox()
+        self.pv_user_y.setRange(-2000, 2000)
+        self.pv_user_y.setSingleStep(5)
+        user_pos_row.addWidget(QtWidgets.QLabel("X"))
+        user_pos_row.addWidget(self.pv_user_x)
+        user_pos_row.addSpacing(10)
+        user_pos_row.addWidget(QtWidgets.QLabel("Y"))
+        user_pos_row.addWidget(self.pv_user_y)
+        user_pos_row.addStretch()
+        pv_form.addRow("Username offset:", user_pos_row)
+
+        text_pos_row = QtWidgets.QHBoxLayout()
+        self.pv_text_x = QtWidgets.QSpinBox()
+        self.pv_text_x.setRange(-2000, 2000)
+        self.pv_text_x.setSingleStep(5)
+        self.pv_text_y = QtWidgets.QSpinBox()
+        self.pv_text_y.setRange(-2000, 2000)
+        self.pv_text_y.setSingleStep(5)
+        text_pos_row.addWidget(QtWidgets.QLabel("X"))
+        text_pos_row.addWidget(self.pv_text_x)
+        text_pos_row.addSpacing(10)
+        text_pos_row.addWidget(QtWidgets.QLabel("Y"))
+        text_pos_row.addWidget(self.pv_text_y)
+        text_pos_row.addStretch()
+        pv_form.addRow("Text offset:", text_pos_row)
+
         pos_row = QtWidgets.QHBoxLayout()
         self.pv_avatar_x = QtWidgets.QSpinBox()
         self.pv_avatar_x.setRange(-2000, 2000)
@@ -406,12 +481,36 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_banner_path.textChanged.connect(lambda: self._preview_debounce.start())
         self.pv_message.textChanged.connect(lambda: self._preview_debounce.start())
         self.pv_title.textChanged.connect(lambda: self._preview_debounce.start())
+        self.pv_title_font.currentTextChanged.connect(lambda _t: self._preview_debounce.start())
+        self.pv_user_font.currentTextChanged.connect(lambda _t: self._preview_debounce.start())
+        self.pv_title_size.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_user_size.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_title_color.textChanged.connect(lambda: self._preview_debounce.start())
+        self.pv_user_color.textChanged.connect(lambda: self._preview_debounce.start())
+        self.pv_title_x.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_title_y.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_user_x.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_user_y.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_text_x.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_text_y.valueChanged.connect(lambda _v: self._preview_debounce.start())
         self.pv_avatar_x.valueChanged.connect(lambda _v: self._preview_debounce.start())
         self.pv_avatar_y.valueChanged.connect(lambda _v: self._preview_debounce.start())
         self.pv_name.textChanged.connect(self._mark_preview_dirty)
         self.pv_banner_path.textChanged.connect(self._mark_preview_dirty)
         self.pv_message.textChanged.connect(self._mark_preview_dirty)
         self.pv_title.textChanged.connect(self._mark_preview_dirty)
+        self.pv_title_font.currentTextChanged.connect(self._mark_preview_dirty)
+        self.pv_user_font.currentTextChanged.connect(self._mark_preview_dirty)
+        self.pv_title_size.valueChanged.connect(self._mark_preview_dirty)
+        self.pv_user_size.valueChanged.connect(self._mark_preview_dirty)
+        self.pv_title_color.textChanged.connect(self._mark_preview_dirty)
+        self.pv_user_color.textChanged.connect(self._mark_preview_dirty)
+        self.pv_title_x.valueChanged.connect(self._mark_preview_dirty)
+        self.pv_title_y.valueChanged.connect(self._mark_preview_dirty)
+        self.pv_user_x.valueChanged.connect(self._mark_preview_dirty)
+        self.pv_user_y.valueChanged.connect(self._mark_preview_dirty)
+        self.pv_text_x.valueChanged.connect(self._mark_preview_dirty)
+        self.pv_text_y.valueChanged.connect(self._mark_preview_dirty)
         self.pv_avatar_x.valueChanged.connect(self._mark_preview_dirty)
         self.pv_avatar_y.valueChanged.connect(self._mark_preview_dirty)
         self.rk_name.textChanged.connect(lambda: self._preview_debounce.start())
@@ -455,6 +554,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._rank_config_path = None
         self._preview_dirty = False
         self._preview_syncing = False
+        self._title_font_lookup = {}
+        try:
+            self._load_title_font_choices()
+            self._load_user_font_choices()
+        except Exception:
+            pass
         self._open_log()
         self.on_refresh()
         # load rank config if present
@@ -606,6 +711,18 @@ class MainWindow(QtWidgets.QMainWindow):
             overrides = {
                 "BANNER_PATH": self.pv_banner_path.text() or None,
                 "BANNER_TITLE": self.pv_title.text() or "WELCOME",
+                "FONT_WELCOME": self._selected_title_font_path(),
+                "FONT_USERNAME": self._selected_user_font_path(),
+                "TITLE_FONT_SIZE": int(self.pv_title_size.value()),
+                "USERNAME_FONT_SIZE": int(self.pv_user_size.value()),
+                "TITLE_COLOR": self.pv_title_color.text() or "#FFFFFF",
+                "USERNAME_COLOR": self.pv_user_color.text() or "#E6E6E6",
+                "TITLE_OFFSET_X": int(self.pv_title_x.value()),
+                "TITLE_OFFSET_Y": int(self.pv_title_y.value()),
+                "USERNAME_OFFSET_X": int(self.pv_user_x.value()),
+                "USERNAME_OFFSET_Y": int(self.pv_user_y.value()),
+                "TEXT_OFFSET_X": int(self.pv_text_x.value()),
+                "TEXT_OFFSET_Y": int(self.pv_text_y.value()),
                 "OFFSET_X": int(self.pv_avatar_x.value()),
                 "OFFSET_Y": int(self.pv_avatar_y.value()),
             }
@@ -695,19 +812,51 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
 
     def on_shutdown(self):
-        self.send_cmd_async({"action": "shutdown"}, timeout=2.0, cb=self._on_shutdown_result)
+        ok = QtWidgets.QMessageBox.question(
+            self,
+            "Shutdown",
+            "Bot herunterfahren und UI schließen?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+        )
+        if ok != QtWidgets.QMessageBox.Yes:
+            return
+        self.send_cmd_async({"action": "shutdown"}, timeout=2.5, cb=self._on_shutdown_result)
 
     def _on_shutdown_result(self, r: dict):
-        if r.get("ok"):
-            QtWidgets.QMessageBox.information(self, "Shutdown", "Bot is shutting down")
-        else:
-            QtWidgets.QMessageBox.warning(self, "Shutdown", f"Failed: {r}")
+        try:
+            if r.get("ok"):
+                QtWidgets.QMessageBox.information(self, "Shutdown", "Bot wird heruntergefahren. UI wird geschlossen.")
+                try:
+                    self._set_status("Shutdown: bot + UI")
+                    self.statusBar().showMessage("Shutdown ausgelöst...", 2000)
+                except Exception:
+                    pass
+            else:
+                QtWidgets.QMessageBox.warning(self, "Shutdown", f"Bot-Shutdown fehlgeschlagen: {r}\nUI wird trotzdem beendet.")
+                try:
+                    self._set_status("Shutdown: UI only")
+                    self.statusBar().showMessage("Bot konnte nicht bestätigt werden, UI beendet...", 2500)
+                except Exception:
+                    pass
+        finally:
+            # Ensure the Python process exits so terminal command ends.
+            try:
+                QtWidgets.QApplication.quit()
+            except Exception:
+                pass
+            try:
+                QtCore.QTimer.singleShot(350, lambda: os._exit(0))
+            except Exception:
+                try:
+                    os._exit(0)
+                except Exception:
+                    pass
 
     def on_restart_and_restart_ui(self):
-        """Shutdown the bot (via control API), attempt to start bot.py, then relaunch the UI.
+        """Shutdown the bot (via control API), restart the bot module, then relaunch the UI.
 
         This method will: 1) ask for confirmation, 2) request bot shutdown, 3) spawn a new bot process
-        if `bot.py` exists in the repo root, 4) spawn a new UI process running this script, and
+        via `python -m src.mybot`, 4) spawn a new UI process running this script, and
         5) quit the current UI.
         """
         try:
@@ -718,37 +867,106 @@ class MainWindow(QtWidgets.QMainWindow):
         if ok != QtWidgets.QMessageBox.Yes:
             return
 
-        # 1) request bot shutdown via control API (best-effort)
-        try:
-            self.send_cmd_async({"action": "shutdown"}, timeout=2.0, cb=None)
-        except Exception:
-            pass
-
-        # 2) attempt to start bot.py if present
-        try:
-            bot_path = os.path.join(self._repo_root, "bot.py")
-            if os.path.exists(bot_path):
+        # If started via start_all.py supervisor, delegate full restart to it so
+        # bot + UI are relaunched cleanly in the same terminal session.
+        if os.environ.get("LOCAL_UI_SUPERVISED") == "1":
+            try:
+                self._set_status("Restart: requesting supervised restart...")
+                self.statusBar().showMessage("Restart wird an Supervisor übergeben...", 2500)
+            except Exception:
+                pass
+            try:
+                marker_dir = os.path.join(self._repo_root, "data", "logs")
+                os.makedirs(marker_dir, exist_ok=True)
+                marker_path = os.path.join(marker_dir, "ui_restart.request")
+                with open(marker_path, "w", encoding="utf-8") as fh:
+                    fh.write(datetime.now().isoformat())
+            except Exception:
+                pass
+            try:
+                send_cmd({"action": "shutdown"}, timeout=2.5)
+            except Exception:
+                pass
+            try:
+                QtWidgets.QApplication.exit(UI_RESTART_EXIT_CODE)
+            except Exception:
                 try:
-                    subprocess.Popen([sys.executable, bot_path], cwd=self._repo_root)
-                except Exception as e:
-                    QtWidgets.QMessageBox.warning(self, "Restart", f"Failed to start bot.py: {e}")
-            else:
-                QtWidgets.QMessageBox.information(self, "Restart", "bot.py not found — UI will restart only.")
+                    os._exit(UI_RESTART_EXIT_CODE)
+                except Exception:
+                    pass
+            return
+
+        # 1) request bot shutdown via control API (best-effort) and wait briefly
+        try:
+            send_cmd({"action": "shutdown"}, timeout=2.5)
         except Exception:
             pass
 
-        # 3) spawn a new UI process running this script
+        # wait until old API is down (or timeout), to reduce restart races
         try:
-            subprocess.Popen([sys.executable, os.path.abspath(__file__)], cwd=self._repo_root)
+            deadline = time.time() + 4.0
+            while time.time() < deadline:
+                p = send_cmd({"action": "ping"}, timeout=0.6)
+                if not p.get("ok"):
+                    break
+                time.sleep(0.25)
+        except Exception:
+            pass
+
+        bot_started = False
+        ui_started = False
+
+        # 2) start the bot module (current project entrypoint)
+        try:
+            env = os.environ.copy()
+            env["LOCAL_UI_ENABLE"] = "1"
+            env["PYTHONUNBUFFERED"] = "1"
+            subprocess.Popen([sys.executable, "-u", "-m", "src.mybot"], cwd=self._repo_root, env=env)
+            bot_started = True
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Restart", f"Failed to start bot process: {e}")
+
+        # 3) spawn a delayed UI relaunch helper so lock/port 8766 is released first
+        try:
+            app_path = os.path.abspath(__file__)
+            repo_root = self._repo_root
+            launcher_code = (
+                "import os,sys,time,subprocess;"
+                "time.sleep(1.1);"
+                "env=os.environ.copy();"
+                "env['PYTHONUNBUFFERED']='1';"
+                f"subprocess.Popen([sys.executable,'-u',r'{app_path}'], cwd=r'{repo_root}', env=env)"
+            )
+            subprocess.Popen([sys.executable, "-c", launcher_code], cwd=self._repo_root)
+            ui_started = True
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Restart", f"Failed to relaunch UI: {e}")
 
         # 4) quit current application
-        try:
-            QtWidgets.QApplication.quit()
-        except Exception:
+        if ui_started:
             try:
-                sys.exit(0)
+                if bot_started:
+                    self._set_status("Restart: bot + UI started")
+                    self.statusBar().showMessage("Restart ausgelöst: Bot und UI werden neu gestartet...", 3000)
+                else:
+                    self._set_status("Restart: UI started, bot start failed")
+                    self.statusBar().showMessage("UI neu gestartet, Bot-Start fehlgeschlagen (siehe Meldung).", 4000)
+            except Exception:
+                pass
+            try:
+                QtCore.QTimer.singleShot(350, QtWidgets.QApplication.quit)
+            except Exception:
+                try:
+                    QtWidgets.QApplication.quit()
+                except Exception:
+                    try:
+                        sys.exit(0)
+                    except Exception:
+                        pass
+        else:
+            try:
+                self._set_status("Restart: failed (UI relaunch)")
+                self.statusBar().showMessage("Restart abgebrochen: Neue UI konnte nicht gestartet werden.", 5000)
             except Exception:
                 pass
 
@@ -1326,6 +1544,105 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception:
             pass
 
+    def _selected_title_font_path(self) -> str:
+        try:
+            data = self.pv_title_font.currentData()
+            if isinstance(data, str) and data.strip():
+                return data
+        except Exception:
+            pass
+        try:
+            txt = self.pv_title_font.currentText() or ""
+            return txt.strip()
+        except Exception:
+            return ""
+
+    def _selected_user_font_path(self) -> str:
+        try:
+            data = self.pv_user_font.currentData()
+            if isinstance(data, str) and data.strip():
+                return data
+        except Exception:
+            pass
+        try:
+            txt = self.pv_user_font.currentText() or ""
+            return txt.strip()
+        except Exception:
+            return ""
+
+    def _load_font_choices(self, combo: QtWidgets.QComboBox, selected_path: str = None):
+        try:
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            assets_fonts = os.path.join(repo_root, "assets", "fonts")
+            sys_fonts = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
+            exts = (".ttf", ".otf", ".ttc")
+
+            font_paths = []
+            for base_dir, source in ((assets_fonts, "assets"), (sys_fonts, "system")):
+                if not os.path.isdir(base_dir):
+                    continue
+                try:
+                    for name in os.listdir(base_dir):
+                        if not name.lower().endswith(exts):
+                            continue
+                        full = os.path.join(base_dir, name)
+                        if os.path.isfile(full):
+                            font_paths.append((full, source))
+                except Exception:
+                    pass
+
+            # de-duplicate by absolute path
+            dedup = {}
+            for full, source in font_paths:
+                key = os.path.abspath(full).lower()
+                if key not in dedup:
+                    dedup[key] = (full, source)
+
+            items = []
+            for _, (full, source) in dedup.items():
+                label = f"{os.path.splitext(os.path.basename(full))[0]} ({source})"
+                items.append((label, full))
+
+            items.sort(key=lambda it: it[0].lower())
+
+            current_text = ""
+            try:
+                current_text = combo.currentText() or ""
+            except Exception:
+                pass
+
+            desired = (selected_path or "").strip() or current_text.strip()
+
+            self._preview_syncing = True
+            try:
+                combo.blockSignals(True)
+                combo.clear()
+                self._title_font_lookup = {}
+                for label, full in items:
+                    combo.addItem(label, full)
+                    self._title_font_lookup[label] = full
+
+                if desired:
+                    idx = combo.findData(desired)
+                    if idx >= 0:
+                        combo.setCurrentIndex(idx)
+                    else:
+                        combo.setEditText(desired)
+            finally:
+                try:
+                    combo.blockSignals(False)
+                except Exception:
+                    pass
+                self._preview_syncing = False
+        except Exception:
+            pass
+
+    def _load_title_font_choices(self, selected_path: str = None):
+        self._load_font_choices(self.pv_title_font, selected_path)
+
+    def _load_user_font_choices(self, selected_path: str = None):
+        self._load_font_choices(self.pv_user_font, selected_path)
+
     def _prune_backups(self, target_path: str, keep: int = 5):
         try:
             folder = os.path.dirname(target_path)
@@ -1405,6 +1722,52 @@ class MainWindow(QtWidgets.QMainWindow):
             cfg["BANNER_TITLE"] = self.pv_title.text() or cfg.get("BANNER_TITLE", "WELCOME")
             cfg["OFFSET_X"] = int(self.pv_avatar_x.value())
             cfg["OFFSET_Y"] = int(self.pv_avatar_y.value())
+            cfg["TITLE_FONT_SIZE"] = int(self.pv_title_size.value())
+            cfg["USERNAME_FONT_SIZE"] = int(self.pv_user_size.value())
+            cfg["TITLE_COLOR"] = (self.pv_title_color.text() or cfg.get("TITLE_COLOR", "#FFFFFF")).strip()
+            cfg["USERNAME_COLOR"] = (self.pv_user_color.text() or cfg.get("USERNAME_COLOR", "#E6E6E6")).strip()
+            cfg["TITLE_OFFSET_X"] = int(self.pv_title_x.value())
+            cfg["TITLE_OFFSET_Y"] = int(self.pv_title_y.value())
+            cfg["USERNAME_OFFSET_X"] = int(self.pv_user_x.value())
+            cfg["USERNAME_OFFSET_Y"] = int(self.pv_user_y.value())
+            cfg["TEXT_OFFSET_X"] = int(self.pv_text_x.value())
+            cfg["TEXT_OFFSET_Y"] = int(self.pv_text_y.value())
+
+            selected_title_font = self._selected_title_font_path() or cfg.get("FONT_WELCOME", "assets/fonts/Poppins-Bold.ttf")
+            saved_title_font = selected_title_font
+            try:
+                if selected_title_font and os.path.exists(selected_title_font):
+                    assets_fonts = os.path.join(repo_root, "assets", "fonts")
+                    os.makedirs(assets_fonts, exist_ok=True)
+                    base_name = os.path.basename(selected_title_font)
+                    target_path = os.path.join(assets_fonts, base_name)
+                    import shutil
+
+                    if os.path.abspath(selected_title_font) != os.path.abspath(target_path):
+                        shutil.copy2(selected_title_font, target_path)
+                    saved_title_font = os.path.join("assets", "fonts", base_name).replace("\\", "/")
+            except Exception:
+                pass
+
+            cfg["FONT_WELCOME"] = saved_title_font
+
+            selected_user_font = self._selected_user_font_path() or cfg.get("FONT_USERNAME", "assets/fonts/Poppins-Regular.ttf")
+            saved_user_font = selected_user_font
+            try:
+                if selected_user_font and os.path.exists(selected_user_font):
+                    assets_fonts = os.path.join(repo_root, "assets", "fonts")
+                    os.makedirs(assets_fonts, exist_ok=True)
+                    base_name = os.path.basename(selected_user_font)
+                    target_path = os.path.join(assets_fonts, base_name)
+                    import shutil
+
+                    if os.path.abspath(selected_user_font) != os.path.abspath(target_path):
+                        shutil.copy2(selected_user_font, target_path)
+                    saved_user_font = os.path.join("assets", "fonts", base_name).replace("\\", "/")
+            except Exception:
+                pass
+
+            cfg["FONT_USERNAME"] = saved_user_font
 
             banner_path_input = self.pv_banner_path.text() or cfg.get("BANNER_PATH", "assets/welcome.png")
             banner_path_saved = banner_path_input
@@ -1635,6 +1998,30 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "")))
                     if not self.pv_title.hasFocus():
                         self.pv_title.setText(str(cfg.get("BANNER_TITLE", "WELCOME")))
+                    if not self.pv_title_font.hasFocus():
+                        self._load_title_font_choices(str(cfg.get("FONT_WELCOME", "assets/fonts/Poppins-Bold.ttf")))
+                    if not self.pv_user_font.hasFocus():
+                        self._load_user_font_choices(str(cfg.get("FONT_USERNAME", "assets/fonts/Poppins-Regular.ttf")))
+                    if not self.pv_title_size.hasFocus():
+                        self.pv_title_size.setValue(int(cfg.get("TITLE_FONT_SIZE", 140) or 140))
+                    if not self.pv_user_size.hasFocus():
+                        self.pv_user_size.setValue(int(cfg.get("USERNAME_FONT_SIZE", 64) or 64))
+                    if not self.pv_title_color.hasFocus():
+                        self.pv_title_color.setText(str(cfg.get("TITLE_COLOR", "#FFFFFF")))
+                    if not self.pv_user_color.hasFocus():
+                        self.pv_user_color.setText(str(cfg.get("USERNAME_COLOR", "#E6E6E6")))
+                    if not self.pv_title_x.hasFocus():
+                        self.pv_title_x.setValue(int(cfg.get("TITLE_OFFSET_X", 0) or 0))
+                    if not self.pv_title_y.hasFocus():
+                        self.pv_title_y.setValue(int(cfg.get("TITLE_OFFSET_Y", 0) or 0))
+                    if not self.pv_user_x.hasFocus():
+                        self.pv_user_x.setValue(int(cfg.get("USERNAME_OFFSET_X", 0) or 0))
+                    if not self.pv_user_y.hasFocus():
+                        self.pv_user_y.setValue(int(cfg.get("USERNAME_OFFSET_Y", 0) or 0))
+                    if not self.pv_text_x.hasFocus():
+                        self.pv_text_x.setValue(int(cfg.get("TEXT_OFFSET_X", 0) or 0))
+                    if not self.pv_text_y.hasFocus():
+                        self.pv_text_y.setValue(int(cfg.get("TEXT_OFFSET_Y", 0) or 0))
                     if not self.pv_avatar_x.hasFocus():
                         self.pv_avatar_x.setValue(int(cfg.get("OFFSET_X", 0) or 0))
                     if not self.pv_avatar_y.hasFocus():
