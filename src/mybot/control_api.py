@@ -284,9 +284,36 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
                     dummy = _DummyMember(123456789, name, avatar_url)
                     bg_path = req.get("bg_path")
+                    bg_mode = req.get("bg_mode")
+                    bg_zoom = req.get("bg_zoom")
+                    bg_offset_x = req.get("bg_offset_x")
+                    bg_offset_y = req.get("bg_offset_y")
+                    name_font = req.get("name_font")
+                    info_font = req.get("info_font")
+                    name_font_size = req.get("name_font_size")
+                    info_font_size = req.get("info_font_size")
+                    name_color = req.get("name_color")
+                    info_color = req.get("info_color")
+                    text_offset_x = req.get("text_offset_x")
+                    text_offset_y = req.get("text_offset_y")
                     try:
                         # pass bg_path through to rank cog (bot and UI typically run on same host)
-                        card_file = await rank_cog.generate_rankcard(dummy, bg_path=bg_path)
+                        card_file = await rank_cog.generate_rankcard(
+                            dummy,
+                            bg_path=bg_path,
+                            bg_mode=bg_mode,
+                            bg_zoom=bg_zoom,
+                            bg_offset_x=bg_offset_x,
+                            bg_offset_y=bg_offset_y,
+                            name_font=name_font,
+                            info_font=info_font,
+                            name_font_size=name_font_size,
+                            info_font_size=info_font_size,
+                            name_color=name_color,
+                            info_color=info_color,
+                            text_offset_x=text_offset_x,
+                            text_offset_y=text_offset_y,
+                        )
                     except Exception as e:
                         resp = {"ok": False, "error": f"rank generation failed: {e}"}
                     else:

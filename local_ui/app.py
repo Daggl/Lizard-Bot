@@ -185,7 +185,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DC Bot — Local UI")
-        self.resize(900, 600)
+        self.resize(1220, 780)
+        self.setMinimumSize(1160, 740)
         # Repo root path for data/logs tracking
         self._repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -255,18 +256,23 @@ class MainWindow(QtWidgets.QMainWindow):
         # Preview tab (detailed settings + render)
         preview_w = QtWidgets.QWidget()
         pv_layout = QtWidgets.QVBoxLayout(preview_w)
+        pv_layout.setContentsMargins(8, 8, 10, 8)
+        pv_layout.setSpacing(10)
 
         pv_top = QtWidgets.QHBoxLayout()
+        pv_top.setSpacing(12)
         self.pv_banner = QtWidgets.QLabel()
         self.pv_banner.setFixedSize(520, 180)
-        self.pv_banner.setScaledContents(True)
+        self.pv_banner.setScaledContents(False)
         pv_top.addWidget(self.pv_banner, 0)
 
         pv_form = QtWidgets.QFormLayout()
         pv_form.setFieldGrowthPolicy(QtWidgets.QFormLayout.ExpandingFieldsGrow)
-        pv_form.setLabelAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        pv_form.setHorizontalSpacing(12)
+        pv_form.setFormAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
+        pv_form.setLabelAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        pv_form.setHorizontalSpacing(10)
         pv_form.setVerticalSpacing(8)
+        pv_form.setContentsMargins(0, 0, 18, 0)
 
         def _pv_section(text: str) -> QtWidgets.QLabel:
             label = QtWidgets.QLabel(text)
@@ -283,9 +289,41 @@ class MainWindow(QtWidgets.QMainWindow):
         pv_form.addRow("Example name:", self.pv_name)
         pv_form.addRow("Banner image:", h)
         self.pv_message = QtWidgets.QPlainTextEdit()
-        self.pv_message.setMaximumHeight(100)
+        self.pv_message.setMinimumHeight(150)
+        self.pv_message.setMaximumHeight(220)
         self.pv_message.setPlaceholderText("Welcome message template. Use {mention} for mention.")
         pv_form.addRow("Message:", self.pv_message)
+
+        pv_form.addRow(_pv_section("Background"))
+        self.pv_bg_mode = QtWidgets.QComboBox()
+        self.pv_bg_mode.addItem("Fill (cover)", "cover")
+        self.pv_bg_mode.addItem("Fit (contain)", "contain")
+        self.pv_bg_mode.addItem("Stretch", "stretch")
+        pv_form.addRow("Background mode:", self.pv_bg_mode)
+
+        self.pv_bg_zoom = QtWidgets.QSpinBox()
+        self.pv_bg_zoom.setRange(10, 400)
+        self.pv_bg_zoom.setValue(100)
+        self.pv_bg_zoom.setSuffix(" %")
+        self.pv_bg_zoom.setFixedWidth(120)
+        pv_form.addRow("Background zoom:", self.pv_bg_zoom)
+
+        bg_pos_row = QtWidgets.QHBoxLayout()
+        self.pv_bg_x = QtWidgets.QSpinBox()
+        self.pv_bg_x.setRange(-4000, 4000)
+        self.pv_bg_x.setSingleStep(10)
+        self.pv_bg_x.setFixedWidth(110)
+        self.pv_bg_y = QtWidgets.QSpinBox()
+        self.pv_bg_y.setRange(-4000, 4000)
+        self.pv_bg_y.setSingleStep(10)
+        self.pv_bg_y.setFixedWidth(110)
+        bg_pos_row.addWidget(QtWidgets.QLabel("X"))
+        bg_pos_row.addWidget(self.pv_bg_x)
+        bg_pos_row.addSpacing(10)
+        bg_pos_row.addWidget(QtWidgets.QLabel("Y"))
+        bg_pos_row.addWidget(self.pv_bg_y)
+        bg_pos_row.addStretch()
+        pv_form.addRow("Background offset:", bg_pos_row)
 
         pv_form.addRow(_pv_section("Typography"))
         self.pv_title = QtWidgets.QLineEdit()
@@ -316,11 +354,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.pv_title_color = QtWidgets.QLineEdit()
         self.pv_title_color.setPlaceholderText("#FFFFFF")
-        pv_form.addRow("Title color:", self.pv_title_color)
+        self.pv_title_color_pick = QtWidgets.QPushButton("Pick...")
+        self.pv_title_color_pick.setFixedWidth(72)
+        title_color_row = QtWidgets.QHBoxLayout()
+        title_color_row.addWidget(self.pv_title_color, 1)
+        title_color_row.addWidget(self.pv_title_color_pick, 0)
+        pv_form.addRow("Title color:", title_color_row)
 
         self.pv_user_color = QtWidgets.QLineEdit()
         self.pv_user_color.setPlaceholderText("#E6E6E6")
-        pv_form.addRow("Username color:", self.pv_user_color)
+        self.pv_user_color_pick = QtWidgets.QPushButton("Pick...")
+        self.pv_user_color_pick.setFixedWidth(72)
+        user_color_row = QtWidgets.QHBoxLayout()
+        user_color_row.addWidget(self.pv_user_color, 1)
+        user_color_row.addWidget(self.pv_user_color_pick, 0)
+        pv_form.addRow("Username color:", user_color_row)
 
         pv_form.addRow(_pv_section("Position"))
         title_pos_row = QtWidgets.QHBoxLayout()
@@ -415,6 +463,7 @@ class MainWindow(QtWidgets.QMainWindow):
         pv_scroll.setWidgetResizable(True)
         pv_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
         pv_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        pv_scroll.setContentsMargins(0, 0, 10, 0)
         pv_scroll.setWidget(pv_controls_w)
         pv_top.addWidget(pv_scroll, 1)
         pv_layout.addLayout(pv_top)
@@ -447,7 +496,7 @@ class MainWindow(QtWidgets.QMainWindow):
         rk_left.addWidget(lbl_preview)
         self.rk_image = QtWidgets.QLabel()
         self.rk_image.setFixedSize(700, 210)
-        self.rk_image.setScaledContents(True)
+        self.rk_image.setScaledContents(False)
         rk_left.addWidget(self.rk_image)
         rk_left.addStretch()
 
@@ -462,6 +511,92 @@ class MainWindow(QtWidgets.QMainWindow):
         hbg.addWidget(self.rk_bg_browse)
         rk_form.addRow("Example name:", self.rk_name)
         rk_form.addRow("Background PNG:", hbg)
+        self.rk_bg_mode = QtWidgets.QComboBox()
+        self.rk_bg_mode.addItem("Fill (cover)", "cover")
+        self.rk_bg_mode.addItem("Fit (contain)", "contain")
+        self.rk_bg_mode.addItem("Stretch", "stretch")
+        rk_form.addRow("Background mode:", self.rk_bg_mode)
+
+        self.rk_bg_zoom = QtWidgets.QSpinBox()
+        self.rk_bg_zoom.setRange(10, 400)
+        self.rk_bg_zoom.setValue(100)
+        self.rk_bg_zoom.setSuffix(" %")
+        self.rk_bg_zoom.setFixedWidth(120)
+        rk_form.addRow("Background zoom:", self.rk_bg_zoom)
+
+        rk_bg_offset_row = QtWidgets.QHBoxLayout()
+        self.rk_bg_x = QtWidgets.QSpinBox()
+        self.rk_bg_x.setRange(-4000, 4000)
+        self.rk_bg_x.setSingleStep(10)
+        self.rk_bg_x.setFixedWidth(110)
+        self.rk_bg_y = QtWidgets.QSpinBox()
+        self.rk_bg_y.setRange(-4000, 4000)
+        self.rk_bg_y.setSingleStep(10)
+        self.rk_bg_y.setFixedWidth(110)
+        rk_bg_offset_row.addWidget(QtWidgets.QLabel("X"))
+        rk_bg_offset_row.addWidget(self.rk_bg_x)
+        rk_bg_offset_row.addSpacing(10)
+        rk_bg_offset_row.addWidget(QtWidgets.QLabel("Y"))
+        rk_bg_offset_row.addWidget(self.rk_bg_y)
+        rk_bg_offset_row.addStretch()
+        rk_form.addRow("Background offset:", rk_bg_offset_row)
+
+        self.rk_name_font = QtWidgets.QComboBox()
+        self.rk_name_font.setEditable(True)
+        self.rk_name_font.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
+        rk_form.addRow("Name font:", self.rk_name_font)
+
+        self.rk_info_font = QtWidgets.QComboBox()
+        self.rk_info_font.setEditable(True)
+        self.rk_info_font.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
+        rk_form.addRow("Info font:", self.rk_info_font)
+
+        self.rk_name_size = QtWidgets.QSpinBox()
+        self.rk_name_size.setRange(8, 200)
+        self.rk_name_size.setValue(60)
+        self.rk_name_size.setFixedWidth(120)
+        rk_form.addRow("Name size:", self.rk_name_size)
+
+        self.rk_info_size = QtWidgets.QSpinBox()
+        self.rk_info_size.setRange(8, 120)
+        self.rk_info_size.setValue(40)
+        self.rk_info_size.setFixedWidth(120)
+        rk_form.addRow("Info size:", self.rk_info_size)
+
+        self.rk_name_color = QtWidgets.QLineEdit()
+        self.rk_name_color.setPlaceholderText("#FFFFFF")
+        self.rk_name_color_pick = QtWidgets.QPushButton("Pick...")
+        self.rk_name_color_pick.setFixedWidth(72)
+        rk_name_color_row = QtWidgets.QHBoxLayout()
+        rk_name_color_row.addWidget(self.rk_name_color, 1)
+        rk_name_color_row.addWidget(self.rk_name_color_pick, 0)
+        rk_form.addRow("Name color:", rk_name_color_row)
+
+        self.rk_info_color = QtWidgets.QLineEdit()
+        self.rk_info_color.setPlaceholderText("#C8C8C8")
+        self.rk_info_color_pick = QtWidgets.QPushButton("Pick...")
+        self.rk_info_color_pick.setFixedWidth(72)
+        rk_info_color_row = QtWidgets.QHBoxLayout()
+        rk_info_color_row.addWidget(self.rk_info_color, 1)
+        rk_info_color_row.addWidget(self.rk_info_color_pick, 0)
+        rk_form.addRow("Info color:", rk_info_color_row)
+
+        rk_text_pos_row = QtWidgets.QHBoxLayout()
+        self.rk_text_x = QtWidgets.QSpinBox()
+        self.rk_text_x.setRange(-2000, 2000)
+        self.rk_text_x.setSingleStep(5)
+        self.rk_text_x.setFixedWidth(110)
+        self.rk_text_y = QtWidgets.QSpinBox()
+        self.rk_text_y.setRange(-2000, 2000)
+        self.rk_text_y.setSingleStep(5)
+        self.rk_text_y.setFixedWidth(110)
+        rk_text_pos_row.addWidget(QtWidgets.QLabel("X"))
+        rk_text_pos_row.addWidget(self.rk_text_x)
+        rk_text_pos_row.addSpacing(10)
+        rk_text_pos_row.addWidget(QtWidgets.QLabel("Y"))
+        rk_text_pos_row.addWidget(self.rk_text_y)
+        rk_text_pos_row.addStretch()
+        rk_form.addRow("Text offset:", rk_text_pos_row)
         rk_right.addLayout(rk_form)
 
         # Add a small info label under the form
@@ -491,11 +626,15 @@ class MainWindow(QtWidgets.QMainWindow):
         # wire rankcard controls
         self.rk_refresh.clicked.connect(self.on_refresh_rankpreview)
         self.rk_bg_browse.clicked.connect(self._choose_rank_bg)
+        self.rk_name_color_pick.clicked.connect(lambda: self._pick_color(self.rk_name_color, "Choose rank name color"))
+        self.rk_info_color_pick.clicked.connect(lambda: self._pick_color(self.rk_info_color, "Choose rank info color"))
         self.rk_save.clicked.connect(lambda: self._save_rank_preview(reload_after=False))
         self.rk_save_reload.clicked.connect(lambda: self._save_rank_preview(reload_after=True))
 
         # wire preview controls
         self.pv_banner_browse.clicked.connect(self._choose_banner)
+        self.pv_title_color_pick.clicked.connect(lambda: self._pick_color(self.pv_title_color, "Choose title color"))
+        self.pv_user_color_pick.clicked.connect(lambda: self._pick_color(self.pv_user_color, "Choose username color"))
         self.pv_refresh.clicked.connect(self.on_refresh_preview)
         self.pv_save.clicked.connect(lambda: self._save_preview(reload_after=False))
         self.pv_save_reload.clicked.connect(lambda: self._save_preview(reload_after=True))
@@ -511,6 +650,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_name.textChanged.connect(lambda: self._preview_debounce.start())
         self.pv_banner_path.textChanged.connect(lambda: self._preview_debounce.start())
         self.pv_message.textChanged.connect(lambda: self._preview_debounce.start())
+        self.pv_bg_mode.currentIndexChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_bg_zoom.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_bg_x.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.pv_bg_y.valueChanged.connect(lambda _v: self._preview_debounce.start())
         self.pv_title.textChanged.connect(lambda: self._preview_debounce.start())
         self.pv_title_font.currentTextChanged.connect(lambda _t: self._preview_debounce.start())
         self.pv_user_font.currentTextChanged.connect(lambda _t: self._preview_debounce.start())
@@ -529,6 +672,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_name.textChanged.connect(self._mark_preview_dirty)
         self.pv_banner_path.textChanged.connect(self._mark_preview_dirty)
         self.pv_message.textChanged.connect(self._mark_preview_dirty)
+        self.pv_bg_mode.currentIndexChanged.connect(self._mark_preview_dirty)
+        self.pv_bg_zoom.valueChanged.connect(self._mark_preview_dirty)
+        self.pv_bg_x.valueChanged.connect(self._mark_preview_dirty)
+        self.pv_bg_y.valueChanged.connect(self._mark_preview_dirty)
         self.pv_title.textChanged.connect(self._mark_preview_dirty)
         self.pv_title_font.currentTextChanged.connect(self._mark_preview_dirty)
         self.pv_user_font.currentTextChanged.connect(self._mark_preview_dirty)
@@ -545,6 +692,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_avatar_x.valueChanged.connect(self._mark_preview_dirty)
         self.pv_avatar_y.valueChanged.connect(self._mark_preview_dirty)
         self.rk_name.textChanged.connect(lambda: self._preview_debounce.start())
+        self.rk_bg_path.textChanged.connect(lambda: self._preview_debounce.start())
+        self.rk_bg_mode.currentIndexChanged.connect(lambda _v: self._preview_debounce.start())
+        self.rk_bg_zoom.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.rk_bg_x.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.rk_bg_y.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.rk_name_font.currentTextChanged.connect(lambda _t: self._preview_debounce.start())
+        self.rk_info_font.currentTextChanged.connect(lambda _t: self._preview_debounce.start())
+        self.rk_name_size.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.rk_info_size.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.rk_name_color.textChanged.connect(lambda: self._preview_debounce.start())
+        self.rk_info_color.textChanged.connect(lambda: self._preview_debounce.start())
+        self.rk_text_x.valueChanged.connect(lambda _v: self._preview_debounce.start())
+        self.rk_text_y.valueChanged.connect(lambda _v: self._preview_debounce.start())
         # ensure rank preview doesn't get clobbered when other previews update
 
         self.setCentralWidget(tabs)
@@ -709,6 +869,8 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self._load_title_font_choices()
             self._load_user_font_choices()
+            self._load_rank_name_font_choices()
+            self._load_rank_info_font_choices()
         except Exception:
             pass
         self._open_log()
@@ -861,6 +1023,10 @@ class MainWindow(QtWidgets.QMainWindow):
             name = self.pv_name.text() or "NewMember"
             overrides = {
                 "BANNER_PATH": self.pv_banner_path.text() or None,
+                "BG_MODE": self.pv_bg_mode.currentData() or "cover",
+                "BG_ZOOM": int(self.pv_bg_zoom.value()),
+                "BG_OFFSET_X": int(self.pv_bg_x.value()),
+                "BG_OFFSET_Y": int(self.pv_bg_y.value()),
                 "BANNER_TITLE": self.pv_title.text() or "WELCOME",
                 "FONT_WELCOME": self._selected_title_font_path(),
                 "FONT_USERNAME": self._selected_user_font_path(),
@@ -941,6 +1107,18 @@ class MainWindow(QtWidgets.QMainWindow):
             req = {"action": "rank_preview", "name": name}
             if bg:
                 req["bg_path"] = bg
+            req["bg_mode"] = self.rk_bg_mode.currentData() or "cover"
+            req["bg_zoom"] = int(self.rk_bg_zoom.value())
+            req["bg_offset_x"] = int(self.rk_bg_x.value())
+            req["bg_offset_y"] = int(self.rk_bg_y.value())
+            req["name_font"] = self._selected_rank_name_font_path()
+            req["info_font"] = self._selected_rank_info_font_path()
+            req["name_font_size"] = int(self.rk_name_size.value())
+            req["info_font_size"] = int(self.rk_info_size.value())
+            req["name_color"] = self.rk_name_color.text() or "#FFFFFF"
+            req["info_color"] = self.rk_info_color.text() or "#C8C8C8"
+            req["text_offset_x"] = int(self.rk_text_x.value())
+            req["text_offset_y"] = int(self.rk_text_y.value())
             self.send_cmd_async(req, timeout=3.0, cb=self._on_rankpreview_result)
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Rank Preview error", str(e))
@@ -953,7 +1131,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 pix = QtGui.QPixmap()
                 if pix.loadFromData(data):
                     try:
-                        self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                        self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
                     except Exception:
                         self.rk_image.setPixmap(pix)
                     self._rank_preview_data_url = f"data:image/png;base64,{b64}"
@@ -1583,7 +1761,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 # optional: show it scaled in the rank image preview area
                 try:
                     pix = QtGui.QPixmap(path)
-                    self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                    self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
                 except Exception:
                     pass
                 # persist selection immediately
@@ -1620,9 +1798,23 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.rk_bg_path.setText(str(bg))
                 try:
                     pix = QtGui.QPixmap(bg)
-                    self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                    self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
                 except Exception:
                     pass
+            mode_val = str(cfg.get("BG_MODE", "cover") or "cover")
+            idx = self.rk_bg_mode.findData(mode_val)
+            self.rk_bg_mode.setCurrentIndex(idx if idx >= 0 else 0)
+            self.rk_bg_zoom.setValue(int(cfg.get("BG_ZOOM", 100) or 100))
+            self.rk_bg_x.setValue(int(cfg.get("BG_OFFSET_X", 0) or 0))
+            self.rk_bg_y.setValue(int(cfg.get("BG_OFFSET_Y", 0) or 0))
+            self._load_rank_name_font_choices(str(cfg.get("NAME_FONT", "assets/fonts/Poppins-Bold.ttf")))
+            self._load_rank_info_font_choices(str(cfg.get("INFO_FONT", "assets/fonts/Poppins-Regular.ttf")))
+            self.rk_name_size.setValue(int(cfg.get("NAME_FONT_SIZE", 60) or 60))
+            self.rk_info_size.setValue(int(cfg.get("INFO_FONT_SIZE", 40) or 40))
+            self.rk_name_color.setText(str(cfg.get("NAME_COLOR", "#FFFFFF") or "#FFFFFF"))
+            self.rk_info_color.setText(str(cfg.get("INFO_COLOR", "#C8C8C8") or "#C8C8C8"))
+            self.rk_text_x.setValue(int(cfg.get("TEXT_OFFSET_X", 0) or 0))
+            self.rk_text_y.setValue(int(cfg.get("TEXT_OFFSET_Y", 0) or 0))
             # populate example name if present and user not editing
             name = cfg.get("EXAMPLE_NAME")
             if name and (not self.rk_name.text()):
@@ -1657,6 +1849,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 data["EXAMPLE_NAME"] = name
             if bg:
                 data["BG_PATH"] = bg
+            data["BG_MODE"] = self.rk_bg_mode.currentData() or "cover"
+            data["BG_ZOOM"] = int(self.rk_bg_zoom.value())
+            data["BG_OFFSET_X"] = int(self.rk_bg_x.value())
+            data["BG_OFFSET_Y"] = int(self.rk_bg_y.value())
+            data["NAME_FONT"] = self._selected_rank_name_font_path() or "assets/fonts/Poppins-Bold.ttf"
+            data["INFO_FONT"] = self._selected_rank_info_font_path() or "assets/fonts/Poppins-Regular.ttf"
+            data["NAME_FONT_SIZE"] = int(self.rk_name_size.value())
+            data["INFO_FONT_SIZE"] = int(self.rk_info_size.value())
+            data["NAME_COLOR"] = (self.rk_name_color.text() or "#FFFFFF").strip()
+            data["INFO_COLOR"] = (self.rk_info_color.text() or "#C8C8C8").strip()
+            data["TEXT_OFFSET_X"] = int(self.rk_text_x.value())
+            data["TEXT_OFFSET_Y"] = int(self.rk_text_y.value())
             if data:
                 self._save_rank_config(data)
 
@@ -1684,6 +1888,25 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._preview_debounce.start()
             except Exception:
                 pass
+        except Exception:
+            pass
+
+    def _pick_color(self, target: QtWidgets.QLineEdit, title: str = "Choose color"):
+        try:
+            initial = QtGui.QColor((target.text() or "").strip())
+            if not initial.isValid():
+                initial = QtGui.QColor("#FFFFFF")
+            chosen = QtWidgets.QColorDialog.getColor(initial, self, title)
+            if chosen.isValid():
+                target.setText(chosen.name().upper())
+                try:
+                    self._preview_debounce.start()
+                except Exception:
+                    pass
+                try:
+                    self._mark_preview_dirty()
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -1717,6 +1940,32 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
         try:
             txt = self.pv_user_font.currentText() or ""
+            return txt.strip()
+        except Exception:
+            return ""
+
+    def _selected_rank_name_font_path(self) -> str:
+        try:
+            data = self.rk_name_font.currentData()
+            if isinstance(data, str) and data.strip():
+                return data
+        except Exception:
+            pass
+        try:
+            txt = self.rk_name_font.currentText() or ""
+            return txt.strip()
+        except Exception:
+            return ""
+
+    def _selected_rank_info_font_path(self) -> str:
+        try:
+            data = self.rk_info_font.currentData()
+            if isinstance(data, str) and data.strip():
+                return data
+        except Exception:
+            pass
+        try:
+            txt = self.rk_info_font.currentText() or ""
             return txt.strip()
         except Exception:
             return ""
@@ -1794,6 +2043,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def _load_user_font_choices(self, selected_path: str = None):
         self._load_font_choices(self.pv_user_font, selected_path)
 
+    def _load_rank_name_font_choices(self, selected_path: str = None):
+        self._load_font_choices(self.rk_name_font, selected_path)
+
+    def _load_rank_info_font_choices(self, selected_path: str = None):
+        self._load_font_choices(self.rk_info_font, selected_path)
+
     def _prune_backups(self, target_path: str, keep: int = 5):
         try:
             folder = os.path.dirname(target_path)
@@ -1870,6 +2125,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 cfg = {}
 
             cfg["EXAMPLE_NAME"] = self.pv_name.text() or cfg.get("EXAMPLE_NAME", "NewMember")
+            cfg["BG_MODE"] = self.pv_bg_mode.currentData() or cfg.get("BG_MODE", "cover")
+            cfg["BG_ZOOM"] = int(self.pv_bg_zoom.value())
+            cfg["BG_OFFSET_X"] = int(self.pv_bg_x.value())
+            cfg["BG_OFFSET_Y"] = int(self.pv_bg_y.value())
             cfg["BANNER_TITLE"] = self.pv_title.text() or cfg.get("BANNER_TITLE", "WELCOME")
             cfg["OFFSET_X"] = int(self.pv_avatar_x.value())
             cfg["OFFSET_Y"] = int(self.pv_avatar_y.value())
@@ -2147,6 +2406,16 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.pv_name.setText(str(cfg.get("EXAMPLE_NAME", "NewMember")))
                     if not self.pv_banner_path.hasFocus():
                         self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "")))
+                    if not self.pv_bg_mode.hasFocus():
+                        mode_val = str(cfg.get("BG_MODE", "cover") or "cover")
+                        idx = self.pv_bg_mode.findData(mode_val)
+                        self.pv_bg_mode.setCurrentIndex(idx if idx >= 0 else 0)
+                    if not self.pv_bg_zoom.hasFocus():
+                        self.pv_bg_zoom.setValue(int(cfg.get("BG_ZOOM", 100) or 100))
+                    if not self.pv_bg_x.hasFocus():
+                        self.pv_bg_x.setValue(int(cfg.get("BG_OFFSET_X", 0) or 0))
+                    if not self.pv_bg_y.hasFocus():
+                        self.pv_bg_y.setValue(int(cfg.get("BG_OFFSET_Y", 0) or 0))
                     if not self.pv_title.hasFocus():
                         self.pv_title.setText(str(cfg.get("BANNER_TITLE", "WELCOME")))
                     if not self.pv_title_font.hasFocus():

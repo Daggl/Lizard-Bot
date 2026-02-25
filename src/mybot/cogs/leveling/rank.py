@@ -1,4 +1,5 @@
 import io
+import json
 import os
 
 import aiohttp
@@ -18,6 +19,85 @@ AVATAR_SIZE = 180
 
 FONT_BOLD = "assets/fonts/Poppins-Bold.ttf"
 FONT_REGULAR = "assets/fonts/Poppins-Regular.ttf"
+
+
+def _safe_truetype(path: str, size: int):
+    try:
+        if path:
+            return ImageFont.truetype(path, max(8, int(size or 8)))
+    except Exception:
+        pass
+    return ImageFont.load_default()
+
+
+def _parse_hex_color(value, fallback):
+    try:
+        s = str(value or "").strip()
+        if s.startswith("#"):
+            s = s[1:]
+        if len(s) == 3:
+            s = "".join(ch * 2 for ch in s)
+        if len(s) != 6:
+            return fallback
+        return tuple(int(s[i : i + 2], 16) for i in (0, 2, 4))
+    except Exception:
+        return fallback
+
+
+def _load_rank_cfg() -> dict:
+    try:
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+        cfg_path = os.path.join(repo_root, "config", "rank.json")
+        if os.path.exists(cfg_path):
+            with open(cfg_path, "r", encoding="utf-8") as fh:
+                return json.load(fh) or {}
+    except Exception:
+        pass
+    return {}
+
+
+def _compose_rank_background(path: str, mode: str, zoom_percent: int, offset_x: int, offset_y: int) -> Image.Image:
+    canvas = Image.new("RGB", (CARD_WIDTH, CARD_HEIGHT), (18, 18, 18))
+    try:
+        src = Image.open(path).convert("RGB")
+    except Exception:
+        return canvas
+
+    src_w, src_h = src.size
+    if src_w <= 0 or src_h <= 0:
+        return canvas
+
+    mode_norm = str(mode or "cover").strip().lower()
+    if mode_norm not in ("cover", "contain", "stretch"):
+        mode_norm = "cover"
+
+    try:
+        zoom = int(zoom_percent or 100)
+    except Exception:
+        zoom = 100
+    zoom = max(10, min(400, zoom))
+
+    resampling = getattr(getattr(Image, "Resampling", Image), "LANCZOS")
+
+    if mode_norm == "stretch":
+        stretched = src.resize((CARD_WIDTH, CARD_HEIGHT), resampling)
+        canvas.paste(stretched, (0, 0))
+        return canvas
+
+    if mode_norm == "cover":
+        base_scale = max(CARD_WIDTH / float(src_w), CARD_HEIGHT / float(src_h))
+    else:
+        base_scale = min(CARD_WIDTH / float(src_w), CARD_HEIGHT / float(src_h))
+
+    scale = base_scale * (zoom / 100.0)
+    new_w = max(1, int(src_w * scale))
+    new_h = max(1, int(src_h * scale))
+    fitted = src.resize((new_w, new_h), resampling)
+
+    x = (CARD_WIDTH - new_w) // 2 + int(offset_x or 0)
+    y = (CARD_HEIGHT - new_h) // 2 + int(offset_y or 0)
+    canvas.paste(fitted, (x, y))
+    return canvas
 
 
 class Rank(commands.Cog):
@@ -57,7 +137,23 @@ class Rank(commands.Cog):
     # GENERATE CARD
     # ======================================================
 
-    async def generate_rankcard(self, member, bg_path: str = None):
+    async def generate_rankcard(
+        self,
+        member,
+        bg_path: str = None,
+        bg_mode: str = None,
+        bg_zoom: int = None,
+        bg_offset_x: int = None,
+        bg_offset_y: int = None,
+        name_font: str = None,
+        info_font: str = None,
+        name_font_size: int = None,
+        info_font_size: int = None,
+        name_color: str = None,
+        info_color: str = None,
+        text_offset_x: int = None,
+        text_offset_y: int = None,
+    ):
 
         user = self.bot.db.get_user(member.id)
 
@@ -71,17 +167,28 @@ class Rank(commands.Cog):
         voice_minutes = user["voice_time"] // 60
         achievements = len(user["achievements"])
 
-        # allow overriding the default background with a provided PNG path
-        try:
-            if bg_path and os.path.exists(bg_path):
-                card = Image.open(bg_path).convert("RGB")
-            else:
-                card = Image.open("assets/rankcard.png").convert("RGB")
-        except Exception:
-            # fallback: create a blank base if loading fails
-            card = Image.new("RGB", (CARD_WIDTH, CARD_HEIGHT), (18, 18, 18))
+        cfg = _load_rank_cfg()
+        resolved_bg_path = bg_path or cfg.get("BG_PATH") or "assets/rankcard.png"
+        resolved_bg_mode = bg_mode or cfg.get("BG_MODE", "cover")
+        resolved_bg_zoom = bg_zoom if bg_zoom is not None else cfg.get("BG_ZOOM", 100)
+        resolved_bg_x = bg_offset_x if bg_offset_x is not None else cfg.get("BG_OFFSET_X", 0)
+        resolved_bg_y = bg_offset_y if bg_offset_y is not None else cfg.get("BG_OFFSET_Y", 0)
+        resolved_name_font = name_font or cfg.get("NAME_FONT", FONT_BOLD)
+        resolved_info_font = info_font or cfg.get("INFO_FONT", FONT_REGULAR)
+        resolved_name_size = int(name_font_size if name_font_size is not None else cfg.get("NAME_FONT_SIZE", 60) or 60)
+        resolved_info_size = int(info_font_size if info_font_size is not None else cfg.get("INFO_FONT_SIZE", 40) or 40)
+        resolved_name_color = _parse_hex_color(name_color if name_color is not None else cfg.get("NAME_COLOR", "#FFFFFF"), (255, 255, 255))
+        resolved_info_color = _parse_hex_color(info_color if info_color is not None else cfg.get("INFO_COLOR", "#C8C8C8"), (200, 200, 200))
+        resolved_text_x = int(text_offset_x if text_offset_x is not None else cfg.get("TEXT_OFFSET_X", 0) or 0)
+        resolved_text_y = int(text_offset_y if text_offset_y is not None else cfg.get("TEXT_OFFSET_Y", 0) or 0)
 
-        card = card.resize((CARD_WIDTH, CARD_HEIGHT))
+        card = _compose_rank_background(
+            resolved_bg_path,
+            resolved_bg_mode,
+            int(resolved_bg_zoom or 100),
+            int(resolved_bg_x or 0),
+            int(resolved_bg_y or 0),
+        )
 
         draw = ImageDraw.Draw(card)
 
@@ -103,19 +210,19 @@ class Rank(commands.Cog):
 
         card.paste(avatar, (50, 60), avatar)
 
-        font_big = ImageFont.truetype(FONT_BOLD, 60)
-        font_medium = ImageFont.truetype(FONT_BOLD, 40)
-        font_small = ImageFont.truetype(FONT_REGULAR, 22)
+        font_big = _safe_truetype(resolved_name_font, resolved_name_size)
+        font_medium = _safe_truetype(resolved_info_font, resolved_info_size)
+        font_small = _safe_truetype(resolved_info_font, max(10, int(resolved_info_size * 0.55)))
 
-        draw.text((260, 50), member.display_name, font=font_big, fill=(255, 255, 255))
+        draw.text((260 + resolved_text_x, 50 + resolved_text_y), member.display_name, font=font_big, fill=resolved_name_color)
 
-        draw.text((260, 120), f"Level {level}", font=font_medium, fill=(200, 200, 200))
+        draw.text((260 + resolved_text_x, 120 + resolved_text_y), f"Level {level}", font=font_medium, fill=resolved_info_color)
 
         draw.text(
-            (710, 140),
+            (710 + resolved_text_x, 140 + resolved_text_y),
             f"{xp} / {needed} XP",
             font=font_small,
-            fill=(200, 200, 200),
+            fill=resolved_info_color,
         )
 
         bar_x = 260
@@ -131,21 +238,21 @@ class Rank(commands.Cog):
         )
 
         draw.text(
-            (260, 220), f"Messages: {messages}", font=font_small, fill=(180, 180, 180)
+            (260 + resolved_text_x, 220 + resolved_text_y), f"Messages: {messages}", font=font_small, fill=resolved_info_color
         )
 
         draw.text(
-            (450, 220),
+            (450 + resolved_text_x, 220 + resolved_text_y),
             f"Voice: {voice_minutes} min",
             font=font_small,
-            fill=(180, 180, 180),
+            fill=resolved_info_color,
         )
 
         draw.text(
-            (650, 220),
+            (650 + resolved_text_x, 220 + resolved_text_y),
             f"Achievements: {achievements}",
             font=font_small,
-            fill=(180, 180, 180),
+            fill=resolved_info_color,
         )
 
         buffer = io.BytesIO()
