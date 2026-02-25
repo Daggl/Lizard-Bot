@@ -83,6 +83,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 gateway_ping_ms = None
 
             cpu_percent = None
+            system_cpu_percent = None
             memory_rss_mb = None
             try:
                 global _CPU_PRIMED
@@ -95,8 +96,14 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         _CPU_PRIMED = True
                     cpu_percent = float(_PROC_HANDLE.cpu_percent(interval=0.05))
                     memory_rss_mb = float(_PROC_HANDLE.memory_info().rss) / (1024.0 * 1024.0)
+                if psutil is not None:
+                    try:
+                        system_cpu_percent = float(psutil.cpu_percent(interval=None))
+                    except Exception:
+                        system_cpu_percent = None
             except Exception:
                 cpu_percent = None
+                system_cpu_percent = None
                 memory_rss_mb = None
 
             resp = {
@@ -107,6 +114,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 "uptime_seconds": uptime_seconds,
                 "gateway_ping_ms": gateway_ping_ms,
                 "cpu_percent": cpu_percent,
+                "system_cpu_percent": system_cpu_percent,
                 "memory_rss_mb": memory_rss_mb,
             }
 

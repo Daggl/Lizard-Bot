@@ -1083,6 +1083,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 ping_ms = r.get("gateway_ping_ms")
                 uptime_seconds = r.get("uptime_seconds")
                 cpu_percent = r.get("cpu_percent")
+                system_cpu_percent = r.get("system_cpu_percent")
                 mem_mb = r.get("memory_rss_mb")
 
                 self.status_label.setText(f"User: {user} — Ready: {ready} — Cogs: {len(cogs)}")
@@ -1091,12 +1092,21 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.mon_user.setText(str(user))
                     self.mon_ping.setText(f"{int(ping_ms)} ms" if isinstance(ping_ms, (int, float)) else "—")
                     self.mon_uptime.setText(self._format_uptime(int(uptime_seconds or 0)))
-                    if isinstance(cpu_percent, (int, float)):
-                        cpu_v = float(cpu_percent)
-                        if cpu_v > 0 and cpu_v < 0.01:
-                            self.mon_cpu.setText("<0.01%")
+                    if isinstance(cpu_percent, (int, float)) or isinstance(system_cpu_percent, (int, float)):
+                        bot_cpu = float(cpu_percent) if isinstance(cpu_percent, (int, float)) else None
+                        sys_cpu = float(system_cpu_percent) if isinstance(system_cpu_percent, (int, float)) else None
+                        if bot_cpu is not None and bot_cpu > 0:
+                            if bot_cpu < 0.01:
+                                self.mon_cpu.setText("<0.01%")
+                            else:
+                                self.mon_cpu.setText(f"{bot_cpu:.2f}%")
+                        elif sys_cpu is not None:
+                            if sys_cpu > 0 and sys_cpu < 0.01:
+                                self.mon_cpu.setText("<0.01% (sys)")
+                            else:
+                                self.mon_cpu.setText(f"{sys_cpu:.2f}% (sys)")
                         else:
-                            self.mon_cpu.setText(f"{cpu_v:.2f}%")
+                            self.mon_cpu.setText("—")
                     else:
                         self.mon_cpu.setText("—")
                     self.mon_mem.setText(f"{float(mem_mb):.1f} MB" if isinstance(mem_mb, (int, float)) else "—")
