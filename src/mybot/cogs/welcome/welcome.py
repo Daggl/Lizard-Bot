@@ -6,6 +6,7 @@ If `WELCOME_MESSAGE` is missing from the config the cog sends the banner only.
 from typing import Optional
 
 import io
+import os
 import re
 from datetime import datetime
 
@@ -65,6 +66,58 @@ def _parse_hex_color(value: Optional[str], fallback: tuple[int, int, int]) -> tu
         return fallback
 
 
+def _compose_background(
+    image_path: str,
+    width: int,
+    height: int,
+    mode: str,
+    zoom_percent: int,
+    offset_x: int,
+    offset_y: int,
+) -> Image.Image:
+    canvas = Image.new("RGBA", (width, height), (18, 18, 18, 255))
+    try:
+        src = Image.open(image_path).convert("RGBA")
+    except Exception:
+        return canvas
+
+    src_w, src_h = src.size
+    if src_w <= 0 or src_h <= 0:
+        return canvas
+
+    mode_norm = str(mode or "cover").strip().lower()
+    if mode_norm not in ("cover", "contain", "stretch"):
+        mode_norm = "cover"
+
+    try:
+        zoom = int(zoom_percent or 100)
+    except Exception:
+        zoom = 100
+    zoom = max(10, min(400, zoom))
+
+    resampling = getattr(getattr(Image, "Resampling", Image), "LANCZOS")
+
+    if mode_norm == "stretch":
+        stretched = src.resize((width, height), resampling)
+        canvas.paste(stretched, (0, 0), stretched)
+        return canvas
+
+    if mode_norm == "cover":
+        base_scale = max(width / float(src_w), height / float(src_h))
+    else:
+        base_scale = min(width / float(src_w), height / float(src_h))
+
+    scale = base_scale * (zoom / 100.0)
+    new_w = max(1, int(src_w * scale))
+    new_h = max(1, int(src_h * scale))
+    fitted = src.resize((new_w, new_h), resampling)
+
+    x = (width - new_w) // 2 + int(offset_x or 0)
+    y = (height - new_h) // 2 + int(offset_y or 0)
+    canvas.paste(fitted, (x, y), fitted)
+    return canvas
+
+
 def clean_username(member: discord.Member) -> str:
     name = member.display_name
     name = re.sub(r"\d+", "", name)
@@ -86,6 +139,10 @@ class Welcome(commands.Cog):
             cfg = {**cfg, **overrides}
 
         banner_path = cfg.get("BANNER_PATH", "assets/welcome.png")
+        bg_mode = str(cfg.get("BG_MODE", "cover") or "cover")
+        bg_zoom = int(cfg.get("BG_ZOOM", 100) or 100)
+        bg_offset_x = int(cfg.get("BG_OFFSET_X", 0) or 0)
+        bg_offset_y = int(cfg.get("BG_OFFSET_Y", 0) or 0)
         font_welcome_path = cfg.get("FONT_WELCOME", "assets/fonts/Poppins-Bold.ttf")
         font_username_path = cfg.get("FONT_USERNAME", "assets/fonts/Poppins-Regular.ttf")
         banner_title = str(cfg.get("BANNER_TITLE", "WELCOME") or "WELCOME")
@@ -110,12 +167,39 @@ class Welcome(commands.Cog):
                 avatar_bytes = await resp.read()
 
         safe_print("[DEBUG] Loading banner image...")
-        try:
-            banner = Image.open(banner_path).convert("RGBA")
-            width, height = banner.size
-        except Exception:
-            width, height = 1400, 420
-            banner = Image.new("RGBA", (width, height), (18, 18, 18, 255))
+        repo_root = os.path.dirname(
+            os.path.dirname(
+                os.path.dirname(
+                    os.path.dirname(
+                        os.path.dirname(os.path.abspath(__file__))
+                    )
+                )
+            )
+        )
+        default_banner_abs = os.path.abspath(os.path.join(repo_root, "assets", "welcome.png"))
+        requested_banner_abs = os.path.abspath(
+            banner_path if os.path.isabs(str(banner_path or "")) else os.path.join(repo_root, str(banner_path or ""))
+        )
+
+        # Do not transform the default banner image: use it as-is.
+        if requested_banner_abs.lower() == default_banner_abs.lower() and os.path.exists(requested_banner_abs):
+            try:
+                banner = Image.open(requested_banner_abs).convert("RGBA")
+                width, height = banner.size
+            except Exception:
+                width, height = 1500, 550
+                banner = Image.new("RGBA", (width, height), (18, 18, 18, 255))
+        else:
+            width, height = 1500, 550
+            banner = _compose_background(
+                banner_path,
+                width,
+                height,
+                bg_mode,
+                bg_zoom,
+                bg_offset_x,
+                bg_offset_y,
+            )
 
         avatar = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
         margin = 40

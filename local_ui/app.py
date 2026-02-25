@@ -1076,7 +1076,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 pix = QtGui.QPixmap()
                 if pix.loadFromData(data):
                     try:
-                        scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
+                        scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
                         self.pv_banner.setPixmap(scaled)
                     except Exception:
                         self.pv_banner.setPixmap(pix)
@@ -1623,7 +1623,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.pv_banner_path.setText(path)
                 pix = QtGui.QPixmap(path)
                 try:
-                    scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
+                    scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
                     self.pv_banner.setPixmap(scaled)
                 except Exception:
                     self.pv_banner.setPixmap(pix)
@@ -1919,54 +1919,40 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
 
     def _selected_title_font_path(self) -> str:
-        try:
-            data = self.pv_title_font.currentData()
-            if isinstance(data, str) and data.strip():
-                return data
-        except Exception:
-            pass
-        try:
-            txt = self.pv_title_font.currentText() or ""
-            return txt.strip()
-        except Exception:
-            return ""
+        return self._resolve_font_combo_path(self.pv_title_font)
 
     def _selected_user_font_path(self) -> str:
-        try:
-            data = self.pv_user_font.currentData()
-            if isinstance(data, str) and data.strip():
-                return data
-        except Exception:
-            pass
-        try:
-            txt = self.pv_user_font.currentText() or ""
-            return txt.strip()
-        except Exception:
-            return ""
+        return self._resolve_font_combo_path(self.pv_user_font)
 
     def _selected_rank_name_font_path(self) -> str:
-        try:
-            data = self.rk_name_font.currentData()
-            if isinstance(data, str) and data.strip():
-                return data
-        except Exception:
-            pass
-        try:
-            txt = self.rk_name_font.currentText() or ""
-            return txt.strip()
-        except Exception:
-            return ""
+        return self._resolve_font_combo_path(self.rk_name_font)
 
     def _selected_rank_info_font_path(self) -> str:
+        return self._resolve_font_combo_path(self.rk_info_font)
+
+    def _resolve_font_combo_path(self, combo: QtWidgets.QComboBox) -> str:
         try:
-            data = self.rk_info_font.currentData()
-            if isinstance(data, str) and data.strip():
-                return data
+            txt = (combo.currentText() or "").strip()
+            txt_l = txt.lower()
+            looks_like_path = (
+                "/" in txt
+                or "\\" in txt
+                or txt_l.endswith(".ttf")
+                or txt_l.endswith(".otf")
+                or txt_l.endswith(".ttc")
+            )
+            if txt and looks_like_path:
+                return txt
         except Exception:
             pass
         try:
-            txt = self.rk_info_font.currentText() or ""
-            return txt.strip()
+            data = combo.currentData()
+            if isinstance(data, str) and data.strip():
+                return data.strip()
+        except Exception:
+            pass
+        try:
+            return (combo.currentText() or "").strip()
         except Exception:
             return ""
 
@@ -2262,7 +2248,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     try:
                         pix = QtGui.QPixmap(banner)
                         try:
-                            scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
+                            scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
                             self.pv_banner.setPixmap(scaled)
                         except Exception:
                             self.pv_banner.setPixmap(pix)
@@ -2378,7 +2364,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if banner and os.path.exists(banner):
                     pix = QtGui.QPixmap(banner)
                     try:
-                        scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
+                        scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
                         self.pv_banner.setPixmap(scaled)
                     except Exception:
                         try:

@@ -182,13 +182,36 @@ class Rank(commands.Cog):
         resolved_text_x = int(text_offset_x if text_offset_x is not None else cfg.get("TEXT_OFFSET_X", 0) or 0)
         resolved_text_y = int(text_offset_y if text_offset_y is not None else cfg.get("TEXT_OFFSET_Y", 0) or 0)
 
-        card = _compose_rank_background(
-            resolved_bg_path,
-            resolved_bg_mode,
-            int(resolved_bg_zoom or 100),
-            int(resolved_bg_x or 0),
-            int(resolved_bg_y or 0),
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+        default_rank_abs = os.path.abspath(os.path.join(repo_root, "assets", "rankcard.png"))
+        requested_rank_abs = os.path.abspath(
+            resolved_bg_path if os.path.isabs(str(resolved_bg_path or "")) else os.path.join(repo_root, str(resolved_bg_path or ""))
         )
+
+        if requested_rank_abs.lower() == default_rank_abs.lower() and os.path.exists(requested_rank_abs):
+            try:
+                card = Image.open(requested_rank_abs).convert("RGB")
+            except Exception:
+                card = _compose_rank_background(
+                    resolved_bg_path,
+                    resolved_bg_mode,
+                    int(resolved_bg_zoom or 100),
+                    int(resolved_bg_x or 0),
+                    int(resolved_bg_y or 0),
+                )
+        else:
+            card = _compose_rank_background(
+                resolved_bg_path,
+                resolved_bg_mode,
+                int(resolved_bg_zoom or 100),
+                int(resolved_bg_x or 0),
+                int(resolved_bg_y or 0),
+            )
+
+        card_w, card_h = card.size
+        scale_x = card_w / float(CARD_WIDTH)
+        scale_y = card_h / float(CARD_HEIGHT)
+        scale = min(scale_x, scale_y)
 
         draw = ImageDraw.Draw(card)
 
@@ -198,58 +221,63 @@ class Rank(commands.Cog):
 
         avatar = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
 
-        avatar = avatar.resize((AVATAR_SIZE, AVATAR_SIZE))
+        avatar_size = max(64, int(AVATAR_SIZE * scale))
+        avatar = avatar.resize((avatar_size, avatar_size))
 
-        mask = Image.new("L", (AVATAR_SIZE, AVATAR_SIZE), 0)
+        mask = Image.new("L", (avatar_size, avatar_size), 0)
 
         mask_draw = ImageDraw.Draw(mask)
 
-        mask_draw.ellipse((0, 0, AVATAR_SIZE, AVATAR_SIZE), fill=255)
+        mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
 
         avatar.putalpha(mask)
 
-        card.paste(avatar, (50, 60), avatar)
+        avatar_x = int(50 * scale_x)
+        avatar_y = int(60 * scale_y)
+        card.paste(avatar, (avatar_x, avatar_y), avatar)
 
-        font_big = _safe_truetype(resolved_name_font, resolved_name_size)
-        font_medium = _safe_truetype(resolved_info_font, resolved_info_size)
-        font_small = _safe_truetype(resolved_info_font, max(10, int(resolved_info_size * 0.55)))
+        font_big = _safe_truetype(resolved_name_font, int(resolved_name_size * scale))
+        font_medium = _safe_truetype(resolved_info_font, int(resolved_info_size * scale))
+        font_small = _safe_truetype(resolved_info_font, max(10, int(resolved_info_size * 0.55 * scale)))
 
-        draw.text((260 + resolved_text_x, 50 + resolved_text_y), member.display_name, font=font_big, fill=resolved_name_color)
+        draw.text((int(260 * scale_x) + resolved_text_x, int(50 * scale_y) + resolved_text_y), member.display_name, font=font_big, fill=resolved_name_color)
 
-        draw.text((260 + resolved_text_x, 120 + resolved_text_y), f"Level {level}", font=font_medium, fill=resolved_info_color)
+        draw.text((int(260 * scale_x) + resolved_text_x, int(120 * scale_y) + resolved_text_y), f"Level {level}", font=font_medium, fill=resolved_info_color)
 
         draw.text(
-            (710 + resolved_text_x, 140 + resolved_text_y),
+            (int(710 * scale_x) + resolved_text_x, int(140 * scale_y) + resolved_text_y),
             f"{xp} / {needed} XP",
             font=font_small,
             fill=resolved_info_color,
         )
 
-        bar_x = 260
-        bar_y = 180
+        bar_x = int(260 * scale_x)
+        bar_y = int(180 * scale_y)
+        bar_width = int(BAR_WIDTH * scale_x)
+        bar_height = max(8, int(BAR_HEIGHT * scale_y))
 
         draw.rectangle(
-            (bar_x, bar_y, bar_x + BAR_WIDTH, bar_y + BAR_HEIGHT), fill=(50, 50, 50)
+            (bar_x, bar_y, bar_x + bar_width, bar_y + bar_height), fill=(50, 50, 50)
         )
 
         draw.rectangle(
-            (bar_x, bar_y, bar_x + int(BAR_WIDTH * progress), bar_y + BAR_HEIGHT),
+            (bar_x, bar_y, bar_x + int(bar_width * progress), bar_y + bar_height),
             fill=(140, 110, 255),
         )
 
         draw.text(
-            (260 + resolved_text_x, 220 + resolved_text_y), f"Messages: {messages}", font=font_small, fill=resolved_info_color
+            (int(260 * scale_x) + resolved_text_x, int(220 * scale_y) + resolved_text_y), f"Messages: {messages}", font=font_small, fill=resolved_info_color
         )
 
         draw.text(
-            (450 + resolved_text_x, 220 + resolved_text_y),
+            (int(450 * scale_x) + resolved_text_x, int(220 * scale_y) + resolved_text_y),
             f"Voice: {voice_minutes} min",
             font=font_small,
             fill=resolved_info_color,
         )
 
         draw.text(
-            (650 + resolved_text_x, 220 + resolved_text_y),
+            (int(650 * scale_x) + resolved_text_x, int(220 * scale_y) + resolved_text_y),
             f"Achievements: {achievements}",
             font=font_small,
             fill=resolved_info_color,
