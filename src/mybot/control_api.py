@@ -168,6 +168,79 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     failed[name] = str(e)
 
             resp = {"ok": True, "reloaded": reloaded, "failed": failed, "unloaded": unloaded}
+        elif action == "banner_preview":
+            # Request the welcome cog to render a banner for a dummy member and
+            # return the PNG as base64 so the UI can show exactly what the bot
+            # would send.
+            name = req.get("name") or "NewMember"
+            avatar_url = req.get("avatar_url")
+
+            try:
+                # find welcome cog
+                welcome_cog = None
+                try:
+                    welcome_cog = bot.get_cog("Welcome")
+                except Exception:
+                    welcome_cog = None
+
+                if welcome_cog is None:
+                    # try to search cogs dict manually
+                    welcome_cog = bot.cogs.get("Welcome")
+
+                if welcome_cog is None:
+                    resp = {"ok": False, "error": "welcome cog not loaded"}
+                else:
+                    # construct a minimal dummy member object with required attributes
+                    class _Avatar:
+                        def __init__(self, url):
+                            self.url = url
+
+                    class _DummyMember:
+                        def __init__(self, name, avatar_url):
+                            self.display_name = name
+                            self.name = name
+                            self.mention = f"@{name}"
+                            self.display_avatar = _Avatar(avatar_url)
+
+                    # default avatar: use bot user avatar if available
+                    if not avatar_url:
+                        try:
+                            avatar_url = getattr(bot.user, "display_avatar", None)
+                            if avatar_url is not None:
+                                avatar_url = getattr(avatar_url, "url", None)
+                        except Exception:
+                            avatar_url = None
+
+                    if not avatar_url:
+                        # fallback to a simple 1x1 png served externally; create_banner will handle failures
+                        avatar_url = "https://httpbin.org/image/png"
+
+                    dummy = _DummyMember(name, avatar_url)
+                    # call create_banner (coroutine) on the cog
+                    try:
+                        banner_file = await welcome_cog.create_banner(dummy)
+                    except Exception as e:
+                        resp = {"ok": False, "error": f"banner generation failed: {e}"}
+                    else:
+                        try:
+                            # discord.File stores a .fp file-like object
+                            fp = getattr(banner_file, "fp", None)
+                            if fp is None:
+                                resp = {"ok": False, "error": "no file buffer returned"}
+                            else:
+                                try:
+                                    fp.seek(0)
+                                except Exception:
+                                    pass
+                                data = fp.read()
+                                import base64
+
+                                b64 = base64.b64encode(data).decode()
+                                resp = {"ok": True, "png_base64": b64}
+                        except Exception as e:
+                            resp = {"ok": False, "error": str(e)}
+            except Exception as e:
+                resp = {"ok": False, "error": str(e)}
 
         else:
             resp = {"ok": False, "error": "unknown action"}

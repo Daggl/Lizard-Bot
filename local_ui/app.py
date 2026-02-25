@@ -163,7 +163,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # wire preview controls
         self.pv_banner_browse.clicked.connect(self._choose_banner)
-        self.pv_refresh.clicked.connect(self.update_preview)
+        self.pv_refresh.clicked.connect(self.on_refresh_preview)
         self.pv_save.clicked.connect(lambda: self._save_preview(reload_after=False))
         self.pv_save_reload.clicked.connect(lambda: self._save_preview(reload_after=True))
 
@@ -200,6 +200,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # initialize
         self._log_fp = None
+        # data URL for a banner received via the Refresh Preview button
+        self._preview_banner_data_url = None
         self._open_log()
         self.on_refresh()
     def on_ping(self):
@@ -218,6 +220,37 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.update_preview()
             except Exception:
                 pass
+
+    def on_refresh_preview(self):
+        """Request a banner preview from the bot and update the preview widgets."""
+        try:
+            name = self.pv_name.text() or "NewMember"
+            r = send_cmd({"action": "banner_preview", "name": name}, timeout=2.0)
+            if r.get("ok") and r.get("png_base64"):
+                b64 = r.get("png_base64")
+                data = QtCore.QByteArray.fromBase64(b64.encode())
+                pix = QtGui.QPixmap()
+                if pix.loadFromData(data):
+                    try:
+                        self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                    except Exception:
+                        self.pv_banner.setPixmap(pix)
+                    # store data URL for embedding into the HTML preview
+                    self._preview_banner_data_url = f"data:image/png;base64,{b64}"
+                    # re-render live preview using this banner
+                    try:
+                        self._apply_live_preview()
+                    except Exception:
+                        pass
+                    return
+            # if we get here, fallback to existing update_preview behaviour
+            QtWidgets.QMessageBox.warning(self, "Preview", f"Failed to get banner from bot: {r}")
+            try:
+                self.update_preview()
+            except Exception:
+                pass
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Preview error", str(e))
         else:
             self.status_label.setText(f"Status: offline ({r.get('error')})")
 
@@ -309,9 +342,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
             cfg["EXAMPLE_NAME"] = self.pv_name.text() or cfg.get("EXAMPLE_NAME", "NewMember")
             cfg["BANNER_PATH"] = self.pv_banner_path.text() or cfg.get("BANNER_PATH", cfg.get("BANNER_PATH", "assets/welcome.png"))
-            cfg["WELCOME_MESSAGE"] = self.pv_message.toPlainText()
+            # Prevent accidental deletion: do not overwrite WELCOME_MESSAGE with an empty value.
+            new_msg = self.pv_message.toPlainText()
+            if new_msg and new_msg.strip():
+                cfg["WELCOME_MESSAGE"] = new_msg
+            else:
+                # keep existing message if present
+                cfg["WELCOME_MESSAGE"] = cfg.get("WELCOME_MESSAGE", cfg.get("PREVIEW_MESSAGE", ""))
 
             os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
+            # create a backup of the existing config to avoid data loss
+            try:
+                if os.path.exists(cfg_path):
+                    import shutil, time
+                    bak = cfg_path + ".bak." + str(int(time.time()))
+                    shutil.copy2(cfg_path, bak)
+            except Exception:
+                pass
             with open(cfg_path, "w", encoding="utf-8") as fh:
                 json.dump(cfg, fh, indent=2, ensure_ascii=False)
 
@@ -323,9 +370,24 @@ class MainWindow(QtWidgets.QMainWindow):
 
             if reload_after:
                 try:
-                    send_cmd({"action": "reload"}, timeout=3.0)
-                except Exception:
-                    pass
+                    r2 = send_cmd({"action": "reload"}, timeout=3.0)
+                    # show reload result to user
+                    if r2.get("ok"):
+                        # on success, load the persisted welcome message into the preview
+                        try:
+                            self._load_welcome_message_from_file()
+                        except Exception:
+                            pass
+                        reloaded = r2.get("reloaded", [])
+                        failed = r2.get("failed", {})
+                        msg = f"Reloaded: {len(reloaded)} modules. Failed: {len(failed)}"
+                        if failed:
+                            msg = msg + "\n" + "\n".join(f"{k}: {v}" for k, v in failed.items())
+                        QtWidgets.QMessageBox.information(self, "Reload", msg)
+                    else:
+                        QtWidgets.QMessageBox.warning(self, "Reload failed", f"{r2}")
+                except Exception as e:
+                    QtWidgets.QMessageBox.warning(self, "Reload error", str(e))
 
             QtWidgets.QMessageBox.information(self, "Saved", "Preview settings saved")
         except Exception as e:
@@ -338,15 +400,29 @@ class MainWindow(QtWidgets.QMainWindow):
             banner = self.pv_banner_path.text() or ""
             message = self.pv_message.toPlainText() or "Welcome {mention}!"
 
-            # update banner pixmap
-            try:
-                if banner and os.path.exists(banner):
-                    pix = QtGui.QPixmap(banner)
-                    self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
-                else:
-                    self.pv_banner.clear()
-            except Exception:
-                self.pv_banner.clear()
+            # Use a cached banner data URL produced only by the Refresh Preview button.
+            # Do NOT call the control API here — banner generation should be explicit.
+            banner_url = getattr(self, "_preview_banner_data_url", None) or ""
+            if banner_url:
+                # if we have a data URL, pv_banner was already set by the Refresh handler
+                pass
+            else:
+                # fall back to local file if provided
+                try:
+                    if banner and os.path.exists(banner):
+                        pix = QtGui.QPixmap(banner)
+                        try:
+                            self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                        except Exception:
+                            self.pv_banner.setPixmap(pix)
+                        banner_url = f"file:///{os.path.abspath(banner).replace('\\', '/')}"
+                    else:
+                        self.pv_banner.clear()
+                except Exception:
+                    try:
+                        self.pv_banner.clear()
+                    except Exception:
+                        pass
 
             # substitute placeholder safely
             safe_name = _html.escape(name)
@@ -356,12 +432,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # build Discord-like embed HTML using basic table layout (Qt supports a subset of HTML/CSS)
             # left colored bar, dark embed background, banner image below header
-            banner_url = ""
-            if banner and os.path.exists(banner):
-                # file URL must be absolute
-                        banner_url = f"file:///{os.path.abspath(banner).replace('\\', '/')}"
-
-                        html = """
+            html = """
 <div style="font-family:Segoe UI, Arial; color:#e6e6e6;">
     <table cellpadding="0" cellspacing="0" width="100%" style="background:#2f3136; border-radius:8px;">
         <tr>
@@ -426,17 +497,22 @@ class MainWindow(QtWidgets.QMainWindow):
         # show banner image if available (for Preview tab)
         banner = cfg.get("BANNER_PATH") or os.path.join(repo_root, "assets", "welcome.png")
         try:
-            if banner and os.path.exists(banner):
-                pix = QtGui.QPixmap(banner)
-                try:
-                    self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
-                except Exception:
-                    pass
+            # if a generated banner data URL exists (from Refresh), do not overwrite the shown pixmap
+            if getattr(self, "_preview_banner_data_url", None):
+                # keep the banner set by Refresh Preview
+                pass
             else:
-                try:
-                    self.pv_banner.clear()
-                except Exception:
-                    pass
+                if banner and os.path.exists(banner):
+                    pix = QtGui.QPixmap(banner)
+                    try:
+                        self.pv_banner.setPixmap(pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation))
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        self.pv_banner.clear()
+                    except Exception:
+                        pass
         except Exception:
             try:
                 self.pv_banner.clear()
@@ -445,10 +521,49 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # update fields in Preview tab and render
         try:
-            self.pv_name.setText(str(cfg.get("EXAMPLE_NAME", "NewMember")))
-            self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "")))
-            # load the canonical welcome template if present
-            self.pv_message.setPlainText(str(cfg.get("WELCOME_MESSAGE", cfg.get("PREVIEW_MESSAGE", "Welcome {mention}!"))))
+            # Only update fields if the user is not actively editing them (avoid clobbering)
+            if not self.pv_name.hasFocus():
+                self.pv_name.setText(str(cfg.get("EXAMPLE_NAME", "NewMember")))
+            if not self.pv_banner_path.hasFocus():
+                self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "")))
+
+                # Load the canonical `WELCOME_MESSAGE` into the message field
+                # unless the user is currently editing it. Only populate when
+                # the field is empty to avoid overwriting user edits.
+                welcome_msg = cfg.get("WELCOME_MESSAGE")
+                if welcome_msg and not self.pv_message.hasFocus():
+                    cur_text = self.pv_message.toPlainText()
+                    if not cur_text or not cur_text.strip():
+                        try:
+                            self.pv_message.setPlainText(str(welcome_msg))
+                        except Exception:
+                            pass
+
+            try:
+                self._apply_live_preview()
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _load_welcome_message_from_file(self):
+        """Load the canonical `WELCOME_MESSAGE` from config/welcome.json and
+        set it into the Preview message field (overwrites current text).
+        This is intended to be called only after a successful Save + Reload.
+        """
+        try:
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            cfg_path = os.path.join(repo_root, "config", "welcome.json")
+            if not os.path.exists(cfg_path):
+                return
+            with open(cfg_path, "r", encoding="utf-8") as fh:
+                cfg = json.load(fh)
+            msg = str(cfg.get("WELCOME_MESSAGE", cfg.get("PREVIEW_MESSAGE", "Welcome {mention}!")))
+            # overwrite regardless of focus because the user explicitly requested reload
+            try:
+                self.pv_message.setPlainText(msg)
+            except Exception:
+                pass
             try:
                 self._apply_live_preview()
             except Exception:
