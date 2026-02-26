@@ -4,8 +4,6 @@ from discord.ext import commands
 from mybot.cogs.leveling.utils.database import Database
 from mybot.cogs.leveling.utils.level_config import (
     ACHIEVEMENT_CHANNEL_ID,
-    EMOJI_WIN,
-    EMOJI_HEART,
     get_message_templates,
 )
 
@@ -68,22 +66,31 @@ class Levels(commands.Cog):
 
             if channel:
                 try:
-                    level_up_tpl, _ = get_message_templates()
-                    description = str(level_up_tpl).format(
+                    level_up_tpl, _achievement_tpl, win_emoji, heart_emoji = get_message_templates()
+                    template_raw = str(level_up_tpl)
+                    includes_win = ("{emoji_win}" in template_raw) or ("{leading_emoji}" in template_raw)
+                    includes_heart = ("{emoji_heart}" in template_raw) or ("{trailing_emoji}" in template_raw)
+                    description = template_raw.format(
                         member_mention=member.mention,
                         member_name=getattr(member, "name", member.display_name),
                         member_display_name=member.display_name,
                         member_id=member.id,
                         guild_name=getattr(getattr(member, "guild", None), "name", ""),
                         level=user["level"],
-                        emoji_win=EMOJI_WIN,
-                        emoji_heart=EMOJI_HEART,
+                        emoji_win=win_emoji,
+                        emoji_heart=heart_emoji,
+                        leading_emoji=win_emoji,
+                        trailing_emoji=heart_emoji,
                     )
+                    if win_emoji and not includes_win:
+                        description = f"{win_emoji} {description}".strip()
+                    if heart_emoji and not includes_heart:
+                        description = f"{description} {heart_emoji}".strip()
                 except Exception:
                     description = (
-                        f"{EMOJI_WIN} {member.mention}\n"
+                        f"{member.mention}\n"
                         f"you just reached level {user['level']}!\n"
-                        f"keep it up, cutie! {EMOJI_HEART}"
+                        f"keep it up, cutie!"
                     )
 
                 embed = discord.Embed(

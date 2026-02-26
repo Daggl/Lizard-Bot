@@ -53,7 +53,7 @@
     "ACHIEVEMENT_CHANNEL_ID": 0,
     "EMOJI_WIN": "<:gg_wp:1473709030839943189>",
     "EMOJI_HEART": "<a:AP_scribbleheart:1472809672946745519>",
-    "LEVEL_UP_MESSAGE_TEMPLATE": "{emoji_win} {member_mention}\nyou just reached level {level}!\nkeep it up, cutie! {emoji_heart}",
+    "LEVEL_UP_MESSAGE_TEMPLATE": "{member_mention}\nyou just reached level {level}!\nkeep it up, cutie!",
     "ACHIEVEMENT_MESSAGE_TEMPLATE": "🏆 {member_mention} got Achievement **{achievement_name}**"
   },
   "count": { "COUNT_CHANNEL_ID": 0 }

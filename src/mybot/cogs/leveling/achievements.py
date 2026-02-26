@@ -32,7 +32,7 @@ class Achievements(commands.Cog):
                 channel = self.bot.get_channel(ACHIEVEMENT_CHANNEL_ID)
                 if channel:
                     try:
-                        _, achievement_tpl = get_message_templates()
+                        _, achievement_tpl, _win_emoji, _heart_emoji = get_message_templates()
                         msg = str(achievement_tpl).format(
                             member_mention=member.mention,
                             member_name=getattr(member, "name", member.display_name),
