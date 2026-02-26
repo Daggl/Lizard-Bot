@@ -28,7 +28,7 @@ from repo_paths import get_repo_root
 from runtime import run_main_window
 from setup_wizard import SetupWizardDialog
 from startup_trace import write_startup_trace
-from ui_tabs import build_configs_tab, build_dashboard_tab, build_diagnostics_tab, build_logs_tab, build_welcome_and_rank_tabs
+from ui_tabs import build_configs_tab, build_dashboard_tab, build_logs_tab, build_welcome_and_rank_tabs
 
 
 UI_RESTART_EXIT_CODE = 42
@@ -57,7 +57,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         build_dashboard_tab(self, tabs)
         build_logs_tab(self, tabs)
-        build_diagnostics_tab(self, tabs)
         build_configs_tab(self, tabs, ConfigEditor)
 
         build_welcome_and_rank_tabs(self, tabs, QtCore)
@@ -233,10 +232,6 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
         self._open_log()
         self.on_refresh()
-        try:
-            self.on_refresh_diagnostics()
-        except Exception:
-            pass
         # load rank config if present
         try:
             self._load_rank_config()
@@ -912,77 +907,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     self._set_status(f"Event Tester: {label} failed")
                 except Exception:
                     pass
-        except Exception:
-            pass
-
-    def on_refresh_diagnostics(self):
-        try:
-            self._set_status("Diagnostics: refreshing...")
-        except Exception:
-            pass
-        self.send_cmd_async({"action": "diagnostics"}, timeout=4.0, cb=self._on_refresh_diagnostics_result)
-
-    def on_copy_diagnostics(self):
-        try:
-            text = str(getattr(self, "diag_text", None).toPlainText() or "") if getattr(self, "diag_text", None) is not None else ""
-            if not text:
-                return
-            QtWidgets.QApplication.clipboard().setText(text)
-            self.statusBar().showMessage("Diagnostics copied", 2000)
-        except Exception:
-            pass
-
-    def _format_diagnostics_output(self, r: dict) -> str:
-        if not isinstance(r, dict):
-            return str(r)
-        bot = r.get("bot") or {}
-        lines = []
-        lines.append("=== Bot ===")
-        lines.append(f"Ready: {bot.get('ready')}")
-        lines.append(f"User: {bot.get('user')}")
-        lines.append(f"Guilds: {bot.get('guild_count')}")
-        lines.append(f"Latency ms: {bot.get('latency_ms')}")
-        lines.append(f"Uptime sec: {r.get('uptime_seconds')}")
-        lines.append("")
-
-        runtime = r.get("runtime") or {}
-        lines.append("=== Runtime ===")
-        lines.append(f"PID: {runtime.get('pid')}")
-        lines.append(f"Python: {runtime.get('python')}")
-        lines.append(f"Platform: {runtime.get('platform')}")
-        lines.append(f"CWD: {runtime.get('cwd')}")
-        lines.append("")
-
-        checks = r.get("checks") or {}
-        lines.append("=== Checks ===")
-        lines.append(f"CONTROL_API_TOKEN set: {checks.get('control_api_token_set')}")
-        lines.append(f"yt_dlp importable: {checks.get('yt_dlp_available')}")
-        lines.append(f"ffmpeg found: {checks.get('ffmpeg_found')}")
-        lines.append(f"ffmpeg path: {checks.get('ffmpeg_path') or 'not found'}")
-        lines.append(f"config dir exists: {checks.get('config_dir_exists')}")
-        lines.append(f"data dir exists: {checks.get('data_dir_exists')}")
-        lines.append(f"logs.db exists: {checks.get('logs_db_exists')}")
-        lines.append(f"tickets.db exists: {checks.get('tickets_db_exists')}")
-        lines.append("")
-
-        for key in ("paths", "files"):
-            values = r.get(key) or {}
-            lines.append(f"=== {key.title()} ===")
-            for name in sorted(values.keys()):
-                lines.append(f"{name}: {values.get(name)}")
-            lines.append("")
-
-        return "\n".join(lines).strip() + "\n"
-
-    def _on_refresh_diagnostics_result(self, r: dict):
-        try:
-            out = self._format_diagnostics_output(r)
-            if hasattr(self, "diag_text") and self.diag_text is not None:
-                self.diag_text.setPlainText(out)
-            if r.get("ok"):
-                self._set_status("Diagnostics: updated")
-            else:
-                self._set_status("Diagnostics: failed")
         except Exception:
             pass
 

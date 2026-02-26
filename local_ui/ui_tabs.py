@@ -150,30 +150,6 @@ def build_logs_tab(window, tabs: QtWidgets.QTabWidget):
     tabs.addTab(logs, "Logs")
 
 
-def build_diagnostics_tab(window, tabs: QtWidgets.QTabWidget):
-    diag = QtWidgets.QWidget()
-    diag_layout = QtWidgets.QVBoxLayout(diag)
-
-    top_row = QtWidgets.QHBoxLayout()
-    window.diag_refresh_btn = QtWidgets.QPushButton("Refresh Diagnostics")
-    window.diag_copy_btn = QtWidgets.QPushButton("Copy")
-    top_row.addWidget(window.diag_refresh_btn)
-    top_row.addWidget(window.diag_copy_btn)
-    top_row.addStretch()
-    diag_layout.addLayout(top_row)
-
-    window.diag_text = QtWidgets.QPlainTextEdit()
-    window.diag_text.setReadOnly(True)
-    window.diag_text.setMaximumBlockCount(4000)
-    window.diag_text.setPlaceholderText("Diagnostics output will appear here.")
-    diag_layout.addWidget(window.diag_text, 1)
-
-    window.diag_refresh_btn.clicked.connect(window.on_refresh_diagnostics)
-    window.diag_copy_btn.clicked.connect(window.on_copy_diagnostics)
-
-    tabs.addTab(diag, "Diagnostics")
-
-
 def build_configs_tab(window, tabs: QtWidgets.QTabWidget, config_editor_cls):
     window.cfg_editor = config_editor_cls(window)
     tabs.addTab(window.cfg_editor, "Configs")

@@ -11,7 +11,6 @@ import asyncio
 import json
 import os
 import importlib
-import shutil
 import sys
 import time
 from types import SimpleNamespace
@@ -115,56 +114,6 @@ def _build_guild_snapshot(bot):
             continue
 
     return {"ok": True, "guilds": guilds_payload}
-
-
-def _build_diagnostics(bot):
-    root = _repo_root()
-    uptime_seconds = int(max(0, time.time() - CONTROL_API_STARTED_AT))
-    yt_dlp_available = False
-    try:
-        yt_dlp_available = importlib.util.find_spec("yt_dlp") is not None
-    except Exception:
-        yt_dlp_available = False
-
-    ffmpeg_path = None
-    try:
-        ffmpeg_path = shutil.which("ffmpeg")
-    except Exception:
-        ffmpeg_path = None
-
-    checks = {
-        "control_api_token_set": bool(CONTROL_API_TOKEN),
-        "yt_dlp_available": bool(yt_dlp_available),
-        "ffmpeg_found": bool(ffmpeg_path),
-        "ffmpeg_path": ffmpeg_path,
-        "config_dir_exists": os.path.isdir(os.path.join(root, "config")),
-        "data_dir_exists": os.path.isdir(os.path.join(root, "data")),
-        "logs_db_exists": os.path.exists(os.path.join(root, "data", "db", "logs.db")),
-        "tickets_db_exists": os.path.exists(os.path.join(root, "data", "db", "tickets.db")),
-    }
-
-    try:
-        guild_count = len(list(getattr(bot, "guilds", []) or []))
-    except Exception:
-        guild_count = 0
-
-    return {
-        "ok": True,
-        "uptime_seconds": uptime_seconds,
-        "bot": {
-            "ready": bool(getattr(bot, "is_ready", lambda: False)()),
-            "user": getattr(getattr(bot, "user", None), "name", None),
-            "guild_count": guild_count,
-            "latency_ms": int(max(0, float(getattr(bot, "latency", 0) or 0) * 1000.0)),
-        },
-        "runtime": {
-            "python": sys.version.split()[0],
-            "platform": sys.platform,
-            "cwd": os.getcwd(),
-            "repo_root": root,
-        },
-        "checks": checks,
-    }
 
 
 def _pick_test_guild(bot):
@@ -654,9 +603,6 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
         elif action == "guild_snapshot":
             resp = _build_guild_snapshot(bot)
-
-        elif action == "diagnostics":
-            resp = _build_diagnostics(bot)
 
         else:
             resp = {"ok": False, "error": "unknown action"}
