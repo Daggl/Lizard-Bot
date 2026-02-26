@@ -298,10 +298,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
         pv_top = QtWidgets.QHBoxLayout()
         pv_top.setSpacing(12)
+        pv_left = QtWidgets.QVBoxLayout()
+        pv_lbl_preview = QtWidgets.QLabel("Preview")
+        pv_lbl_preview.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        pv_lbl_preview.setStyleSheet("font-weight:700; font-size:14px; margin-bottom:6px;")
+        pv_left.addWidget(pv_lbl_preview)
         self.pv_banner = QtWidgets.QLabel()
         self.pv_banner.setFixedSize(520, 180)
         self.pv_banner.setScaledContents(False)
-        pv_top.addWidget(self.pv_banner, 0)
+        pv_left.addWidget(self.pv_banner)
+        pv_left.addStretch()
+        pv_top.addLayout(pv_left, 0)
 
         pv_form = QtWidgets.QFormLayout()
         pv_form.setFieldGrowthPolicy(QtWidgets.QFormLayout.ExpandingFieldsGrow)
@@ -332,16 +339,25 @@ class MainWindow(QtWidgets.QMainWindow):
         pv_form.addRow("Message:", self.pv_message)
 
         # placeholder helper buttons (directly below message)
-        ph_row = QtWidgets.QHBoxLayout()
+        ph_widget = QtWidgets.QWidget()
+        ph_grid = QtWidgets.QGridLayout(ph_widget)
+        ph_grid.setContentsMargins(0, 0, 0, 0)
+        ph_grid.setHorizontalSpacing(8)
+        ph_grid.setVerticalSpacing(8)
         self.ph_mention = QtWidgets.QPushButton("{mention}")
         self.ph_rules = QtWidgets.QPushButton("{rules_channel}")
         self.ph_verify = QtWidgets.QPushButton("{verify_channel}")
         self.ph_about = QtWidgets.QPushButton("{aboutme_channel}")
-        ph_row.addWidget(self.ph_mention)
-        ph_row.addWidget(self.ph_rules)
-        ph_row.addWidget(self.ph_verify)
-        ph_row.addWidget(self.ph_about)
-        pv_form.addRow("Placeholders:", ph_row)
+        for _btn in (self.ph_mention, self.ph_rules, self.ph_verify, self.ph_about):
+            try:
+                _btn.setMinimumHeight(34)
+            except Exception:
+                pass
+        ph_grid.addWidget(self.ph_mention, 0, 0)
+        ph_grid.addWidget(self.ph_rules, 0, 1)
+        ph_grid.addWidget(self.ph_verify, 0, 2)
+        ph_grid.addWidget(self.ph_about, 0, 3)
+        pv_form.addRow("Placeholders:", ph_widget)
 
         pv_form.addRow(_pv_section("Background"))
         self.pv_bg_mode = QtWidgets.QComboBox()
@@ -510,6 +526,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_save = QtWidgets.QPushButton("Save")
         self.pv_save_reload = QtWidgets.QPushButton("Save + Reload")
         self.pv_refresh = QtWidgets.QPushButton("Refresh Preview")
+        for _btn in (self.pv_refresh, self.pv_save, self.pv_save_reload):
+            try:
+                _btn.setMinimumWidth(_btn.sizeHint().width() + 18)
+                _btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+            except Exception:
+                pass
         pv_row.addStretch()
         pv_row.addWidget(self.pv_refresh)
         pv_row.addWidget(self.pv_save)
@@ -521,9 +543,12 @@ class MainWindow(QtWidgets.QMainWindow):
         # Rankcard preview tab
         rank_w = QtWidgets.QWidget()
         rank_layout = QtWidgets.QVBoxLayout(rank_w)
+        rank_layout.setContentsMargins(8, 8, 10, 8)
+        rank_layout.setSpacing(10)
 
         # Rankcard layout: preview on the left, controls on the right
         rk_main = QtWidgets.QHBoxLayout()
+        rk_main.setSpacing(12)
 
         # Left: preview area with header
         rk_left = QtWidgets.QVBoxLayout()
@@ -532,14 +557,28 @@ class MainWindow(QtWidgets.QMainWindow):
         lbl_preview.setStyleSheet("font-weight:700; font-size:14px; margin-bottom:6px;")
         rk_left.addWidget(lbl_preview)
         self.rk_image = QtWidgets.QLabel()
-        self.rk_image.setFixedSize(700, 210)
+        self.rk_image.setFixedSize(520, 180)
         self.rk_image.setScaledContents(False)
         rk_left.addWidget(self.rk_image)
         rk_left.addStretch()
 
         # Right: form controls and actions
         rk_right = QtWidgets.QVBoxLayout()
+        rk_right.setSpacing(10)
+        rk_right.setContentsMargins(0, 0, 6, 0)
+        rk_controls_w = QtWidgets.QWidget()
+        rk_controls_w.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
+        rk_controls_layout = QtWidgets.QVBoxLayout(rk_controls_w)
+        rk_controls_layout.setContentsMargins(0, 0, 10, 0)
+        rk_controls_layout.setSpacing(8)
         rk_form = QtWidgets.QFormLayout()
+        rk_form.setFieldGrowthPolicy(QtWidgets.QFormLayout.ExpandingFieldsGrow)
+        rk_form.setFormAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
+        rk_form.setLabelAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        rk_form.setHorizontalSpacing(10)
+        rk_form.setVerticalSpacing(8)
+        rk_form.setContentsMargins(0, 0, 18, 0)
+        rk_form.addRow(_pv_section("General"))
         self.rk_name = QtWidgets.QLineEdit()
         self.rk_bg_path = QtWidgets.QLineEdit()
         self.rk_bg_browse = QtWidgets.QPushButton("Choose...")
@@ -548,6 +587,7 @@ class MainWindow(QtWidgets.QMainWindow):
         hbg.addWidget(self.rk_bg_browse)
         rk_form.addRow("Example name:", self.rk_name)
         rk_form.addRow("Background PNG:", hbg)
+        rk_form.addRow(_pv_section("Background"))
         self.rk_bg_mode = QtWidgets.QComboBox()
         self.rk_bg_mode.addItem("Fill (cover)", "cover")
         self.rk_bg_mode.addItem("Fit (contain)", "contain")
@@ -578,6 +618,7 @@ class MainWindow(QtWidgets.QMainWindow):
         rk_bg_offset_row.addStretch()
         rk_form.addRow("Background offset:", rk_bg_offset_row)
 
+        rk_form.addRow(_pv_section("Typography"))
         self.rk_name_font = QtWidgets.QComboBox()
         self.rk_name_font.setEditable(True)
         self.rk_name_font.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
@@ -635,78 +676,129 @@ class MainWindow(QtWidgets.QMainWindow):
         rk_text_pos_row.addStretch()
         rk_form.addRow("Text offset:", rk_text_pos_row)
 
+        rk_form.addRow(_pv_section("Messages"))
         self.lv_levelup_msg = QtWidgets.QPlainTextEdit()
-        self.lv_levelup_msg.setMinimumHeight(90)
-        self.lv_levelup_msg.setMaximumHeight(160)
+        self.lv_levelup_msg.setMinimumHeight(96)
+        self.lv_levelup_msg.setMaximumHeight(170)
         self.lv_levelup_msg.setPlaceholderText(
-            "Use {member_mention}, {member_name}, {member_display_name}, {member_id}, {guild_name}, {level}, {emoji_win}, {emoji_heart}"
+            "Use {member_mention}, {member_name}, {member_display_name}, {member_id}, {guild_name}, {level}"
         )
+        self.lv_emoji_win = QtWidgets.QLineEdit()
+        self.lv_emoji_win.setPlaceholderText("Leading emoji ID or <:name:id>")
+        rk_form.addRow("Leading emoji ID/tag:", self.lv_emoji_win)
+
+        self.lv_emoji_heart = QtWidgets.QLineEdit()
+        self.lv_emoji_heart.setPlaceholderText("Trailing emoji ID or <:name:id>")
+        rk_form.addRow("Trailing emoji ID/tag:", self.lv_emoji_heart)
         rk_form.addRow("Level-up message:", self.lv_levelup_msg)
-        lv_ph_row_1 = QtWidgets.QHBoxLayout()
+
         self.lv_ph_member_mention = QtWidgets.QPushButton("{member_mention}")
         self.lv_ph_member_name = QtWidgets.QPushButton("{member_name}")
         self.lv_ph_display_name = QtWidgets.QPushButton("{member_display_name}")
         self.lv_ph_member_id = QtWidgets.QPushButton("{member_id}")
-        lv_ph_row_1.addWidget(self.lv_ph_member_mention)
-        lv_ph_row_1.addWidget(self.lv_ph_member_name)
-        lv_ph_row_1.addWidget(self.lv_ph_display_name)
-        lv_ph_row_1.addWidget(self.lv_ph_member_id)
-        rk_form.addRow("", lv_ph_row_1)
-
-        lv_ph_row_2 = QtWidgets.QHBoxLayout()
         self.lv_ph_guild_name = QtWidgets.QPushButton("{guild_name}")
         self.lv_ph_level = QtWidgets.QPushButton("{level}")
-        self.lv_ph_emoji_win = QtWidgets.QPushButton("{emoji_win}")
-        self.lv_ph_emoji_heart = QtWidgets.QPushButton("{emoji_heart}")
-        lv_ph_row_2.addWidget(self.lv_ph_guild_name)
-        lv_ph_row_2.addWidget(self.lv_ph_level)
-        lv_ph_row_2.addWidget(self.lv_ph_emoji_win)
-        lv_ph_row_2.addWidget(self.lv_ph_emoji_heart)
-        rk_form.addRow("", lv_ph_row_2)
+        self.lv_ph_leading_emoji = QtWidgets.QPushButton("{leading_emoji}")
+        self.lv_ph_trailing_emoji = QtWidgets.QPushButton("{trailing_emoji}")
+
+        lv_ph_widget = QtWidgets.QWidget()
+        lv_ph_grid = QtWidgets.QGridLayout(lv_ph_widget)
+        lv_ph_grid.setContentsMargins(0, 0, 0, 0)
+        lv_ph_grid.setHorizontalSpacing(8)
+        lv_ph_grid.setVerticalSpacing(8)
+        lv_ph_grid.addWidget(self.lv_ph_member_mention, 0, 0)
+        lv_ph_grid.addWidget(self.lv_ph_member_name, 0, 1)
+        lv_ph_grid.addWidget(self.lv_ph_display_name, 0, 2)
+        lv_ph_grid.addWidget(self.lv_ph_member_id, 1, 0)
+        lv_ph_grid.addWidget(self.lv_ph_guild_name, 1, 1)
+        lv_ph_grid.addWidget(self.lv_ph_level, 1, 2)
+        lv_ph_grid.addWidget(self.lv_ph_leading_emoji, 2, 0)
+        lv_ph_grid.addWidget(self.lv_ph_trailing_emoji, 2, 1)
+        rk_form.addRow("Level placeholders:", lv_ph_widget)
 
         self.lv_achievement_msg = QtWidgets.QPlainTextEdit()
-        self.lv_achievement_msg.setMinimumHeight(80)
-        self.lv_achievement_msg.setMaximumHeight(140)
+        self.lv_achievement_msg.setMinimumHeight(86)
+        self.lv_achievement_msg.setMaximumHeight(150)
         self.lv_achievement_msg.setPlaceholderText(
             "Use {member_mention}, {member_name}, {member_display_name}, {member_id}, {guild_name}, {achievement_name}"
         )
         rk_form.addRow("Achievement message:", self.lv_achievement_msg)
-        av_ph_row = QtWidgets.QHBoxLayout()
+
         self.av_ph_member_mention = QtWidgets.QPushButton("{member_mention}")
         self.av_ph_member_name = QtWidgets.QPushButton("{member_name}")
         self.av_ph_display_name = QtWidgets.QPushButton("{member_display_name}")
         self.av_ph_member_id = QtWidgets.QPushButton("{member_id}")
         self.av_ph_guild_name = QtWidgets.QPushButton("{guild_name}")
         self.av_ph_achievement_name = QtWidgets.QPushButton("{achievement_name}")
-        av_ph_row.addWidget(self.av_ph_member_mention)
-        av_ph_row.addWidget(self.av_ph_member_name)
-        av_ph_row.addWidget(self.av_ph_display_name)
-        av_ph_row.addWidget(self.av_ph_member_id)
-        av_ph_row.addWidget(self.av_ph_guild_name)
-        av_ph_row.addWidget(self.av_ph_achievement_name)
-        rk_form.addRow("", av_ph_row)
-        rk_right.addLayout(rk_form)
+        for _btn in (
+            self.lv_ph_member_mention,
+            self.lv_ph_member_name,
+            self.lv_ph_display_name,
+            self.lv_ph_member_id,
+            self.lv_ph_guild_name,
+            self.lv_ph_level,
+            self.lv_ph_leading_emoji,
+            self.lv_ph_trailing_emoji,
+            self.av_ph_member_mention,
+            self.av_ph_member_name,
+            self.av_ph_display_name,
+            self.av_ph_member_id,
+            self.av_ph_guild_name,
+            self.av_ph_achievement_name,
+        ):
+            try:
+                _btn.setMinimumHeight(34)
+            except Exception:
+                pass
+
+        av_ph_widget = QtWidgets.QWidget()
+        av_ph_grid = QtWidgets.QGridLayout(av_ph_widget)
+        av_ph_grid.setContentsMargins(0, 0, 0, 0)
+        av_ph_grid.setHorizontalSpacing(8)
+        av_ph_grid.setVerticalSpacing(8)
+        av_ph_grid.addWidget(self.av_ph_member_mention, 0, 0)
+        av_ph_grid.addWidget(self.av_ph_member_name, 0, 1)
+        av_ph_grid.addWidget(self.av_ph_display_name, 0, 2)
+        av_ph_grid.addWidget(self.av_ph_member_id, 1, 0)
+        av_ph_grid.addWidget(self.av_ph_guild_name, 1, 1)
+        av_ph_grid.addWidget(self.av_ph_achievement_name, 1, 2)
+        rk_form.addRow("Achievement placeholders:", av_ph_widget)
+        rk_controls_layout.addLayout(rk_form)
 
         # Add a small info label under the form
         info = QtWidgets.QLabel("Choose a background PNG to preview the rank. Use Save + Reload to apply to the bot.")
         info.setWordWrap(True)
         info.setStyleSheet("color:#9aa0a6; font-size:11px; margin-top:8px;")
-        rk_right.addWidget(info)
-        rk_right.addStretch()
+        rk_controls_layout.addWidget(info)
+        rk_controls_layout.addStretch()
+
+        rk_scroll = QtWidgets.QScrollArea()
+        rk_scroll.setWidgetResizable(True)
+        rk_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        rk_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        rk_scroll.setContentsMargins(0, 0, 10, 0)
+        rk_scroll.setWidget(rk_controls_w)
+        rk_right.addWidget(rk_scroll, 1)
 
         # action buttons (aligned right)
         rk_buttons = QtWidgets.QHBoxLayout()
         self.rk_refresh = QtWidgets.QPushButton("Refresh Rank")
         self.rk_save = QtWidgets.QPushButton("Save")
         self.rk_save_reload = QtWidgets.QPushButton("Save + Reload")
+        for _btn in (self.rk_refresh, self.rk_save, self.rk_save_reload):
+            try:
+                _btn.setMinimumWidth(_btn.sizeHint().width() + 18)
+                _btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+            except Exception:
+                pass
         rk_buttons.addStretch()
         rk_buttons.addWidget(self.rk_refresh)
         rk_buttons.addWidget(self.rk_save)
         rk_buttons.addWidget(self.rk_save_reload)
         rk_right.addLayout(rk_buttons)
 
-        rk_main.addLayout(rk_left, 1)
-        rk_main.addLayout(rk_right, 0)
+        rk_main.addLayout(rk_left, 0)
+        rk_main.addLayout(rk_right, 1)
         rank_layout.addLayout(rk_main)
 
         tabs.addTab(rank_w, "Rank")
@@ -722,8 +814,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lv_ph_member_id.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{member_id}'))
         self.lv_ph_guild_name.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{guild_name}'))
         self.lv_ph_level.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{level}'))
-        self.lv_ph_emoji_win.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{emoji_win}'))
-        self.lv_ph_emoji_heart.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{emoji_heart}'))
+        self.lv_ph_leading_emoji.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{leading_emoji}'))
+        self.lv_ph_trailing_emoji.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{trailing_emoji}'))
         self.av_ph_member_mention.clicked.connect(lambda: self._insert_placeholder_into(self.lv_achievement_msg, '{member_mention}'))
         self.av_ph_member_name.clicked.connect(lambda: self._insert_placeholder_into(self.lv_achievement_msg, '{member_name}'))
         self.av_ph_display_name.clicked.connect(lambda: self._insert_placeholder_into(self.lv_achievement_msg, '{member_display_name}'))
@@ -1979,7 +2071,7 @@ class MainWindow(QtWidgets.QMainWindow):
         levelup_tpl = str(
             cfg.get(
                 "LEVEL_UP_MESSAGE_TEMPLATE",
-                "{emoji_win} {member_mention}\nyou just reached level {level}!\nkeep it up, cutie! {emoji_heart}",
+                "{member_mention}\nyou just reached level {level}!\nkeep it up, cutie!",
             )
         )
         achievement_tpl = str(
@@ -1988,11 +2080,17 @@ class MainWindow(QtWidgets.QMainWindow):
                 "🏆 {member_mention} got Achievement **{achievement_name}**",
             )
         )
+        win_emoji = str(cfg.get("EMOJI_WIN", "") or "")
+        heart_emoji = str(cfg.get("EMOJI_HEART", "") or "")
         try:
             if not self.lv_levelup_msg.hasFocus():
                 self.lv_levelup_msg.setPlainText(levelup_tpl)
             if not self.lv_achievement_msg.hasFocus():
                 self.lv_achievement_msg.setPlainText(achievement_tpl)
+            if not self.lv_emoji_win.hasFocus():
+                self.lv_emoji_win.setText(win_emoji)
+            if not self.lv_emoji_heart.hasFocus():
+                self.lv_emoji_heart.setText(heart_emoji)
         except Exception:
             pass
 
@@ -2096,8 +2194,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._save_rank_config(data)
 
             lvl_data = {
-                "LEVEL_UP_MESSAGE_TEMPLATE": self.lv_levelup_msg.toPlainText().strip() or "{emoji_win} {member_mention}\\nyou just reached level {level}!\\nkeep it up, cutie! {emoji_heart}",
+                "LEVEL_UP_MESSAGE_TEMPLATE": self.lv_levelup_msg.toPlainText().strip() or "{member_mention}\\nyou just reached level {level}!\\nkeep it up, cutie!",
                 "ACHIEVEMENT_MESSAGE_TEMPLATE": self.lv_achievement_msg.toPlainText().strip() or "🏆 {member_mention} got Achievement **{achievement_name}**",
+                "EMOJI_WIN": (self.lv_emoji_win.text() or "").strip(),
+                "EMOJI_HEART": (self.lv_emoji_heart.text() or "").strip(),
             }
             self._save_leveling_config(lvl_data)
 
