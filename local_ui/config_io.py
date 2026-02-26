@@ -1,31 +1,33 @@
-import json
 import os
+import sys
+
+from repo_paths import get_repo_root
+
+try:
+    from mybot.utils.config_store import (
+        config_json_path as _config_json_path,
+        load_json_dict as _load_json_dict,
+        save_json_merged as _save_json_merged,
+    )
+except Exception:
+    repo_root = get_repo_root()
+    src_dir = os.path.join(repo_root, "src")
+    if os.path.isdir(src_dir) and src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+    from mybot.utils.config_store import (
+        config_json_path as _config_json_path,
+        load_json_dict as _load_json_dict,
+        save_json_merged as _save_json_merged,
+    )
 
 
 def config_json_path(repo_root: str, filename: str) -> str:
-    cfg_dir = os.path.join(repo_root, "config")
-    os.makedirs(cfg_dir, exist_ok=True)
-    return os.path.join(cfg_dir, filename)
+    return _config_json_path(repo_root, filename)
 
 
 def load_json_dict(path: str) -> dict:
-    try:
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as fh:
-                data = json.load(fh) or {}
-                if isinstance(data, dict):
-                    return data
-        return {}
-    except Exception:
-        return {}
+    return _load_json_dict(path)
 
 
 def save_json_merged(path: str, data: dict) -> dict:
-    existing = load_json_dict(path)
-    existing.update(data or {})
-    try:
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(existing, fh, indent=2, ensure_ascii=False)
-    except Exception:
-        pass
-    return existing
+    return _save_json_merged(path, data)

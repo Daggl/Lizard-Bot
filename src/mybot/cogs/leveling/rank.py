@@ -8,6 +8,7 @@ from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
 from mybot.cogs.leveling.levels import xp_for_level
+from mybot.utils.paths import REPO_ROOT
 
 CARD_WIDTH = 1000
 CARD_HEIGHT = 300
@@ -46,8 +47,7 @@ def _parse_hex_color(value, fallback):
 
 def _load_rank_cfg() -> dict:
     try:
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
-        cfg_path = os.path.join(repo_root, "config", "rank.json")
+        cfg_path = os.path.join(REPO_ROOT, "config", "rank.json")
         if os.path.exists(cfg_path):
             with open(cfg_path, "r", encoding="utf-8") as fh:
                 return json.load(fh) or {}
@@ -182,10 +182,9 @@ class Rank(commands.Cog):
         resolved_text_x = int(text_offset_x if text_offset_x is not None else cfg.get("TEXT_OFFSET_X", 0) or 0)
         resolved_text_y = int(text_offset_y if text_offset_y is not None else cfg.get("TEXT_OFFSET_Y", 0) or 0)
 
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
-        default_rank_abs = os.path.abspath(os.path.join(repo_root, "assets", "rankcard.png"))
+        default_rank_abs = os.path.abspath(os.path.join(REPO_ROOT, "assets", "rankcard.png"))
         requested_rank_abs = os.path.abspath(
-            resolved_bg_path if os.path.isabs(str(resolved_bg_path or "")) else os.path.join(repo_root, str(resolved_bg_path or ""))
+            resolved_bg_path if os.path.isabs(str(resolved_bg_path or "")) else os.path.join(REPO_ROOT, str(resolved_bg_path or ""))
         )
 
         if requested_rank_abs.lower() == default_rank_abs.lower() and os.path.exists(requested_rank_abs):

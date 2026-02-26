@@ -3,7 +3,7 @@ from discord.ext import commands
 
 from mybot.cogs.leveling.utils.database import Database
 from mybot.cogs.leveling.utils.level_config import (
-    ACHIEVEMENT_CHANNEL_ID,
+    get_achievement_channel_id,
     get_message_templates,
 )
 
@@ -62,7 +62,7 @@ class Levels(commands.Cog):
             leveled = True
 
             # LEVEL UP MESSAGE
-            channel = self.bot.get_channel(ACHIEVEMENT_CHANNEL_ID)
+            channel = self.bot.get_channel(get_achievement_channel_id())
 
             if channel:
                 try:

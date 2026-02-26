@@ -12,11 +12,22 @@ from mybot.utils.config import load_cog_config
 from mybot.utils.paths import (ensure_dirs, get_db_path,
                                get_ticket_transcript_path, migrate_old_paths)
 
-_CFG = load_cog_config("tickets")
 
-TICKET_CATEGORY_ID: Optional[int] = _CFG.get("TICKET_CATEGORY_ID", None)
-SUPPORT_ROLE_ID: Optional[int] = _CFG.get("SUPPORT_ROLE_ID", None)
-TICKET_LOG_CHANNEL_ID: Optional[int] = _CFG.get("TICKET_LOG_CHANNEL_ID", None)
+def _cfg() -> dict:
+    try:
+        return load_cog_config("tickets") or {}
+    except Exception:
+        return {}
+
+
+def _cfg_opt_int(name: str) -> Optional[int]:
+    try:
+        raw = _cfg().get(name, None)
+        if raw is None:
+            return None
+        return int(raw)
+    except Exception:
+        return None
 
 
 def ensure_dir(path: str) -> None:
@@ -145,8 +156,9 @@ class TicketCog(commands.Cog):
         )
 
     def _support_role(self, guild: discord.Guild) -> Optional[discord.Role]:
-        if SUPPORT_ROLE_ID:
-            return guild.get_role(SUPPORT_ROLE_ID)
+        support_role_id = _cfg_opt_int("SUPPORT_ROLE_ID")
+        if support_role_id:
+            return guild.get_role(support_role_id)
         for role in guild.roles:
             if role.permissions.manage_messages or role.name.lower() in (
                 "support",
@@ -159,13 +171,14 @@ class TicketCog(commands.Cog):
     async def _ticket_category(
         self, guild: discord.Guild
     ) -> Optional[discord.CategoryChannel]:
+        ticket_category_id = _cfg_opt_int("TICKET_CATEGORY_ID")
         # If a category ID is configured, try to resolve it. Accept either a
         # category ID or a channel ID (channel's parent category will be used).
-        if TICKET_CATEGORY_ID:
+        if ticket_category_id:
             try:
-                cid = int(TICKET_CATEGORY_ID)
+                cid = int(ticket_category_id)
             except Exception:
-                cid = TICKET_CATEGORY_ID
+                cid = ticket_category_id
 
             # Try cache first
             ch = guild.get_channel(cid)
@@ -364,8 +377,24 @@ class TicketCog(commands.Cog):
             print("[TICKET][DB] Failed to update claimed_by:", exc)
 
     async def _log_action(self, guild: discord.Guild, text: str) -> None:
-        if TICKET_LOG_CHANNEL_ID:
-            ch = guild.get_channel(TICKET_LOG_CHANNEL_ID)
+        try:
+            from data.logs import database as logs_db
+
+            logs_db.save_log(
+                "ticket",
+                {
+                    "type": "ticket_action",
+                    "message": text,
+                    "guild": guild.id if guild else None,
+                    "timestamp": datetime.utcnow().isoformat(),
+                },
+            )
+        except Exception:
+            pass
+
+        ticket_log_channel_id = _cfg_opt_int("TICKET_LOG_CHANNEL_ID")
+        if ticket_log_channel_id:
+            ch = guild.get_channel(ticket_log_channel_id)
             if ch:
                 await ch.send(text)
                 return

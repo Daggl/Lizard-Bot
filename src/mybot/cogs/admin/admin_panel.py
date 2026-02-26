@@ -3,8 +3,8 @@ import time
 import discord
 from discord.ext import commands
 
-from mybot.cogs.leveling.utils.level_config import (ACHIEVEMENT_CHANNEL_ID,
-                                                    ACHIEVEMENTS,
+from mybot.cogs.leveling.utils.level_config import (ACHIEVEMENTS,
+                                                    get_achievement_channel_id,
                                                     LEVEL_REWARDS)
 
 
@@ -82,7 +82,7 @@ class AdminPanel(commands.Cog):
             value=(
                 f"Defined: {len(ACHIEVEMENTS)}\n"
                 f"Given: {total_achievements_given}\n"
-                f"Channel ID: {ACHIEVEMENT_CHANNEL_ID}"
+                f"Channel ID: {get_achievement_channel_id()}"
             ),
             inline=False,
         )

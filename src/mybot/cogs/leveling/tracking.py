@@ -2,9 +2,9 @@ import time
 
 from discord.ext import commands, tasks
 
-from mybot.cogs.leveling.utils.level_config import (MESSAGE_COOLDOWN,
-                                                    VOICE_XP_PER_MINUTE,
-                                                    XP_PER_MESSAGE)
+from mybot.cogs.leveling.utils.level_config import (get_message_cooldown,
+                                                    get_voice_xp_per_minute,
+                                                    get_xp_per_message)
 
 
 class Tracking(commands.Cog):
@@ -55,7 +55,7 @@ class Tracking(commands.Cog):
 
             user["voice_time"] += seconds
 
-            xp = int((seconds / 60) * VOICE_XP_PER_MINUTE)
+            xp = int((seconds / 60) * get_voice_xp_per_minute())
 
             levels = self.bot.get_cog("Levels")
 
@@ -115,7 +115,7 @@ class Tracking(commands.Cog):
 
             elapsed = now - self.cooldowns[user_id]
 
-            if elapsed < MESSAGE_COOLDOWN:
+            if elapsed < get_message_cooldown():
                 return
 
         self.cooldowns[user_id] = now
@@ -128,7 +128,7 @@ class Tracking(commands.Cog):
         levels = self.bot.get_cog("Levels")
 
         if levels:
-            await levels.add_xp(message.author, XP_PER_MESSAGE)
+            await levels.add_xp(message.author, get_xp_per_message())
 
         achievements = self.bot.get_cog("Achievements")
 

@@ -10,17 +10,25 @@ def repo_root_candidates(path):
 
 
 def find_repo_root():
+    env_root = os.environ.get("DC_BOT_REPO_ROOT")
+    if env_root:
+        try:
+            abs_env = os.path.abspath(env_root)
+            if os.path.exists(os.path.join(abs_env, "data", "config.example.json")):
+                return abs_env
+        except Exception:
+            pass
+
     here = os.path.abspath(os.path.dirname(__file__))
     # package path: src/mybot/utils -> climb up 3 levels
     cand = os.path.abspath(os.path.join(here, "..", "..", ".."))
-    if os.path.exists(os.path.join(cand, "bot.py")) or os.path.exists(
-        os.path.join(cand, "data", "config.example.json")
-    ):
+    if os.path.exists(os.path.join(cand, "data", "config.example.json")):
         return cand
-    # fallback: climb until we find bot.py
+
+    # fallback: climb until we find a strong repo marker
     for c in repo_root_candidates(here):
-        if os.path.exists(os.path.join(c, "bot.py")) or os.path.exists(
-            os.path.join(c, "data", "config.example.json")
+        if os.path.exists(os.path.join(c, "data", "config.example.json")) or os.path.exists(
+            os.path.join(c, "setup.cfg")
         ):
             return c
     return cand
@@ -33,6 +41,10 @@ DB_DIR = os.path.join(DATA_DIR, "db")
 TICKETS_DIR = os.path.join(DATA_DIR, "tickets")
 TICKET_TRANSCRIPTS = os.path.join(TICKETS_DIR, "transcripts")
 LOGS_DIR = os.path.join(DATA_DIR, "logs")
+
+
+def repo_path(*parts: str) -> str:
+    return os.path.join(REPO_ROOT, *parts)
 
 
 def ensure_dirs():

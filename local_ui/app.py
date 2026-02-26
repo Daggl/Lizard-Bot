@@ -24,6 +24,7 @@ from file_ops import open_tracked_writer, prune_backups, rotate_log_file
 from guides import open_bot_tutorial, open_commands_guide
 from log_format import format_db_row
 from log_poller import LogPoller
+from repo_paths import get_repo_root
 from runtime import run_main_window
 from startup_trace import write_startup_trace
 from ui_tabs import build_configs_tab, build_dashboard_tab, build_logs_tab, build_welcome_and_rank_tabs
@@ -47,7 +48,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.resize(1220, 780)
         self.setMinimumSize(1160, 740)
         # Repo root path for data/logs tracking
-        self._repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self._repo_root = get_repo_root()
 
         # central tabs
         tabs = QtWidgets.QTabWidget()
@@ -884,7 +885,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._set_status("Logs: choosing file...")
             except Exception:
                 pass
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            repo_root = self._repo_root
             candidates = []
             # common locations
             candidates.append(os.path.join(repo_root, "discord.log"))
@@ -955,7 +956,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._set_status("Logs: choosing file...")
             except Exception:
                 pass
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            repo_root = self._repo_root
             start_dir = repo_root
             path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Choose log file", start_dir, "Log files (*.log *.txt);;All files (*)")
             if path:
@@ -1056,7 +1057,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._set_status("Banner: choosing image...")
             except Exception:
                 pass
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            repo_root = self._repo_root
             start_dir = os.path.join(repo_root, "assets") if os.path.exists(os.path.join(repo_root, "assets")) else repo_root
             path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Choose banner image", start_dir, "Images (*.png *.jpg *.jpeg *.bmp)")
             if path:
@@ -1079,7 +1080,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._set_status("Rank: choosing background...")
             except Exception:
                 pass
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            repo_root = self._repo_root
             start_dir = os.path.join(repo_root, "assets") if os.path.exists(os.path.join(repo_root, "assets")) else repo_root
             path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Choose rank background image", start_dir, "Images (*.png *.jpg *.jpeg *.bmp)")
             if path:
@@ -1099,12 +1100,10 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
 
     def _rank_config_paths(self):
-        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        return config_json_path(repo_root, "rank.json")
+        return config_json_path(self._repo_root, "rank.json")
 
     def _leveling_config_paths(self):
-        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        return config_json_path(repo_root, "leveling.json")
+        return config_json_path(self._repo_root, "leveling.json")
 
     def _load_leveling_config(self):
         cfg_path = self._leveling_config_paths()
@@ -1312,7 +1311,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _load_font_choices(self, combo: QtWidgets.QComboBox, selected_path: str = None):
         try:
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            repo_root = self._repo_root
             assets_fonts = os.path.join(repo_root, "assets", "fonts")
             sys_fonts = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
             exts = (".ttf", ".otf", ".ttc")
@@ -1408,7 +1407,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._set_status("Preview: saving...")
             except Exception:
                 pass
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            repo_root = self._repo_root
             cfg_path = os.path.join(repo_root, "config", "welcome.json")
             try:
                 with open(cfg_path, "r", encoding="utf-8") as fh:
@@ -1680,7 +1679,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def update_preview(self):
         # simple preview using config/welcome.json values
         try:
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            repo_root = self._repo_root
             cfg_path = os.path.join(repo_root, "config", "welcome.json")
             if not os.path.exists(cfg_path):
                 try:
@@ -1799,7 +1798,7 @@ class MainWindow(QtWidgets.QMainWindow):
         This is intended to be called only after a successful Save + Reload.
         """
         try:
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            repo_root = self._repo_root
             cfg_path = os.path.join(repo_root, "config", "welcome.json")
             if not os.path.exists(cfg_path):
                 return

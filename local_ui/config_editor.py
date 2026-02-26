@@ -3,6 +3,8 @@ import os
 
 from PySide6 import QtCore, QtWidgets
 
+from repo_paths import get_repo_root
+
 
 class ConfigEditor(QtWidgets.QDialog):
     def __init__(self, parent=None):
@@ -40,7 +42,7 @@ class ConfigEditor(QtWidgets.QDialog):
         self.add_btn.clicked.connect(self.on_add)
         self.remove_btn.clicked.connect(self.on_remove)
 
-        self.repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.repo_root = get_repo_root()
         os.makedirs(os.path.join(self.repo_root, "config"), exist_ok=True)
 
         self.refresh_list()

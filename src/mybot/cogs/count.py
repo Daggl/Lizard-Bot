@@ -6,15 +6,34 @@ from discord.ext import commands
 from mybot.utils.config import load_cog_config
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
-_CFG = load_cog_config("count")
 
-MIN_COUNT_FOR_RECORD = _CFG.get("MIN_COUNT_FOR_RECORD", 150)
+def _cfg() -> dict:
+    try:
+        return load_cog_config("count") or {}
+    except Exception:
+        return {}
 
-COUNT_CHANNEL_ID = _CFG.get("COUNT_CHANNEL_ID", None)
 
-DATA_FOLDER = _CFG.get("DATA_FOLDER", "data")
+def _count_channel_id():
+    try:
+        raw = _cfg().get("COUNT_CHANNEL_ID", None)
+        return int(raw) if raw is not None else None
+    except Exception:
+        return None
 
-DATA_FILE = os.path.join(DATA_FOLDER, _CFG.get("DATA_FILE", "count.json"))
+
+def _min_count_for_record() -> int:
+    try:
+        return int(_cfg().get("MIN_COUNT_FOR_RECORD", 150) or 150)
+    except Exception:
+        return 150
+
+
+def _data_paths() -> tuple[str, str]:
+    cfg = _cfg()
+    folder = str(cfg.get("DATA_FOLDER", "data") or "data")
+    file_name = str(cfg.get("DATA_FILE", "count.json") or "count.json")
+    return folder, os.path.join(folder, file_name)
 
 
 def default_data():
@@ -30,17 +49,19 @@ def default_data():
 
 
 def load():
+    data_folder, data_file = _data_paths()
 
-    if not os.path.exists(DATA_FOLDER):
-        os.makedirs(DATA_FOLDER)
+    if not os.path.exists(data_folder):
+        os.makedirs(data_folder)
 
-    if not os.path.exists(DATA_FILE):
+    if not os.path.exists(data_file):
         save(default_data())
-    return safe_load_json(DATA_FILE, default=default_data())
+    return safe_load_json(data_file, default=default_data())
 
 
 def save(data):
-    safe_save_json(DATA_FILE, data)
+    _, data_file = _data_paths()
+    safe_save_json(data_file, data)
 
 
 class Count(commands.Cog):
@@ -55,7 +76,8 @@ class Count(commands.Cog):
         if message.author.bot:
             return
 
-        if COUNT_CHANNEL_ID and message.channel.id != COUNT_CHANNEL_ID:
+        count_channel_id = _count_channel_id()
+        if count_channel_id and message.channel.id != count_channel_id:
             return
 
         data = load()
@@ -108,7 +130,8 @@ class Count(commands.Cog):
 
         data["total_counts"][user] += 1
 
-        if number > data["record"] and number >= MIN_COUNT_FOR_RECORD:
+        min_count_for_record = _min_count_for_record()
+        if number > data["record"] and number >= min_count_for_record:
 
             data["record"] = number
 

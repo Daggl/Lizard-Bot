@@ -1,7 +1,7 @@
 from discord.ext import commands
 
-from mybot.cogs.leveling.utils.level_config import (ACHIEVEMENT_CHANNEL_ID,
-                                                    ACHIEVEMENTS,
+from mybot.cogs.leveling.utils.level_config import (ACHIEVEMENTS,
+                                                    get_achievement_channel_id,
                                                     get_message_templates)
 
 
@@ -29,7 +29,7 @@ class Achievements(commands.Cog):
             if valid:
                 user["achievements"].append(name)
 
-                channel = self.bot.get_channel(ACHIEVEMENT_CHANNEL_ID)
+                channel = self.bot.get_channel(get_achievement_channel_id())
                 if channel:
                     try:
                         _, achievement_tpl, _win_emoji, _heart_emoji = get_message_templates()

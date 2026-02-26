@@ -6,10 +6,12 @@ from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
 
-_CFG = load_cog_config("log_chat")
 
-CHANNEL_ID = _CFG.get("CHANNEL_ID", 0)
-FILE = _CFG.get("FILE", "data/logs/chat_logs.json")
+def _cfg() -> dict:
+    try:
+        return load_cog_config("log_chat") or {}
+    except Exception:
+        return {}
 
 
 class ChatLog(commands.Cog):
@@ -40,7 +42,8 @@ class ChatLog(commands.Cog):
 
     async def send(self, guild, embed):
 
-        ch = guild.get_channel(CHANNEL_ID)
+        channel_id = int(_cfg().get("CHANNEL_ID", 0) or 0)
+        ch = guild.get_channel(channel_id)
 
         if ch:
             await ch.send(embed=embed)
@@ -125,9 +128,11 @@ class ChatLog(commands.Cog):
                 "user": msg.author.id,
                 "user_name": str(msg.author),
                 "channel": msg.channel.id if msg.channel else None,
+                "channel_name": getattr(msg.channel, "name", None),
                 "message": msg.content,
                 "message_id": msg.id,
                 "deleted_by": deleter.id if deleter else None,
+                "deleted_by_name": str(deleter) if deleter else None,
                 "guild": msg.guild.id if msg.guild else None,
                 "timestamp": datetime.utcnow().isoformat(),
             }
@@ -164,6 +169,7 @@ class ChatLog(commands.Cog):
                 "user": before.author.id,
                 "user_name": str(before.author),
                 "channel": before.channel.id,
+                "channel_name": getattr(before.channel, "name", None),
                 "message_id": before.id,
                 "before": before.content,
                 "after": after.content,

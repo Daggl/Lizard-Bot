@@ -37,6 +37,29 @@ def format_db_row(row) -> str:
     msg_val = _extract_message(data)
     ts_val = _extract_timestamp(data)
 
+    if msg_val is None:
+        try:
+            category = str(data.get("category") or "").strip()
+            log_type = str(data.get("type") or "").strip()
+            user_name = str(data.get("user_name") or "").strip()
+            moderator_name = str(data.get("moderator_name") or "").strip()
+            channel_name = str(data.get("channel_name") or "").strip()
+            parts = []
+            if category:
+                parts.append(category)
+            if log_type:
+                parts.append(log_type)
+            if user_name:
+                parts.append(f"user={user_name}")
+            if moderator_name:
+                parts.append(f"mod={moderator_name}")
+            if channel_name:
+                parts.append(f"channel={channel_name}")
+            if parts:
+                msg_val = " | ".join(parts)
+        except Exception:
+            pass
+
     if isinstance(msg_val, str):
         s = msg_val.strip()
         if (s.startswith('{') and s.endswith('}')) or (s.startswith('[') and s.endswith(']')):

@@ -5,6 +5,8 @@ from datetime import datetime
 
 from PySide6 import QtCore, QtWidgets
 
+from repo_paths import get_repo_root
+
 
 def run_main_window(main_window_cls):
     lock_sock = None
@@ -42,6 +44,8 @@ def run_main_window(main_window_cls):
 
 
 def _install_event_trace(app: QtWidgets.QApplication):
+    repo_root = get_repo_root()
+
     class _EventLogger(QtCore.QObject):
         def eventFilter(self, obj, event):
             try:
@@ -71,7 +75,6 @@ def _install_event_trace(app: QtWidgets.QApplication):
                     else:
                         name = str(t)
 
-                    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                     objname = getattr(obj, "__class__", type(obj)).__name__
                     line = f"EVENT {datetime.now().isoformat()} {name} obj={objname}\\n"
                     try:
@@ -103,7 +106,6 @@ def _install_event_trace(app: QtWidgets.QApplication):
             buf = getattr(evlogger, "_evbuf", None)
             if not buf:
                 return
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             trace = os.path.join(repo_root, "data", "logs", "ui_run_trace.log")
             try:
                 towrite = list(buf)

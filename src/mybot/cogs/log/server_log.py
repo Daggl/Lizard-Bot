@@ -6,10 +6,12 @@ from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
 
-_CFG = load_cog_config("log_server")
 
-CHANNEL_ID = _CFG.get("CHANNEL_ID", 0)
-FILE = _CFG.get("FILE", "data/logs/server_logs.json")
+def _cfg() -> dict:
+    try:
+        return load_cog_config("log_server") or {}
+    except Exception:
+        return {}
 
 
 class ServerLog(commands.Cog):
@@ -40,7 +42,8 @@ class ServerLog(commands.Cog):
 
     async def send(self, guild, embed):
 
-        channel = guild.get_channel(CHANNEL_ID)
+        channel_id = int(_cfg().get("CHANNEL_ID", 0) or 0)
+        channel = guild.get_channel(channel_id)
 
         if channel:
 
@@ -98,13 +101,32 @@ class ServerLog(commands.Cog):
             }
         )
 
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, before, after):
 
-async def setup(bot):
-    await bot.add_cog(ServerLog(bot))
+        if before.name == after.name:
+            return
 
-    # ==========================================================
-    # ROLE CREATE
-    # ==========================================================
+        embed = discord.Embed(
+            title="✏️ Channel updated",
+            color=discord.Color.orange(),
+            timestamp=datetime.utcnow(),
+        )
+
+        embed.add_field(name="Before", value=before.name, inline=True)
+        embed.add_field(name="After", value=after.name, inline=True)
+
+        await self.send(after.guild, embed)
+        self.save(
+            {
+                "type": "channel_update",
+                "channel": after.id,
+                "channel_before": before.name,
+                "channel_after": after.name,
+                "guild": after.guild.id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     @commands.Cog.listener()
     async def on_guild_role_create(self, role):
@@ -114,5 +136,66 @@ async def setup(bot):
             color=discord.Color.green(),
             timestamp=datetime.utcnow(),
         )
+        embed.add_field(name="Role", value=role.mention if hasattr(role, "mention") else role.name)
 
-        embed.add_field(name="🛡 Role", value=role.mention)
+        await self.send(role.guild, embed)
+        self.save(
+            {
+                "type": "role_create",
+                "role_id": role.id,
+                "role_name": role.name,
+                "guild": role.guild.id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role):
+
+        embed = discord.Embed(
+            title="🗑 Role deleted",
+            color=discord.Color.red(),
+            timestamp=datetime.utcnow(),
+        )
+        embed.add_field(name="Role", value=role.name)
+
+        await self.send(role.guild, embed)
+        self.save(
+            {
+                "type": "role_delete",
+                "role_id": role.id,
+                "role_name": role.name,
+                "guild": role.guild.id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
+
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before, after):
+
+        if before.name == after.name:
+            return
+
+        embed = discord.Embed(
+            title="✏️ Role updated",
+            color=discord.Color.orange(),
+            timestamp=datetime.utcnow(),
+        )
+        embed.add_field(name="Before", value=before.name, inline=True)
+        embed.add_field(name="After", value=after.name, inline=True)
+
+        await self.send(after.guild, embed)
+        self.save(
+            {
+                "type": "role_update",
+                "role_id": after.id,
+                "role_before": before.name,
+                "role_after": after.name,
+                "guild": after.guild.id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
+
+
+async def setup(bot):
+    await bot.add_cog(ServerLog(bot))

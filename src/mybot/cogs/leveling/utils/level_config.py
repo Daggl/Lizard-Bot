@@ -1,18 +1,11 @@
 from mybot.utils.config import load_cog_config
 
-_CFG = load_cog_config("leveling")
 
-ACHIEVEMENT_CHANNEL_ID = _CFG.get("ACHIEVEMENT_CHANNEL_ID", 0)
-EMOJI_WIN = _CFG.get("EMOJI_WIN", "")
-EMOJI_HEART = _CFG.get("EMOJI_HEART", "")
-LEVEL_UP_MESSAGE_TEMPLATE = _CFG.get(
-    "LEVEL_UP_MESSAGE_TEMPLATE",
-    "{member_mention}\nyou just reached level {level}!\nkeep it up, cutie!",
-)
-ACHIEVEMENT_MESSAGE_TEMPLATE = _CFG.get(
-    "ACHIEVEMENT_MESSAGE_TEMPLATE",
-    "🏆 {member_mention} got Achievement **{achievement_name}**",
-)
+def _cfg() -> dict:
+    try:
+        return load_cog_config("leveling") or {}
+    except Exception:
+        return {}
 
 
 def _normalize_emoji_input(raw_value, fallback_name: str) -> str:
@@ -29,7 +22,7 @@ def _normalize_emoji_input(raw_value, fallback_name: str) -> str:
 
 
 def get_message_templates():
-    cfg = load_cog_config("leveling")
+    cfg = _cfg()
     level_up_tpl = cfg.get(
         "LEVEL_UP_MESSAGE_TEMPLATE",
         "{member_mention}\nyou just reached level {level}!\nkeep it up, cutie!",
@@ -42,9 +35,33 @@ def get_message_templates():
     heart_emoji = _normalize_emoji_input(cfg.get("EMOJI_HEART", ""), "heart")
     return str(level_up_tpl), str(achievement_tpl), win_emoji, heart_emoji
 
-XP_PER_MESSAGE = _CFG.get("XP_PER_MESSAGE", 15)
-VOICE_XP_PER_MINUTE = _CFG.get("VOICE_XP_PER_MINUTE", 10)
-MESSAGE_COOLDOWN = _CFG.get("MESSAGE_COOLDOWN", 30)
+
+def get_achievement_channel_id() -> int:
+    try:
+        return int(_cfg().get("ACHIEVEMENT_CHANNEL_ID", 0) or 0)
+    except Exception:
+        return 0
+
+
+def get_xp_per_message() -> int:
+    try:
+        return int(_cfg().get("XP_PER_MESSAGE", 15) or 15)
+    except Exception:
+        return 15
+
+
+def get_voice_xp_per_minute() -> int:
+    try:
+        return int(_cfg().get("VOICE_XP_PER_MINUTE", 10) or 10)
+    except Exception:
+        return 10
+
+
+def get_message_cooldown() -> int:
+    try:
+        return int(_cfg().get("MESSAGE_COOLDOWN", 30) or 30)
+    except Exception:
+        return 30
 
 LEVEL_REWARDS = {
     5: "Bronze",

@@ -5,6 +5,8 @@ from datetime import datetime
 
 from PySide6 import QtWidgets
 
+from repo_paths import get_repo_root
+
 
 def _handle_uncaught_exception(exc_type, exc_value, exc_tb):
     tb = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
@@ -22,7 +24,7 @@ def _handle_uncaught_exception(exc_type, exc_value, exc_tb):
     except Exception:
         pass
     try:
-        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        repo_root = get_repo_root()
         log_dir = os.path.join(repo_root, "data", "logs")
         os.makedirs(log_dir, exist_ok=True)
         path = os.path.join(log_dir, "ui_crash.log")

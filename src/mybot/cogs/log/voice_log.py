@@ -6,10 +6,12 @@ from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
 
-_CFG = load_cog_config("log_voice")
 
-CHANNEL_ID = _CFG.get("CHANNEL_ID", 0)
-FILE = _CFG.get("FILE", "data/logs/voice_logs.json")
+def _cfg() -> dict:
+    try:
+        return load_cog_config("log_voice") or {}
+    except Exception:
+        return {}
 
 
 class VoiceLog(commands.Cog):
@@ -40,7 +42,8 @@ class VoiceLog(commands.Cog):
 
     async def send(self, guild, embed):
 
-        channel = guild.get_channel(CHANNEL_ID)
+        channel_id = int(_cfg().get("CHANNEL_ID", 0) or 0)
+        channel = guild.get_channel(channel_id)
 
         if channel:
             await channel.send(embed=embed)

@@ -18,9 +18,18 @@ def save_birthdays(data):
     safe_save_json(BIRTHDAY_FILE, data)
 
 
-# load config for birthdays (config/birthdays.json)
-_CFG = load_cog_config("birthdays")
-CHANNEL_ID = _CFG.get("CHANNEL_ID", 0)
+def _cfg() -> dict:
+    try:
+        return load_cog_config("birthdays") or {}
+    except Exception:
+        return {}
+
+
+def _channel_id() -> int:
+    try:
+        return int(_cfg().get("CHANNEL_ID", 0) or 0)
+    except Exception:
+        return 0
 
 
 class Birthdays(commands.Cog):
@@ -47,6 +56,7 @@ class Birthdays(commands.Cog):
     async def check_birthdays(self):
 
         birthdays = load_birthdays()
+        channel_id = _channel_id()
 
         today = datetime.datetime.now().strftime("%d.%m")
 
@@ -59,8 +69,8 @@ class Birthdays(commands.Cog):
                     user = await self.bot.fetch_user(int(user_id))
 
                     channel = None
-                    if CHANNEL_ID:
-                        channel = self.bot.get_channel(int(CHANNEL_ID))
+                    if channel_id:
+                        channel = self.bot.get_channel(int(channel_id))
 
                     if channel is not None:
 

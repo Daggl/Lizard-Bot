@@ -5,26 +5,43 @@ from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
 
-# ==========================================================
-# CONFIG (loaded from config/autorole.json with fallbacks)
-# ==========================================================
+def _cfg() -> dict:
+    try:
+        return load_cog_config("autorole") or {}
+    except Exception:
+        return {}
 
 
-_CFG = load_cog_config("autorole")
+def _cfg_int(name: str, default: int = 0) -> int:
+    try:
+        return int(_cfg().get(name, default) or default)
+    except Exception:
+        return int(default)
 
-VERIFY_CHANNEL_ID = _CFG.get("VERIFY_CHANNEL_ID", 0)
-RULES_CHANNEL_ID = _CFG.get("RULES_CHANNEL_ID", 0)
 
-STARTER_ROLE_ID = _CFG.get("STARTER_ROLE_ID", 0)
-VERIFY_ROLE_ID = _CFG.get("VERIFY_ROLE_ID", 0)
-DEFAULT_ROLE_ID = _CFG.get("DEFAULT_ROLE_ID", 0)
+def _cfg_list_int(name: str) -> list[int]:
+    out = []
+    try:
+        values = _cfg().get(name, []) or []
+        for value in values:
+            try:
+                out.append(int(value))
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return out
 
-VERIFY_MESSAGE_IDS = _CFG.get("VERIFY_MESSAGE_IDS", [])
-RULES_MESSAGE_IDS = _CFG.get("RULES_MESSAGE_IDS", [])
 
-EMOJI = _CFG.get("EMOJI", "✅")
+def _cfg_str(name: str, default: str = "") -> str:
+    try:
+        return str(_cfg().get(name, default) or default)
+    except Exception:
+        return default
 
-DB_PATH = _CFG.get("DB_PATH", "data/autorole.db")
+
+def _db_path() -> str:
+    return _cfg_str("DB_PATH", "data/autorole.db")
 
 # ==========================================================
 # DATABASE
@@ -33,10 +50,11 @@ DB_PATH = _CFG.get("DB_PATH", "data/autorole.db")
 
 def setup_database():
 
-    db_dir = os.path.dirname(DB_PATH) or "."
+    db_path = _db_path()
+    db_dir = os.path.dirname(db_path) or "."
     os.makedirs(db_dir, exist_ok=True)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -74,7 +92,11 @@ class AutoRole(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member):
 
-        conn = sqlite3.connect(DB_PATH)
+        db_path = _db_path()
+        verify_role_id = _cfg_int("VERIFY_ROLE_ID", 0)
+        default_role_id = _cfg_int("DEFAULT_ROLE_ID", 0)
+
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         guild = member.guild
@@ -86,7 +108,7 @@ class AutoRole(commands.Cog):
 
         if cursor.fetchone():
 
-            role = guild.get_role(VERIFY_ROLE_ID)
+            role = guild.get_role(verify_role_id)
 
             if role:
                 await member.add_roles(role)
@@ -99,7 +121,7 @@ class AutoRole(commands.Cog):
 
         if cursor.fetchone():
 
-            role = guild.get_role(DEFAULT_ROLE_ID)
+            role = guild.get_role(default_role_id)
 
             if role:
                 await member.add_roles(role)
@@ -114,7 +136,17 @@ class AutoRole(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
 
-        if str(payload.emoji) != EMOJI:
+        emoji = _cfg_str("EMOJI", "✅")
+        verify_channel_id = _cfg_int("VERIFY_CHANNEL_ID", 0)
+        rules_channel_id = _cfg_int("RULES_CHANNEL_ID", 0)
+        verify_role_id = _cfg_int("VERIFY_ROLE_ID", 0)
+        default_role_id = _cfg_int("DEFAULT_ROLE_ID", 0)
+        starter_role_id = _cfg_int("STARTER_ROLE_ID", 0)
+        verify_message_ids = _cfg_list_int("VERIFY_MESSAGE_IDS")
+        rules_message_ids = _cfg_list_int("RULES_MESSAGE_IDS")
+        db_path = _db_path()
+
+        if str(payload.emoji) != emoji:
             return
 
         guild = self.bot.get_guild(payload.guild_id)
@@ -127,17 +159,17 @@ class AutoRole(commands.Cog):
         if not member or member.bot:
             return
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         # VERIFY ROLE
 
         if (
-            payload.channel_id == VERIFY_CHANNEL_ID
-            and payload.message_id in VERIFY_MESSAGE_IDS
+            payload.channel_id == verify_channel_id
+            and payload.message_id in verify_message_ids
         ):
 
-            role = guild.get_role(VERIFY_ROLE_ID)
+            role = guild.get_role(verify_role_id)
 
             if role and role not in member.roles:
 
@@ -153,7 +185,7 @@ class AutoRole(commands.Cog):
 
                 # REMOVE STARTER ROLE
 
-                starter_role = guild.get_role(STARTER_ROLE_ID)
+                starter_role = guild.get_role(starter_role_id)
 
                 if starter_role and starter_role in member.roles:
 
@@ -164,11 +196,11 @@ class AutoRole(commands.Cog):
         # DEFAULT ROLE
 
         if (
-            payload.channel_id == RULES_CHANNEL_ID
-            and payload.message_id in RULES_MESSAGE_IDS
+            payload.channel_id == rules_channel_id
+            and payload.message_id in rules_message_ids
         ):
 
-            role = guild.get_role(DEFAULT_ROLE_ID)
+            role = guild.get_role(default_role_id)
 
             if role and role not in member.roles:
 
@@ -191,7 +223,16 @@ class AutoRole(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
 
-        if str(payload.emoji) != EMOJI:
+        emoji = _cfg_str("EMOJI", "✅")
+        verify_channel_id = _cfg_int("VERIFY_CHANNEL_ID", 0)
+        rules_channel_id = _cfg_int("RULES_CHANNEL_ID", 0)
+        verify_role_id = _cfg_int("VERIFY_ROLE_ID", 0)
+        default_role_id = _cfg_int("DEFAULT_ROLE_ID", 0)
+        verify_message_ids = _cfg_list_int("VERIFY_MESSAGE_IDS")
+        rules_message_ids = _cfg_list_int("RULES_MESSAGE_IDS")
+        db_path = _db_path()
+
+        if str(payload.emoji) != emoji:
             return
 
         guild = self.bot.get_guild(payload.guild_id)
@@ -204,17 +245,17 @@ class AutoRole(commands.Cog):
         if not member:
             return
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         # VERIFY ROLE REMOVE
 
         if (
-            payload.channel_id == VERIFY_CHANNEL_ID
-            and payload.message_id in VERIFY_MESSAGE_IDS
+            payload.channel_id == verify_channel_id
+            and payload.message_id in verify_message_ids
         ):
 
-            role = guild.get_role(VERIFY_ROLE_ID)
+            role = guild.get_role(verify_role_id)
 
             if role and role in member.roles:
 
@@ -231,11 +272,11 @@ class AutoRole(commands.Cog):
         # DEFAULT ROLE REMOVE
 
         if (
-            payload.channel_id == RULES_CHANNEL_ID
-            and payload.message_id in RULES_MESSAGE_IDS
+            payload.channel_id == rules_channel_id
+            and payload.message_id in rules_message_ids
         ):
 
-            role = guild.get_role(DEFAULT_ROLE_ID)
+            role = guild.get_role(default_role_id)
 
             if role and role in member.roles:
 
