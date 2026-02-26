@@ -610,10 +610,6 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     window.lv_message_cooldown.setFixedWidth(140)
     lv_form.addRow("Message cooldown:", window.lv_message_cooldown)
 
-    window.lv_achievement_channel_id = QtWidgets.QLineEdit()
-    window.lv_achievement_channel_id.setPlaceholderText("Channel ID (digits)")
-    lv_form.addRow("Achievement channel ID:", window.lv_achievement_channel_id)
-
     lv_form.addRow(_section_label("Messages"))
     window.lv_levelup_msg = QtWidgets.QPlainTextEdit()
     window.lv_levelup_msg.setMinimumHeight(96)

@@ -1342,7 +1342,6 @@ class MainWindow(QtWidgets.QMainWindow):
         xp_per_message = int(cfg.get("XP_PER_MESSAGE", 15) or 15)
         voice_xp_per_minute = int(cfg.get("VOICE_XP_PER_MINUTE", 10) or 10)
         message_cooldown = int(cfg.get("MESSAGE_COOLDOWN", 30) or 30)
-        achievement_channel_id = str(cfg.get("ACHIEVEMENT_CHANNEL_ID", "") or "")
         rewards_cfg = cfg.get("LEVEL_REWARDS")
         achievements_cfg = cfg.get("ACHIEVEMENTS")
         if not isinstance(rewards_cfg, dict):
@@ -1362,8 +1361,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.lv_xp_per_message.setValue(max(1, xp_per_message))
             self.lv_voice_xp_per_minute.setValue(max(1, voice_xp_per_minute))
             self.lv_message_cooldown.setValue(max(0, message_cooldown))
-            if not self.lv_achievement_channel_id.hasFocus():
-                self.lv_achievement_channel_id.setText(achievement_channel_id)
             self._populate_level_rewards_table(rewards_cfg)
             self._populate_achievements_table(achievements_cfg)
         except Exception:
@@ -1612,11 +1609,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 reload_after = False
                 QtWidgets.QMessageBox.information(self, "Safe Mode", "Auto reload ist aus: Speichern ohne Reload.")
 
-            ach_channel_raw = str(self.lv_achievement_channel_id.text() or "").strip()
-            if ach_channel_raw and not ach_channel_raw.isdigit():
-                QtWidgets.QMessageBox.warning(self, "Leveling", "Achievement Channel ID must contain only digits.")
-                return
-
             try:
                 rewards_obj = self._collect_level_rewards_from_table()
             except Exception as exc:
@@ -1640,8 +1632,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 "LEVEL_REWARDS": rewards_obj,
                 "ACHIEVEMENTS": achievements_obj,
             }
-            if ach_channel_raw:
-                lvl_data["ACHIEVEMENT_CHANNEL_ID"] = int(ach_channel_raw)
 
             self._save_leveling_config(lvl_data)
 

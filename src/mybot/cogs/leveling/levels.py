@@ -4,6 +4,8 @@ from discord.ext import commands
 from mybot.cogs.leveling.utils.database import Database
 from mybot.cogs.leveling.utils.level_config import (
     get_achievement_channel_id,
+    get_level_base_xp,
+    get_level_xp_step,
     get_message_templates,
 )
 
@@ -20,7 +22,9 @@ def xp_for_level(level: int) -> int:
     smooth progression, no level 0 bug
     """
 
-    return 100 + (level * 50)
+    base = max(0, int(get_level_base_xp()))
+    step = max(0, int(get_level_xp_step()))
+    return base + (level * step)
 
 
 # ======================================================

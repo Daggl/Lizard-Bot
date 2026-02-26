@@ -1,5 +1,6 @@
 import json
 import os
+import copy
 from typing import Dict, List
 
 from .config_store import (config_json_path, load_json_dict, save_json,
@@ -12,7 +13,7 @@ _CACHE_MTIME: Dict[str, float] = {}
 
 def _file_mtime(path: str) -> float:
     try:
-        return os.path.getmtime(path)
+        return float(os.stat(path).st_mtime_ns)
     except Exception:
         return -1.0
 
@@ -28,13 +29,13 @@ def load_cog_config(name: str) -> dict:
     current_mtime = _file_mtime(cfg_path)
 
     if name in _CACHE and _CACHE_MTIME.get(name, -2.0) == current_mtime:
-        return _CACHE[name]
+        return copy.deepcopy(_CACHE[name])
 
     data = load_json_dict(cfg_path)
 
     _CACHE[name] = data
     _CACHE_MTIME[name] = current_mtime
-    return data
+    return copy.deepcopy(data)
 
 
 def clear_cog_config_cache(name: str = None) -> None:

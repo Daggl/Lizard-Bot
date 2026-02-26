@@ -3,9 +3,9 @@ import time
 import discord
 from discord.ext import commands
 
-from mybot.cogs.leveling.utils.level_config import (ACHIEVEMENTS,
-                                                    get_achievement_channel_id,
-                                                    LEVEL_REWARDS)
+from mybot.cogs.leveling.utils.level_config import (get_achievement_channel_id,
+                                                    get_achievements,
+                                                    get_level_rewards)
 
 
 class AdminPanelView(discord.ui.View):
@@ -48,7 +48,7 @@ class AdminPanel(commands.Cog):
 
         # Rollen Check
         reward_status = ""
-        for lvl, role_name in LEVEL_REWARDS.items():
+        for lvl, role_name in get_level_rewards().items():
             role = discord.utils.get(guild.roles, name=role_name)
             if role:
                 reward_status += f"Level {lvl} → {role_name} ✅\n"
@@ -80,7 +80,7 @@ class AdminPanel(commands.Cog):
         embed.add_field(
             name="🏅 Achievements",
             value=(
-                f"Defined: {len(ACHIEVEMENTS)}\n"
+                f"Defined: {len(get_achievements())}\n"
                 f"Given: {total_achievements_given}\n"
                 f"Channel ID: {get_achievement_channel_id()}"
             ),
