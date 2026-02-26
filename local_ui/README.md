@@ -52,3 +52,16 @@ $env:CONTROL_API_TOKEN='your-token'
 - `CONTROL_API_TOKEN` must match between bot and UI.
 - Runtime trace/log output is written to [../data/logs](../data/logs).
 - Dev helper scripts are in [../scripts/dev](../scripts/dev).
+
+## Debug Mode
+
+To enable additional UI-side debug logging (for handled exceptions and lifecycle paths), set `UI_DEBUG=1` before starting the UI.
+
+PowerShell example:
+
+```powershell
+$env:UI_DEBUG='1'
+.\.venv\Scripts\python local_ui\app.py
+```
+
+Debug output is written to [../data/logs/ui_debug.log](../data/logs/ui_debug.log).
