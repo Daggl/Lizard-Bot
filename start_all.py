@@ -22,6 +22,66 @@ _CONSOLE_LOG_PATH = None
 _CONSOLE_LOCK = threading.Lock()
 
 
+def _maybe_reexec_into_venv(project_root: str):
+    """Ensure this launcher runs with the project's .venv interpreter when available."""
+    try:
+        if os.environ.get("START_ALL_REEXEC") == "1":
+            return
+        venv_python = os.path.join(project_root, ".venv", "Scripts", "python.exe")
+        if not os.path.exists(venv_python):
+            return
+        cur = os.path.abspath(sys.executable)
+        want = os.path.abspath(venv_python)
+        if cur.lower() == want.lower():
+            return
+        print(f"Re-launching start_all.py with project venv Python: {venv_python}")
+        env = os.environ.copy()
+        env["START_ALL_REEXEC"] = "1"
+        os.execve(venv_python, [venv_python] + sys.argv, env)
+    except Exception as e:
+        try:
+            print(f"Warning: failed to switch to project venv interpreter: {e}")
+        except Exception:
+            pass
+
+
+def _ensure_pyside6_importable(python_exe: str, project_root: str) -> bool:
+    """Verify PySide6 runtime for UI startup, try one auto-repair via requirements install."""
+    cmd = [python_exe, "-c", "from PySide6 import QtWidgets; print('PySide6_OK')"]
+    try:
+        check = subprocess.run(cmd, cwd=project_root, capture_output=True, text=True)
+    except Exception as e:
+        print(f"UI preflight failed to run import check: {e}")
+        return False
+
+    if check.returncode == 0:
+        return True
+
+    print("UI preflight failed: PySide6/Qt runtime could not be loaded.")
+    if check.stdout:
+        print(check.stdout.strip())
+    if check.stderr:
+        print(check.stderr.strip())
+
+    req = os.path.join(project_root, "requirements.txt")
+    if os.path.exists(req):
+        try:
+            print("Attempting one-time repair: pip install -r requirements.txt")
+            subprocess.run([python_exe, "-m", "pip", "install", "-r", req], cwd=project_root, check=False)
+            check2 = subprocess.run(cmd, cwd=project_root, capture_output=True, text=True)
+            if check2.returncode == 0:
+                return True
+            if check2.stdout:
+                print(check2.stdout.strip())
+            if check2.stderr:
+                print(check2.stderr.strip())
+        except Exception as e:
+            print(f"Repair attempt failed: {e}")
+
+    print("UI startup aborted. Please ensure Microsoft VC++ runtime and PySide6 are installed in the active Python environment.")
+    return False
+
+
 def load_dotenv(path):
     if not os.path.exists(path):
         return {}
@@ -59,6 +119,8 @@ def stream_reader(prefix, stream):
 def main():
     global _CONSOLE_LOG_PATH
     here = os.path.dirname(os.path.abspath(__file__))
+    _maybe_reexec_into_venv(here)
+
     dotenv_path = os.path.join(here, ".env")
     env = os.environ.copy()
     env.update(load_dotenv(dotenv_path))
@@ -74,6 +136,8 @@ def main():
     env["LOCAL_UI_ENABLE"] = "1"
     # Force unbuffered output so logs appear immediately
     env["PYTHONUNBUFFERED"] = "1"
+
+    print(f"Python interpreter: {sys.executable}")
 
     # If CONTROL_API_TOKEN not set, leave as-is (UI will also try to read it from env)
     print("Starting bot and local UI with the following env vars (hidden values not shown):")
@@ -102,6 +166,9 @@ def main():
 
     bot_cmd = [sys.executable, "-u", "-m", "src.mybot"]
     ui_cmd = [sys.executable, "-u", "local_ui/app.py"]
+
+    if not _ensure_pyside6_importable(sys.executable, here):
+        return
 
     def _start_children():
         bot_env = env.copy()
