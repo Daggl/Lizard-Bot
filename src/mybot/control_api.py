@@ -11,6 +11,7 @@ import asyncio
 import json
 import os
 import importlib
+import shutil
 import sys
 import time
 from types import SimpleNamespace
@@ -59,6 +60,111 @@ ADMIN_TEST_COMMANDS = {
     "testachievement",
     "testlog",
 }
+
+
+def _repo_root() -> str:
+    try:
+        return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    except Exception:
+        return os.getcwd()
+
+
+def _build_guild_snapshot(bot):
+    guilds_payload = []
+    try:
+        guilds = list(getattr(bot, "guilds", []) or [])
+    except Exception:
+        guilds = []
+
+    for guild in guilds:
+        try:
+            channels = []
+            for channel in list(getattr(guild, "channels", []) or []):
+                channels.append(
+                    {
+                        "id": getattr(channel, "id", None),
+                        "name": getattr(channel, "name", "unknown"),
+                        "type": str(getattr(channel, "type", "unknown")),
+                    }
+                )
+            channels.sort(key=lambda ch: (str(ch.get("type") or ""), str(ch.get("name") or "")))
+
+            roles = []
+            for role in list(getattr(guild, "roles", []) or []):
+                rid = getattr(role, "id", None)
+                if rid == getattr(guild, "id", None):
+                    continue
+                roles.append(
+                    {
+                        "id": rid,
+                        "name": getattr(role, "name", "unknown"),
+                        "position": int(getattr(role, "position", 0) or 0),
+                    }
+                )
+            roles.sort(key=lambda r: (-int(r.get("position") or 0), str(r.get("name") or "")))
+
+            guilds_payload.append(
+                {
+                    "id": getattr(guild, "id", None),
+                    "name": getattr(guild, "name", "unknown"),
+                    "channels": channels,
+                    "roles": roles,
+                }
+            )
+        except Exception:
+            continue
+
+    return {"ok": True, "guilds": guilds_payload}
+
+
+def _build_diagnostics(bot):
+    root = _repo_root()
+    uptime_seconds = int(max(0, time.time() - CONTROL_API_STARTED_AT))
+    yt_dlp_available = False
+    try:
+        yt_dlp_available = importlib.util.find_spec("yt_dlp") is not None
+    except Exception:
+        yt_dlp_available = False
+
+    ffmpeg_path = None
+    try:
+        ffmpeg_path = shutil.which("ffmpeg")
+    except Exception:
+        ffmpeg_path = None
+
+    checks = {
+        "control_api_token_set": bool(CONTROL_API_TOKEN),
+        "yt_dlp_available": bool(yt_dlp_available),
+        "ffmpeg_found": bool(ffmpeg_path),
+        "ffmpeg_path": ffmpeg_path,
+        "config_dir_exists": os.path.isdir(os.path.join(root, "config")),
+        "data_dir_exists": os.path.isdir(os.path.join(root, "data")),
+        "logs_db_exists": os.path.exists(os.path.join(root, "data", "db", "logs.db")),
+        "tickets_db_exists": os.path.exists(os.path.join(root, "data", "db", "tickets.db")),
+    }
+
+    try:
+        guild_count = len(list(getattr(bot, "guilds", []) or []))
+    except Exception:
+        guild_count = 0
+
+    return {
+        "ok": True,
+        "uptime_seconds": uptime_seconds,
+        "bot": {
+            "ready": bool(getattr(bot, "is_ready", lambda: False)()),
+            "user": getattr(getattr(bot, "user", None), "name", None),
+            "guild_count": guild_count,
+            "latency_ms": int(max(0, float(getattr(bot, "latency", 0) or 0) * 1000.0)),
+        },
+        "runtime": {
+            "python": sys.version.split()[0],
+            "platform": sys.platform,
+            "cwd": os.getcwd(),
+            "repo_root": root,
+        },
+        "checks": checks,
+    }
 
 
 def _pick_test_guild(bot):
@@ -545,6 +651,12 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 }
             else:
                 resp = await _run_admin_test(bot, test_name, requested_channel_id=channel_id)
+
+        elif action == "guild_snapshot":
+            resp = _build_guild_snapshot(bot)
+
+        elif action == "diagnostics":
+            resp = _build_diagnostics(bot)
 
         else:
             resp = {"ok": False, "error": "unknown action"}

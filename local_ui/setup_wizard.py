@@ -1,6 +1,139 @@
 from PySide6 import QtWidgets
 
 from config_io import config_json_path, load_json_dict, save_json_merged
+from control_api_client import send_cmd
+
+
+CHANNEL_FIELD_KEYS = [
+    ("welcome", "WELCOME_CHANNEL_ID", "Welcome channel"),
+    ("welcome", "VERIFY_CHANNEL_ID", "Verify channel"),
+    ("welcome", "RULES_CHANNEL_ID", "Rules channel"),
+    ("welcome", "ABOUTME_CHANNEL_ID", "About-me channel"),
+    ("count", "COUNT_CHANNEL_ID", "Count channel"),
+    ("birthdays", "CHANNEL_ID", "Birthday channel"),
+    ("leveling", "ACHIEVEMENT_CHANNEL_ID", "Achievement channel"),
+    ("tickets", "TICKET_CATEGORY_ID", "Ticket category"),
+    ("tickets", "TICKET_LOG_CHANNEL_ID", "Ticket log channel"),
+    ("log_chat", "CHANNEL_ID", "Log chat channel"),
+    ("log_member", "CHANNEL_ID", "Log member channel"),
+    ("log_mod", "CHANNEL_ID", "Log moderation channel"),
+    ("log_server", "CHANNEL_ID", "Log server channel"),
+    ("log_voice", "CHANNEL_ID", "Log voice channel"),
+]
+
+ROLE_FIELD_KEYS = [
+    ("welcome", "ROLE_ID", "Welcome role"),
+    ("autorole", "STARTER_ROLE_ID", "Starter role"),
+    ("autorole", "VERIFY_ROLE_ID", "Verify role"),
+    ("autorole", "DEFAULT_ROLE_ID", "Default role"),
+    ("tickets", "SUPPORT_ROLE_ID", "Support role"),
+]
+
+
+class GuildSnapshotPickerDialog(QtWidgets.QDialog):
+    def __init__(self, snapshot_payload: dict, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Guild Snapshot Picker")
+        self.resize(860, 720)
+        self._payload = snapshot_payload or {}
+        self._guilds = list(self._payload.get("guilds") or [])
+        self._channel_combos = {}
+        self._role_combos = {}
+
+        root = QtWidgets.QVBoxLayout(self)
+
+        top_row = QtWidgets.QHBoxLayout()
+        top_row.addWidget(QtWidgets.QLabel("Guild:"))
+        self.guild_combo = QtWidgets.QComboBox()
+        for idx, guild in enumerate(self._guilds):
+            gid = guild.get("id")
+            gname = guild.get("name") or str(gid)
+            self.guild_combo.addItem(f"{gname} ({gid})", idx)
+        top_row.addWidget(self.guild_combo, 1)
+        root.addLayout(top_row)
+
+        self.scroll = QtWidgets.QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        content = QtWidgets.QWidget()
+        content_layout = QtWidgets.QVBoxLayout(content)
+
+        ch_box = QtWidgets.QGroupBox("Channel mappings")
+        ch_form = QtWidgets.QFormLayout(ch_box)
+        for file_name, key, label in CHANNEL_FIELD_KEYS:
+            combo = QtWidgets.QComboBox()
+            combo.addItem("(keep current)", None)
+            self._channel_combos[(file_name, key)] = combo
+            ch_form.addRow(label, combo)
+        content_layout.addWidget(ch_box)
+
+        role_box = QtWidgets.QGroupBox("Role mappings")
+        role_form = QtWidgets.QFormLayout(role_box)
+        for file_name, key, label in ROLE_FIELD_KEYS:
+            combo = QtWidgets.QComboBox()
+            combo.addItem("(keep current)", None)
+            self._role_combos[(file_name, key)] = combo
+            role_form.addRow(label, combo)
+        content_layout.addWidget(role_box)
+
+        content_layout.addStretch()
+        self.scroll.setWidget(content)
+        root.addWidget(self.scroll, 1)
+
+        buttons = QtWidgets.QHBoxLayout()
+        self.apply_btn = QtWidgets.QPushButton("Apply")
+        self.cancel_btn = QtWidgets.QPushButton("Cancel")
+        buttons.addStretch()
+        buttons.addWidget(self.apply_btn)
+        buttons.addWidget(self.cancel_btn)
+        root.addLayout(buttons)
+
+        self.guild_combo.currentIndexChanged.connect(self._populate_current_guild)
+        self.apply_btn.clicked.connect(self.accept)
+        self.cancel_btn.clicked.connect(self.reject)
+
+        self._populate_current_guild()
+
+    def _populate_current_guild(self):
+        idx = int(self.guild_combo.currentData() or 0)
+        if idx < 0 or idx >= len(self._guilds):
+            return
+        guild = self._guilds[idx]
+        channels = list(guild.get("channels") or [])
+        roles = list(guild.get("roles") or [])
+
+        for (file_name, key), combo in self._channel_combos.items():
+            combo.clear()
+            combo.addItem("(keep current)", None)
+            key_upper = str(key).upper()
+            if "CATEGORY" in key_upper:
+                filtered = [c for c in channels if "category" in str(c.get("type") or "").lower()]
+            else:
+                filtered = [c for c in channels if "category" not in str(c.get("type") or "").lower()]
+            for channel in filtered:
+                cid = channel.get("id")
+                ctype = channel.get("type")
+                cname = channel.get("name")
+                combo.addItem(f"{cname} [{ctype}] ({cid})", cid)
+
+        for _field_key, combo in self._role_combos.items():
+            combo.clear()
+            combo.addItem("(keep current)", None)
+            for role in roles:
+                rid = role.get("id")
+                rname = role.get("name")
+                combo.addItem(f"{rname} ({rid})", rid)
+
+    def selected_mapping(self) -> dict:
+        out = {}
+        for field_key, combo in self._channel_combos.items():
+            value = combo.currentData()
+            if value:
+                out[field_key] = int(value)
+        for field_key, combo in self._role_combos.items():
+            value = combo.currentData()
+            if value:
+                out[field_key] = int(value)
+        return out
 
 
 class SetupWizardDialog(QtWidgets.QDialog):
@@ -18,6 +151,12 @@ class SetupWizardDialog(QtWidgets.QDialog):
         self.step_label = QtWidgets.QLabel()
         self.step_label.setObjectName("sectionLabel")
         root.addWidget(self.step_label)
+
+        top_actions = QtWidgets.QHBoxLayout()
+        self.snapshot_btn = QtWidgets.QPushButton("Guild Snapshot Picker")
+        top_actions.addWidget(self.snapshot_btn)
+        top_actions.addStretch()
+        root.addLayout(top_actions)
 
         self.stack = QtWidgets.QStackedWidget()
         root.addWidget(self.stack, 1)
@@ -38,6 +177,7 @@ class SetupWizardDialog(QtWidgets.QDialog):
         self.next_btn.clicked.connect(self._go_next)
         self.finish_btn.clicked.connect(self._save_and_close)
         self.cancel_btn.clicked.connect(self.reject)
+        self.snapshot_btn.clicked.connect(self._open_snapshot_picker)
 
         self._build_pages()
         self._load_existing_values()
@@ -47,6 +187,7 @@ class SetupWizardDialog(QtWidgets.QDialog):
     def _apply_read_only_mode(self):
         if not self._read_only:
             return
+        self.snapshot_btn.setEnabled(False)
         for _, (widget, _field_type) in self._fields.items():
             try:
                 if hasattr(widget, "setReadOnly"):
@@ -107,30 +248,15 @@ class SetupWizardDialog(QtWidgets.QDialog):
             "1/4 • Channel IDs",
             "Set key channels used by welcome, logs, counting, birthdays, leveling and tickets.",
         )
-        self._add_id_row(form_channels, "welcome", "WELCOME_CHANNEL_ID", "Welcome channel")
-        self._add_id_row(form_channels, "welcome", "VERIFY_CHANNEL_ID", "Verify channel")
-        self._add_id_row(form_channels, "welcome", "RULES_CHANNEL_ID", "Rules channel")
-        self._add_id_row(form_channels, "welcome", "ABOUTME_CHANNEL_ID", "About-me channel")
-        self._add_id_row(form_channels, "count", "COUNT_CHANNEL_ID", "Count channel")
-        self._add_id_row(form_channels, "birthdays", "CHANNEL_ID", "Birthday channel")
-        self._add_id_row(form_channels, "leveling", "ACHIEVEMENT_CHANNEL_ID", "Achievement channel")
-        self._add_id_row(form_channels, "tickets", "TICKET_CATEGORY_ID", "Ticket category")
-        self._add_id_row(form_channels, "tickets", "TICKET_LOG_CHANNEL_ID", "Ticket log channel")
-        self._add_id_row(form_channels, "log_chat", "CHANNEL_ID", "Log chat channel")
-        self._add_id_row(form_channels, "log_member", "CHANNEL_ID", "Log member channel")
-        self._add_id_row(form_channels, "log_mod", "CHANNEL_ID", "Log moderation channel")
-        self._add_id_row(form_channels, "log_server", "CHANNEL_ID", "Log server channel")
-        self._add_id_row(form_channels, "log_voice", "CHANNEL_ID", "Log voice channel")
+        for file_name, key, label in CHANNEL_FIELD_KEYS:
+            self._add_id_row(form_channels, file_name, key, label)
 
         form_roles = self._make_page(
             "2/4 • Role IDs",
             "Configure verification/default/support roles used by autorole and tickets.",
         )
-        self._add_id_row(form_roles, "welcome", "ROLE_ID", "Welcome role")
-        self._add_id_row(form_roles, "autorole", "STARTER_ROLE_ID", "Starter role")
-        self._add_id_row(form_roles, "autorole", "VERIFY_ROLE_ID", "Verify role")
-        self._add_id_row(form_roles, "autorole", "DEFAULT_ROLE_ID", "Default role")
-        self._add_id_row(form_roles, "tickets", "SUPPORT_ROLE_ID", "Support role")
+        for file_name, key, label in ROLE_FIELD_KEYS:
+            self._add_id_row(form_roles, file_name, key, label)
 
         form_welcome = self._make_page(
             "3/4 • Welcome Defaults",
@@ -149,6 +275,39 @@ class SetupWizardDialog(QtWidgets.QDialog):
         self._add_text_row(form_rank, "rank", "INFO_COLOR", "Info color", "#C8C8C8")
         self._add_text_row(form_rank, "rank", "NAME_FONT_SIZE", "Name font size", "60")
         self._add_text_row(form_rank, "rank", "INFO_FONT_SIZE", "Info font size", "40")
+
+    def _open_snapshot_picker(self):
+        try:
+            resp = send_cmd({"action": "guild_snapshot"}, timeout=8.0)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Guild Snapshot", f"Request failed: {exc}")
+            return
+
+        if not resp.get("ok"):
+            QtWidgets.QMessageBox.warning(self, "Guild Snapshot", f"Failed: {resp}")
+            return
+
+        guilds = list(resp.get("guilds") or [])
+        if not guilds:
+            QtWidgets.QMessageBox.warning(self, "Guild Snapshot", "No guild data returned from bot.")
+            return
+
+        dlg = GuildSnapshotPickerDialog(resp, self)
+        if dlg.exec() != QtWidgets.QDialog.Accepted:
+            return
+
+        mapping = dlg.selected_mapping()
+        for field_key, value in mapping.items():
+            widget_meta = self._fields.get(field_key)
+            if not widget_meta:
+                continue
+            widget, field_type = widget_meta
+            if field_type != "int":
+                continue
+            try:
+                widget.setText(str(int(value)))
+            except Exception:
+                continue
 
     def _load_existing_values(self):
         for (file_name, key), (widget, field_type) in self._fields.items():
