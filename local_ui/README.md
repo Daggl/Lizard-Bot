@@ -35,6 +35,7 @@ $env:CONTROL_API_TOKEN='your-token'
 ## Modules
 
 - [app.py](app.py) — MainWindow UI composition and event handlers
+- [ui_tabs.py](ui_tabs.py) — builder functions for Dashboard/Logs/Configs/Welcome/Rank tabs
 - [runtime.py](runtime.py) — app bootstrap, single-instance lock, optional event tracing
 - [control_api_client.py](control_api_client.py) — control API request helper (`send_cmd`)
 - [log_poller.py](log_poller.py) — background polling thread for file/sqlite logs
