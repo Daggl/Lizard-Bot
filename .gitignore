@@ -7,13 +7,15 @@ data/logs/*.db
 .flake8
 
 # Ignore local per-cog configuration folder
-config/
-config/*.json
+config/*
+!config/.gitkeep
 config/*.bak.*
 
 # New data layout
-data/db/
-data/tickets/transcripts/
+data/db/*
+!data/db/.gitkeep
+data/tickets/transcripts/*
+!data/tickets/transcripts/.gitkeep
 data/tickets/*.txt
 
 # Runtime JSON state files (auto-generated)
@@ -36,7 +38,8 @@ web/frontend/dist/
 # Local logs and runtime files
 discord.log
 *.log
-data/logs/tickets/
+data/logs/tickets/*
+!data/logs/tickets/.gitkeep
 data/logs/*.txt
 data/logs/tracked.log*
 data/logs/ui_run_trace.log

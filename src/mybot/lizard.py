@@ -13,7 +13,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from mybot.utils.paths import REPO_ROOT
+from mybot.utils.paths import REPO_ROOT, ensure_runtime_storage
 from mybot.utils.env_store import ensure_env_file
 
 # ensure project root's `src` is importable (when running as module)
@@ -60,6 +60,11 @@ DEFAULT_EXTENSIONS = [
 
 try:
     ensure_env_file(REPO_ROOT)
+except Exception:
+    pass
+
+try:
+    ensure_runtime_storage()
 except Exception:
     pass
 

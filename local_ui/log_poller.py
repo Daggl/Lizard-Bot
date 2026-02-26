@@ -8,13 +8,22 @@ from PySide6 import QtCore
 class LogPoller(QtCore.QThread):
     new_line = QtCore.Signal(str)
 
-    def __init__(self, path: str, mode: str = "file", table: str = None, last_rowid: int = 0, interval: float = 5.0):
+    def __init__(
+        self,
+        path: str,
+        mode: str = "file",
+        table: str = None,
+        last_rowid: int = 0,
+        interval: float = 5.0,
+        start_at_end: bool = True,
+    ):
         super().__init__()
         self.path = path
         self.mode = mode
         self.table = table
         self._last_rowid = int(last_rowid or 0)
         self._interval = float(interval)
+        self._start_at_end = bool(start_at_end)
         self._stopped = False
 
     def stop(self):
@@ -68,8 +77,17 @@ class LogPoller(QtCore.QThread):
             else:
                 try:
                     with open(self.path, 'r', encoding='utf-8', errors='ignore') as fh:
-                        fh.seek(0, os.SEEK_END)
+                        if self._start_at_end:
+                            fh.seek(0, os.SEEK_END)
+                        else:
+                            fh.seek(0, os.SEEK_SET)
                         while not self._stopped:
+                            try:
+                                size_now = os.path.getsize(self.path)
+                                if size_now < fh.tell():
+                                    fh.seek(0, os.SEEK_SET)
+                            except Exception:
+                                pass
                             line = fh.readline()
                             if line:
                                 self.new_line.emit(line.rstrip('\n'))

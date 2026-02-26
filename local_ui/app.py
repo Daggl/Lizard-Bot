@@ -236,6 +236,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # initialize
         self._log_fp = None
+        self._active_log_path = None
+        self._active_log_mode = "file"
         # sqlite support
         self._db_conn = None
         self._db_table = None
@@ -1018,6 +1020,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._stop_log_poller()
             if not path:
                 return
+            self._active_log_mode = mode
             if mode == "db":
                 poller = LogPoller(
                     path,
@@ -1027,7 +1030,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     interval=2.0,
                 )
             else:
-                poller = LogPoller(path, mode="file", interval=1.0)
+                start_at_end = True
+                try:
+                    start_at_end = not str(path).replace("\\", "/").endswith("data/logs/ui_restart.request")
+                except Exception:
+                    start_at_end = True
+                poller = LogPoller(path, mode="file", interval=1.0, start_at_end=start_at_end)
             poller.new_line.connect(self._on_new_log_line)
             poller.start()
             self._log_poller = poller
@@ -1036,13 +1044,31 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_new_log_line(self, line: str):
         try:
+            display_line = line
             try:
-                self.log_text.appendPlainText(line)
+                active = str(getattr(self, "_active_log_path", "") or "").replace("\\", "/")
+                if getattr(self, "_active_log_mode", "file") == "db":
+                    try:
+                        payload = json.loads(str(line or ""))
+                        if isinstance(payload, dict):
+                            display_line = self._format_db_row(payload)
+                    except Exception:
+                        display_line = str(line)
+                elif active.endswith("data/logs/ui_restart.request"):
+                    raw = str(line or "").strip()
+                    if raw:
+                        display_line = f"Restart requested at {raw}"
+                    else:
+                        display_line = "Restart marker updated"
+            except Exception:
+                display_line = line
+            try:
+                self.log_text.appendPlainText(display_line)
             except Exception as e:
                 self._debug_log(f"append log line failed: {e}")
             try:
                 if getattr(self, "_tracked_fp", None):
-                    self._tracked_fp.write(line + "\n")
+                    self._tracked_fp.write(display_line + "\n")
                     self._tracked_fp.flush()
             except Exception as e:
                 self._debug_log(f"tracked log write failed: {e}")
@@ -1068,6 +1094,64 @@ class MainWindow(QtWidgets.QMainWindow):
             except Exception:
                 pass
             repo_root = self._repo_root
+
+            preferred_dbs = [
+                os.path.join(repo_root, "data", "db", "logs.db"),
+                os.path.join(repo_root, "data", "logs", "logs.db"),
+            ]
+            for db_path in preferred_dbs:
+                if not (os.path.exists(db_path) and os.path.isfile(db_path)):
+                    continue
+                try:
+                    self._stop_log_poller()
+                    self._safe_close_attr("_db_conn")
+                    self._db_table = None
+                    self._db_last_rowid = 0
+                    self._safe_close_attr("_log_fp")
+
+                    conn = sqlite3.connect(db_path)
+                    conn.row_factory = sqlite3.Row
+                    self._db_conn = conn
+                    cur = conn.cursor()
+                    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+                    tables = [r[0] for r in cur.fetchall()]
+                    if not tables:
+                        continue
+
+                    table = "logs" if "logs" in tables else tables[0]
+                    self._db_table = table
+                    self._active_log_path = db_path
+
+                    try:
+                        cur.execute(f"SELECT max(rowid) as m FROM '{table}';")
+                        r = cur.fetchone()
+                        self._db_last_rowid = int(r['m']) if r and r['m'] is not None else 0
+                    except Exception:
+                        self._db_last_rowid = 0
+
+                    try:
+                        self.log_text.clear()
+                        self.log_text.appendPlainText(f"Tailing DB: {db_path} table: {table}")
+                        cur.execute(f"SELECT rowid, * FROM '{table}' ORDER BY rowid DESC LIMIT 200;")
+                        rows = cur.fetchall()
+                        for row in reversed(rows):
+                            self.log_text.appendPlainText(self._format_db_row(row))
+                    except Exception:
+                        pass
+                    try:
+                        self._open_tracked_writer(
+                            f"\n--- Tailing DB: {db_path} table: {table} (started at {QtCore.QDateTime.currentDateTime().toString()}) ---"
+                        )
+                    except Exception:
+                        pass
+                    try:
+                        self._start_log_poller(db_path, mode="db", table=table)
+                    except Exception:
+                        pass
+                    return
+                except Exception:
+                    pass
+
             candidates = []
             # common locations
             candidates.append(os.path.join(repo_root, "discord.log"))
@@ -1099,6 +1183,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 log_files.sort(reverse=True)
                 _, log_path = log_files[0]
                 try:
+                    self._active_log_path = log_path
                     self._log_fp = open(log_path, "r", encoding="utf-8", errors="ignore")
                     self._log_fp.seek(0, os.SEEK_END)
                     # clear any previous message and show which file is tailed
@@ -1214,6 +1299,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
                     # otherwise open as plain text file
                     self._log_fp = open(path, "r", encoding="utf-8", errors="ignore")
+                    self._active_log_path = path
+                    self._active_log_mode = "file"
                     self._log_fp.seek(0, os.SEEK_END)
                     self.log_text.clear()
                     self.log_text.appendPlainText(f"Tailing: {path}")

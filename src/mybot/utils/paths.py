@@ -1,5 +1,6 @@
 import os
 import shutil
+import sqlite3
 
 
 def repo_root_candidates(path):
@@ -57,6 +58,19 @@ def ensure_dirs():
 def get_db_path(name: str) -> str:
     ensure_dirs()
     return os.path.join(DB_DIR, f"{name}.db")
+
+
+def ensure_runtime_storage() -> None:
+    ensure_dirs()
+    for db_name in ("logs", "tickets"):
+        db_path = get_db_path(db_name)
+        if os.path.exists(db_path):
+            continue
+        try:
+            conn = sqlite3.connect(db_path)
+            conn.close()
+        except Exception:
+            pass
 
 
 def get_ticket_transcript_path(channel_id: int) -> str:
