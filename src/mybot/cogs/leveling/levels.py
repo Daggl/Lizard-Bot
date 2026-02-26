@@ -2,7 +2,12 @@ import discord
 from discord.ext import commands
 
 from mybot.cogs.leveling.utils.database import Database
-from mybot.cogs.leveling.utils.level_config import ACHIEVEMENT_CHANNEL_ID, EMOJI_WIN, EMOJI_HEART
+from mybot.cogs.leveling.utils.level_config import (
+    ACHIEVEMENT_CHANNEL_ID,
+    EMOJI_WIN,
+    EMOJI_HEART,
+    get_message_templates,
+)
 
 # ======================================================
 # XP FORMULA
@@ -62,16 +67,27 @@ class Levels(commands.Cog):
             channel = self.bot.get_channel(ACHIEVEMENT_CHANNEL_ID)
 
             if channel:
+                try:
+                    level_up_tpl, _ = get_message_templates()
+                    description = str(level_up_tpl).format(
+                        member_mention=member.mention,
+                        member_name=getattr(member, "name", member.display_name),
+                        member_display_name=member.display_name,
+                        member_id=member.id,
+                        guild_name=getattr(getattr(member, "guild", None), "name", ""),
+                        level=user["level"],
+                        emoji_win=EMOJI_WIN,
+                        emoji_heart=EMOJI_HEART,
+                    )
+                except Exception:
+                    description = (
+                        f"{EMOJI_WIN} {member.mention}\n"
+                        f"you just reached level {user['level']}!\n"
+                        f"keep it up, cutie! {EMOJI_HEART}"
+                    )
 
                 embed = discord.Embed(
-                    description=(
-                        f" \n\n"
-                        f"{EMOJI_WIN} "
-                        f"{member.mention}\n"
-                        f"you just reached level {user['level']}!\n "
-                        f"keep it up, cutie! "
-                        f"{EMOJI_HEART}"
-                    ),
+                    description=description,
                     color=0x5865F2,
                 )
 

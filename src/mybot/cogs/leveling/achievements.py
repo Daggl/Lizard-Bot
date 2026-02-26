@@ -1,7 +1,8 @@
 from discord.ext import commands
 
 from mybot.cogs.leveling.utils.level_config import (ACHIEVEMENT_CHANNEL_ID,
-                                                    ACHIEVEMENTS)
+                                                    ACHIEVEMENTS,
+                                                    get_message_templates)
 
 
 class Achievements(commands.Cog):
@@ -30,8 +31,20 @@ class Achievements(commands.Cog):
 
                 channel = self.bot.get_channel(ACHIEVEMENT_CHANNEL_ID)
                 if channel:
+                    try:
+                        _, achievement_tpl = get_message_templates()
+                        msg = str(achievement_tpl).format(
+                            member_mention=member.mention,
+                            member_name=getattr(member, "name", member.display_name),
+                            member_display_name=member.display_name,
+                            member_id=member.id,
+                            guild_name=getattr(getattr(member, "guild", None), "name", ""),
+                            achievement_name=name,
+                        )
+                    except Exception:
+                        msg = f"🏆 {member.mention} got Achievement **{name}**"
                     await channel.send(
-                        f"🏆 {member.mention} got Achievement **{name}**"
+                        msg
                     )
 
         db.save()

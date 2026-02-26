@@ -331,6 +331,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pv_message.setPlaceholderText("Welcome message template. Use {mention} for mention.")
         pv_form.addRow("Message:", self.pv_message)
 
+        # placeholder helper buttons (directly below message)
+        ph_row = QtWidgets.QHBoxLayout()
+        self.ph_mention = QtWidgets.QPushButton("{mention}")
+        self.ph_rules = QtWidgets.QPushButton("{rules_channel}")
+        self.ph_verify = QtWidgets.QPushButton("{verify_channel}")
+        self.ph_about = QtWidgets.QPushButton("{aboutme_channel}")
+        ph_row.addWidget(self.ph_mention)
+        ph_row.addWidget(self.ph_rules)
+        ph_row.addWidget(self.ph_verify)
+        ph_row.addWidget(self.ph_about)
+        pv_form.addRow("Placeholders:", ph_row)
+
         pv_form.addRow(_pv_section("Background"))
         self.pv_bg_mode = QtWidgets.QComboBox()
         self.pv_bg_mode.addItem("Fill (cover)", "cover")
@@ -475,18 +487,6 @@ class MainWindow(QtWidgets.QMainWindow):
         pos_row.addWidget(self.pv_avatar_y)
         pos_row.addStretch()
         pv_form.addRow("Avatar offset:", pos_row)
-
-        # placeholder helper buttons
-        ph_row = QtWidgets.QHBoxLayout()
-        self.ph_mention = QtWidgets.QPushButton("{mention}")
-        self.ph_rules = QtWidgets.QPushButton("{rules_channel}")
-        self.ph_verify = QtWidgets.QPushButton("{verify_channel}")
-        self.ph_about = QtWidgets.QPushButton("{aboutme_channel}")
-        ph_row.addWidget(self.ph_mention)
-        ph_row.addWidget(self.ph_rules)
-        ph_row.addWidget(self.ph_verify)
-        ph_row.addWidget(self.ph_about)
-        pv_form.addRow("Placeholders:", ph_row)
 
         # wire placeholder buttons to insert text at cursor
         self.ph_mention.clicked.connect(lambda: self._insert_placeholder('{mention}'))
@@ -634,10 +634,61 @@ class MainWindow(QtWidgets.QMainWindow):
         rk_text_pos_row.addWidget(self.rk_text_y)
         rk_text_pos_row.addStretch()
         rk_form.addRow("Text offset:", rk_text_pos_row)
+
+        self.lv_levelup_msg = QtWidgets.QPlainTextEdit()
+        self.lv_levelup_msg.setMinimumHeight(90)
+        self.lv_levelup_msg.setMaximumHeight(160)
+        self.lv_levelup_msg.setPlaceholderText(
+            "Use {member_mention}, {member_name}, {member_display_name}, {member_id}, {guild_name}, {level}, {emoji_win}, {emoji_heart}"
+        )
+        rk_form.addRow("Level-up message:", self.lv_levelup_msg)
+        lv_ph_row_1 = QtWidgets.QHBoxLayout()
+        self.lv_ph_member_mention = QtWidgets.QPushButton("{member_mention}")
+        self.lv_ph_member_name = QtWidgets.QPushButton("{member_name}")
+        self.lv_ph_display_name = QtWidgets.QPushButton("{member_display_name}")
+        self.lv_ph_member_id = QtWidgets.QPushButton("{member_id}")
+        lv_ph_row_1.addWidget(self.lv_ph_member_mention)
+        lv_ph_row_1.addWidget(self.lv_ph_member_name)
+        lv_ph_row_1.addWidget(self.lv_ph_display_name)
+        lv_ph_row_1.addWidget(self.lv_ph_member_id)
+        rk_form.addRow("", lv_ph_row_1)
+
+        lv_ph_row_2 = QtWidgets.QHBoxLayout()
+        self.lv_ph_guild_name = QtWidgets.QPushButton("{guild_name}")
+        self.lv_ph_level = QtWidgets.QPushButton("{level}")
+        self.lv_ph_emoji_win = QtWidgets.QPushButton("{emoji_win}")
+        self.lv_ph_emoji_heart = QtWidgets.QPushButton("{emoji_heart}")
+        lv_ph_row_2.addWidget(self.lv_ph_guild_name)
+        lv_ph_row_2.addWidget(self.lv_ph_level)
+        lv_ph_row_2.addWidget(self.lv_ph_emoji_win)
+        lv_ph_row_2.addWidget(self.lv_ph_emoji_heart)
+        rk_form.addRow("", lv_ph_row_2)
+
+        self.lv_achievement_msg = QtWidgets.QPlainTextEdit()
+        self.lv_achievement_msg.setMinimumHeight(80)
+        self.lv_achievement_msg.setMaximumHeight(140)
+        self.lv_achievement_msg.setPlaceholderText(
+            "Use {member_mention}, {member_name}, {member_display_name}, {member_id}, {guild_name}, {achievement_name}"
+        )
+        rk_form.addRow("Achievement message:", self.lv_achievement_msg)
+        av_ph_row = QtWidgets.QHBoxLayout()
+        self.av_ph_member_mention = QtWidgets.QPushButton("{member_mention}")
+        self.av_ph_member_name = QtWidgets.QPushButton("{member_name}")
+        self.av_ph_display_name = QtWidgets.QPushButton("{member_display_name}")
+        self.av_ph_member_id = QtWidgets.QPushButton("{member_id}")
+        self.av_ph_guild_name = QtWidgets.QPushButton("{guild_name}")
+        self.av_ph_achievement_name = QtWidgets.QPushButton("{achievement_name}")
+        av_ph_row.addWidget(self.av_ph_member_mention)
+        av_ph_row.addWidget(self.av_ph_member_name)
+        av_ph_row.addWidget(self.av_ph_display_name)
+        av_ph_row.addWidget(self.av_ph_member_id)
+        av_ph_row.addWidget(self.av_ph_guild_name)
+        av_ph_row.addWidget(self.av_ph_achievement_name)
+        rk_form.addRow("", av_ph_row)
         rk_right.addLayout(rk_form)
 
         # Add a small info label under the form
-        info = QtWidgets.QLabel("Choose a background PNG to preview the rankcard. Use Save + Reload to apply to the bot.")
+        info = QtWidgets.QLabel("Choose a background PNG to preview the rank. Use Save + Reload to apply to the bot.")
         info.setWordWrap(True)
         info.setStyleSheet("color:#9aa0a6; font-size:11px; margin-top:8px;")
         rk_right.addWidget(info)
@@ -645,7 +696,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # action buttons (aligned right)
         rk_buttons = QtWidgets.QHBoxLayout()
-        self.rk_refresh = QtWidgets.QPushButton("Refresh Rankcard")
+        self.rk_refresh = QtWidgets.QPushButton("Refresh Rank")
         self.rk_save = QtWidgets.QPushButton("Save")
         self.rk_save_reload = QtWidgets.QPushButton("Save + Reload")
         rk_buttons.addStretch()
@@ -658,13 +709,27 @@ class MainWindow(QtWidgets.QMainWindow):
         rk_main.addLayout(rk_right, 0)
         rank_layout.addLayout(rk_main)
 
-        tabs.addTab(rank_w, "Rankcard")
+        tabs.addTab(rank_w, "Rank")
 
         # wire rankcard controls
         self.rk_refresh.clicked.connect(self.on_refresh_rankpreview)
         self.rk_bg_browse.clicked.connect(self._choose_rank_bg)
         self.rk_name_color_pick.clicked.connect(lambda: self._pick_color(self.rk_name_color, "Choose rank name color"))
         self.rk_info_color_pick.clicked.connect(lambda: self._pick_color(self.rk_info_color, "Choose rank info color"))
+        self.lv_ph_member_mention.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{member_mention}'))
+        self.lv_ph_member_name.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{member_name}'))
+        self.lv_ph_display_name.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{member_display_name}'))
+        self.lv_ph_member_id.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{member_id}'))
+        self.lv_ph_guild_name.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{guild_name}'))
+        self.lv_ph_level.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{level}'))
+        self.lv_ph_emoji_win.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{emoji_win}'))
+        self.lv_ph_emoji_heart.clicked.connect(lambda: self._insert_placeholder_into(self.lv_levelup_msg, '{emoji_heart}'))
+        self.av_ph_member_mention.clicked.connect(lambda: self._insert_placeholder_into(self.lv_achievement_msg, '{member_mention}'))
+        self.av_ph_member_name.clicked.connect(lambda: self._insert_placeholder_into(self.lv_achievement_msg, '{member_name}'))
+        self.av_ph_display_name.clicked.connect(lambda: self._insert_placeholder_into(self.lv_achievement_msg, '{member_display_name}'))
+        self.av_ph_member_id.clicked.connect(lambda: self._insert_placeholder_into(self.lv_achievement_msg, '{member_id}'))
+        self.av_ph_guild_name.clicked.connect(lambda: self._insert_placeholder_into(self.lv_achievement_msg, '{guild_name}'))
+        self.av_ph_achievement_name.clicked.connect(lambda: self._insert_placeholder_into(self.lv_achievement_msg, '{achievement_name}'))
         self.rk_save.clicked.connect(lambda: self._save_rank_preview(reload_after=False))
         self.rk_save_reload.clicked.connect(lambda: self._save_rank_preview(reload_after=True))
 
@@ -917,6 +982,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # load rank config if present
         try:
             self._load_rank_config()
+        except Exception:
+            pass
+        try:
+            self._load_leveling_config()
         except Exception:
             pass
         # helper to update status label and force UI repaint
@@ -1205,7 +1274,7 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
 
     def on_refresh_rankpreview(self):
-        """Request a rankcard from the bot and display it in the Rankcard tab."""
+        """Request a rank image from the bot and display it in the Rank tab."""
         try:
             try:
                 self._set_status("Rank Preview: requesting...")
@@ -1246,7 +1315,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.rk_image.setPixmap(pix)
                     self._rank_preview_data_url = f"data:image/png;base64,{b64}"
                     return
-            QtWidgets.QMessageBox.warning(self, "Rank Preview", f"Failed to get rankcard from bot: {r}")
+            QtWidgets.QMessageBox.warning(self, "Rank Preview", f"Failed to get rank image from bot: {r}")
         except Exception:
             pass
 
@@ -1889,6 +1958,58 @@ class MainWindow(QtWidgets.QMainWindow):
         cfg_path = os.path.join(cfg_dir, "rank.json")
         return cfg_path
 
+    def _leveling_config_paths(self):
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cfg_dir = os.path.join(repo_root, "config")
+        os.makedirs(cfg_dir, exist_ok=True)
+        cfg_path = os.path.join(cfg_dir, "leveling.json")
+        return cfg_path
+
+    def _load_leveling_config(self):
+        cfg_path = self._leveling_config_paths()
+        try:
+            if os.path.exists(cfg_path):
+                with open(cfg_path, "r", encoding="utf-8") as fh:
+                    cfg = json.load(fh) or {}
+            else:
+                cfg = {}
+        except Exception:
+            cfg = {}
+
+        levelup_tpl = str(
+            cfg.get(
+                "LEVEL_UP_MESSAGE_TEMPLATE",
+                "{emoji_win} {member_mention}\nyou just reached level {level}!\nkeep it up, cutie! {emoji_heart}",
+            )
+        )
+        achievement_tpl = str(
+            cfg.get(
+                "ACHIEVEMENT_MESSAGE_TEMPLATE",
+                "🏆 {member_mention} got Achievement **{achievement_name}**",
+            )
+        )
+        try:
+            if not self.lv_levelup_msg.hasFocus():
+                self.lv_levelup_msg.setPlainText(levelup_tpl)
+            if not self.lv_achievement_msg.hasFocus():
+                self.lv_achievement_msg.setPlainText(achievement_tpl)
+        except Exception:
+            pass
+
+    def _save_leveling_config(self, data: dict):
+        cfg_path = self._leveling_config_paths()
+        try:
+            try:
+                with open(cfg_path, "r", encoding="utf-8") as fh:
+                    existing = json.load(fh) or {}
+            except Exception:
+                existing = {}
+            existing.update(data or {})
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                json.dump(existing, fh, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
     def _load_rank_config(self):
         cfg_path = self._rank_config_paths()
         self._rank_config_path = cfg_path
@@ -1974,6 +2095,12 @@ class MainWindow(QtWidgets.QMainWindow):
             if data:
                 self._save_rank_config(data)
 
+            lvl_data = {
+                "LEVEL_UP_MESSAGE_TEMPLATE": self.lv_levelup_msg.toPlainText().strip() or "{emoji_win} {member_mention}\\nyou just reached level {level}!\\nkeep it up, cutie! {emoji_heart}",
+                "ACHIEVEMENT_MESSAGE_TEMPLATE": self.lv_achievement_msg.toPlainText().strip() or "🏆 {member_mention} got Achievement **{achievement_name}**",
+            }
+            self._save_leveling_config(lvl_data)
+
             if reload_after:
                 try:
                     self.send_cmd_async(
@@ -1989,10 +2116,13 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save rank settings: {e}")
 
     def _insert_placeholder(self, text: str):
+        self._insert_placeholder_into(self.pv_message, text)
+
+    def _insert_placeholder_into(self, target: QtWidgets.QPlainTextEdit, text: str):
         try:
-            cur = self.pv_message.textCursor()
+            cur = target.textCursor()
             cur.insertText(text)
-            self.pv_message.setTextCursor(cur)
+            target.setTextCursor(cur)
             # trigger live preview
             try:
                 self._preview_debounce.start()
