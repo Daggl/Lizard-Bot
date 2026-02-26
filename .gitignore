@@ -41,6 +41,7 @@ data/logs/*.txt
 data/logs/tracked.log*
 data/logs/ui_run_trace.log
 data/logs/ui_start.log
+data/logs/ui_restart.request
 
 # Audit reports
 pip_audit_post_upgrade.json
