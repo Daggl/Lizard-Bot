@@ -1,7 +1,7 @@
 from discord.ext import commands
 
-from mybot.cogs.leveling.utils.level_config import (ACHIEVEMENTS,
-                                                    get_achievement_channel_id,
+from mybot.cogs.leveling.utils.level_config import (get_achievement_channel_id,
+                                                    get_achievements,
                                                     get_message_templates)
 
 
@@ -15,7 +15,7 @@ class Achievements(commands.Cog):
         db = self.bot.db
         user = db.get_user(member.id)
 
-        for name, req in ACHIEVEMENTS.items():
+        for name, req in get_achievements().items():
 
             if name in user["achievements"]:
                 continue

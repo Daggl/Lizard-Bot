@@ -1301,6 +1301,30 @@ class MainWindow(QtWidgets.QMainWindow):
         cfg_path = self._leveling_config_paths()
         cfg = load_json_dict(cfg_path)
 
+        default_rewards = {
+            "5": "Bronze",
+            "10": "Silber",
+            "20": "Gold",
+            "30": "Diamond",
+            "40": "Platinum",
+            "50": "Master",
+            "60": "Grandmaster",
+            "70": "Karl-Heinz",
+        }
+        default_achievements = {
+            "Chatter I": {"messages": 100},
+            "Chatter II": {"messages": 500},
+            "Chatter III": {"messages": 1000},
+            "Chatter IV": {"messages": 5000},
+            "Voice Starter": {"voice_time": 3600},
+            "Voice Pro": {"voice_time": 18000},
+            "Voice Master": {"voice_time": 36000},
+            "Level 5": {"level": 5},
+            "Level 10": {"level": 10},
+            "Level 25": {"level": 25},
+            "Level 50": {"level": 50},
+        }
+
         levelup_tpl = str(
             cfg.get(
                 "LEVEL_UP_MESSAGE_TEMPLATE",
@@ -1315,6 +1339,17 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         win_emoji = str(cfg.get("EMOJI_WIN", "") or "")
         heart_emoji = str(cfg.get("EMOJI_HEART", "") or "")
+        xp_per_message = int(cfg.get("XP_PER_MESSAGE", 15) or 15)
+        voice_xp_per_minute = int(cfg.get("VOICE_XP_PER_MINUTE", 10) or 10)
+        message_cooldown = int(cfg.get("MESSAGE_COOLDOWN", 30) or 30)
+        achievement_channel_id = str(cfg.get("ACHIEVEMENT_CHANNEL_ID", "") or "")
+        rewards_cfg = cfg.get("LEVEL_REWARDS")
+        achievements_cfg = cfg.get("ACHIEVEMENTS")
+        if not isinstance(rewards_cfg, dict):
+            rewards_cfg = default_rewards
+        if not isinstance(achievements_cfg, dict):
+            achievements_cfg = default_achievements
+
         try:
             if not self.lv_levelup_msg.hasFocus():
                 self.lv_levelup_msg.setPlainText(levelup_tpl)
@@ -1324,12 +1359,162 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.lv_emoji_win.setText(win_emoji)
             if not self.lv_emoji_heart.hasFocus():
                 self.lv_emoji_heart.setText(heart_emoji)
+            self.lv_xp_per_message.setValue(max(1, xp_per_message))
+            self.lv_voice_xp_per_minute.setValue(max(1, voice_xp_per_minute))
+            self.lv_message_cooldown.setValue(max(0, message_cooldown))
+            if not self.lv_achievement_channel_id.hasFocus():
+                self.lv_achievement_channel_id.setText(achievement_channel_id)
+            self._populate_level_rewards_table(rewards_cfg)
+            self._populate_achievements_table(achievements_cfg)
         except Exception:
             pass
 
     def _save_leveling_config(self, data: dict):
         cfg_path = self._leveling_config_paths()
         save_json_merged(cfg_path, data or {})
+
+    def _populate_level_rewards_table(self, rewards_cfg: dict):
+        table = getattr(self, "lv_rewards_table", None)
+        if table is None:
+            return
+        try:
+            rows = []
+            if isinstance(rewards_cfg, dict):
+                for level_raw, role_name in rewards_cfg.items():
+                    try:
+                        level = int(level_raw)
+                    except Exception:
+                        continue
+                    role = str(role_name or "").strip()
+                    if level > 0 and role:
+                        rows.append((level, role))
+            rows.sort(key=lambda it: it[0])
+            table.setRowCount(0)
+            for level, role in rows:
+                row = table.rowCount()
+                table.insertRow(row)
+                table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(level)))
+                table.setItem(row, 1, QtWidgets.QTableWidgetItem(role))
+        except Exception:
+            pass
+
+    def _populate_achievements_table(self, achievements_cfg: dict):
+        table = getattr(self, "lv_achievements_table", None)
+        if table is None:
+            return
+        try:
+            rows = []
+            if isinstance(achievements_cfg, dict):
+                for achievement_name, req in achievements_cfg.items():
+                    name = str(achievement_name or "").strip()
+                    if not name or not isinstance(req, dict):
+                        continue
+                    for req_type, req_value in req.items():
+                        req_type_s = str(req_type or "").strip()
+                        try:
+                            req_int = int(req_value)
+                        except Exception:
+                            continue
+                        if req_type_s and req_int > 0:
+                            rows.append((name, req_type_s, req_int))
+            rows.sort(key=lambda it: (it[0].lower(), it[1].lower()))
+            table.setRowCount(0)
+            for ach_name, req_type, req_val in rows:
+                row = table.rowCount()
+                table.insertRow(row)
+                table.setItem(row, 0, QtWidgets.QTableWidgetItem(ach_name))
+                table.setItem(row, 1, QtWidgets.QTableWidgetItem(req_type))
+                table.setItem(row, 2, QtWidgets.QTableWidgetItem(str(req_val)))
+        except Exception:
+            pass
+
+    def _collect_level_rewards_from_table(self) -> dict:
+        table = getattr(self, "lv_rewards_table", None)
+        if table is None:
+            return {}
+        out = {}
+        for row in range(table.rowCount()):
+            level_item = table.item(row, 0)
+            role_item = table.item(row, 1)
+            level_raw = str(level_item.text() if level_item else "").strip()
+            role_name = str(role_item.text() if role_item else "").strip()
+            if not level_raw and not role_name:
+                continue
+            try:
+                level_int = int(level_raw)
+            except Exception as exc:
+                raise ValueError(f"Rewards row {row + 1}: invalid level ({exc})") from exc
+            if level_int <= 0:
+                raise ValueError(f"Rewards row {row + 1}: level must be > 0")
+            if not role_name:
+                raise ValueError(f"Rewards row {row + 1}: role name is empty")
+            out[str(level_int)] = role_name
+        return out
+
+    def _collect_achievements_from_table(self) -> dict:
+        table = getattr(self, "lv_achievements_table", None)
+        if table is None:
+            return {}
+        allowed_types = {"messages", "voice_time", "level", "xp"}
+        out = {}
+        for row in range(table.rowCount()):
+            name_item = table.item(row, 0)
+            type_item = table.item(row, 1)
+            value_item = table.item(row, 2)
+            ach_name = str(name_item.text() if name_item else "").strip()
+            req_type = str(type_item.text() if type_item else "").strip()
+            req_value_raw = str(value_item.text() if value_item else "").strip()
+            if not ach_name and not req_type and not req_value_raw:
+                continue
+            if not ach_name:
+                raise ValueError(f"Achievements row {row + 1}: achievement name is empty")
+            if req_type not in allowed_types:
+                raise ValueError(f"Achievements row {row + 1}: type must be one of {sorted(allowed_types)}")
+            try:
+                req_value = int(req_value_raw)
+            except Exception as exc:
+                raise ValueError(f"Achievements row {row + 1}: invalid value ({exc})") from exc
+            if req_value <= 0:
+                raise ValueError(f"Achievements row {row + 1}: value must be > 0")
+            out.setdefault(ach_name, {})[req_type] = req_value
+        return out
+
+    def on_leveling_add_reward_row(self):
+        table = getattr(self, "lv_rewards_table", None)
+        if table is None:
+            return
+        row = table.rowCount()
+        table.insertRow(row)
+        table.setItem(row, 0, QtWidgets.QTableWidgetItem("1"))
+        table.setItem(row, 1, QtWidgets.QTableWidgetItem("Role Name"))
+        table.setCurrentCell(row, 0)
+
+    def on_leveling_remove_reward_row(self):
+        table = getattr(self, "lv_rewards_table", None)
+        if table is None:
+            return
+        row = table.currentRow()
+        if row >= 0:
+            table.removeRow(row)
+
+    def on_leveling_add_achievement_row(self):
+        table = getattr(self, "lv_achievements_table", None)
+        if table is None:
+            return
+        row = table.rowCount()
+        table.insertRow(row)
+        table.setItem(row, 0, QtWidgets.QTableWidgetItem("Achievement Name"))
+        table.setItem(row, 1, QtWidgets.QTableWidgetItem("messages"))
+        table.setItem(row, 2, QtWidgets.QTableWidgetItem("100"))
+        table.setCurrentCell(row, 0)
+
+    def on_leveling_remove_achievement_row(self):
+        table = getattr(self, "lv_achievements_table", None)
+        if table is None:
+            return
+        row = table.currentRow()
+        if row >= 0:
+            table.removeRow(row)
 
     def _load_rank_config(self):
         cfg_path = self._rank_config_paths()
@@ -1404,12 +1589,60 @@ class MainWindow(QtWidgets.QMainWindow):
             if data:
                 self._save_rank_config(data)
 
+            if reload_after:
+                try:
+                    self.send_cmd_async(
+                        {"action": "reload"},
+                        timeout=3.0,
+                        cb=self._on_reload_after_save_rank,
+                    )
+                except Exception as e:
+                    QtWidgets.QMessageBox.warning(self, "Reload error", str(e))
+
+            QtWidgets.QMessageBox.information(self, "Saved", "Rankcard settings saved")
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save rankcard settings: {e}")
+
+    def _save_leveling_settings(self, reload_after: bool = False):
+        try:
+            if self._is_safe_read_only():
+                QtWidgets.QMessageBox.information(self, "Safe Mode", "Nur lesen ist aktiv: Speichern ist deaktiviert.")
+                return
+            if reload_after and self._is_safe_auto_reload_off():
+                reload_after = False
+                QtWidgets.QMessageBox.information(self, "Safe Mode", "Auto reload ist aus: Speichern ohne Reload.")
+
+            ach_channel_raw = str(self.lv_achievement_channel_id.text() or "").strip()
+            if ach_channel_raw and not ach_channel_raw.isdigit():
+                QtWidgets.QMessageBox.warning(self, "Leveling", "Achievement Channel ID must contain only digits.")
+                return
+
+            try:
+                rewards_obj = self._collect_level_rewards_from_table()
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Leveling", f"Invalid rewards rows: {exc}")
+                return
+
+            try:
+                achievements_obj = self._collect_achievements_from_table()
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Leveling", f"Invalid achievement rows: {exc}")
+                return
+
             lvl_data = {
+                "XP_PER_MESSAGE": int(self.lv_xp_per_message.value()),
+                "VOICE_XP_PER_MINUTE": int(self.lv_voice_xp_per_minute.value()),
+                "MESSAGE_COOLDOWN": int(self.lv_message_cooldown.value()),
                 "LEVEL_UP_MESSAGE_TEMPLATE": self.lv_levelup_msg.toPlainText().strip() or "{member_mention}\\nyou just reached level {level}!\\nkeep it up, cutie!",
                 "ACHIEVEMENT_MESSAGE_TEMPLATE": self.lv_achievement_msg.toPlainText().strip() or "🏆 {member_mention} got Achievement **{achievement_name}**",
                 "EMOJI_WIN": (self.lv_emoji_win.text() or "").strip(),
                 "EMOJI_HEART": (self.lv_emoji_heart.text() or "").strip(),
+                "LEVEL_REWARDS": rewards_obj,
+                "ACHIEVEMENTS": achievements_obj,
             }
+            if ach_channel_raw:
+                lvl_data["ACHIEVEMENT_CHANNEL_ID"] = int(ach_channel_raw)
+
             self._save_leveling_config(lvl_data)
 
             if reload_after:
@@ -1422,9 +1655,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 except Exception as e:
                     QtWidgets.QMessageBox.warning(self, "Reload error", str(e))
 
-            QtWidgets.QMessageBox.information(self, "Saved", "Rank settings saved")
+            QtWidgets.QMessageBox.information(self, "Saved", "Leveling settings saved")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save rank settings: {e}")
+            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save leveling settings: {e}")
 
     def _insert_placeholder(self, text: str):
         self._insert_placeholder_into(self.pv_message, text)

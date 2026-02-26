@@ -63,7 +63,7 @@ def get_message_cooldown() -> int:
     except Exception:
         return 30
 
-LEVEL_REWARDS = {
+DEFAULT_LEVEL_REWARDS = {
     5: "Bronze",
     10: "Silber",
     20: "Gold",
@@ -74,7 +74,7 @@ LEVEL_REWARDS = {
     70: "Karl-Heinz",
 }
 
-ACHIEVEMENTS = {
+DEFAULT_ACHIEVEMENTS = {
     "Chatter I": {"messages": 100},
     "Chatter II": {"messages": 500},
     "Chatter III": {"messages": 1000},
@@ -87,3 +87,53 @@ ACHIEVEMENTS = {
     "Level 25": {"level": 25},
     "Level 50": {"level": 50},
 }
+
+
+def get_level_rewards() -> dict:
+    cfg = _cfg()
+    raw = cfg.get("LEVEL_REWARDS")
+    if not isinstance(raw, dict):
+        return dict(DEFAULT_LEVEL_REWARDS)
+
+    out = {}
+    for level_raw, role_name in raw.items():
+        try:
+            level = int(level_raw)
+        except Exception:
+            continue
+        role = str(role_name or "").strip()
+        if level > 0 and role:
+            out[level] = role
+    return out or dict(DEFAULT_LEVEL_REWARDS)
+
+
+def get_achievements() -> dict:
+    cfg = _cfg()
+    raw = cfg.get("ACHIEVEMENTS")
+    if not isinstance(raw, dict):
+        return dict(DEFAULT_ACHIEVEMENTS)
+
+    allowed_keys = {"messages", "voice_time", "level", "xp"}
+    out = {}
+    for ach_name, requirements in raw.items():
+        name = str(ach_name or "").strip()
+        if not name or not isinstance(requirements, dict):
+            continue
+        req_out = {}
+        for key, value in requirements.items():
+            key_s = str(key or "").strip()
+            if key_s not in allowed_keys:
+                continue
+            try:
+                ivalue = int(value)
+            except Exception:
+                continue
+            if ivalue > 0:
+                req_out[key_s] = ivalue
+        if req_out:
+            out[name] = req_out
+    return out or dict(DEFAULT_ACHIEVEMENTS)
+
+
+LEVEL_REWARDS = DEFAULT_LEVEL_REWARDS
+ACHIEVEMENTS = DEFAULT_ACHIEVEMENTS

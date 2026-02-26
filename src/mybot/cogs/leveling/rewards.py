@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from mybot.cogs.leveling.utils.level_config import LEVEL_REWARDS
+from mybot.cogs.leveling.utils.level_config import get_level_rewards
 
 
 class Rewards(commands.Cog):
@@ -13,9 +13,10 @@ class Rewards(commands.Cog):
 
         user = self.bot.db.get_user(member.id)
         level = user["level"]
+        level_rewards = get_level_rewards()
 
-        if level in LEVEL_REWARDS:
-            role_name = LEVEL_REWARDS[level]
+        if level in level_rewards:
+            role_name = level_rewards[level]
 
             role = discord.utils.get(member.guild.roles, name=role_name)
             if role:
