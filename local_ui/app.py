@@ -26,6 +26,7 @@ from log_format import format_db_row
 from log_poller import LogPoller
 from runtime import run_main_window
 from startup_trace import write_startup_trace
+from ui_tabs import build_configs_tab, build_dashboard_tab, build_logs_tab
 
 
 UI_RESTART_EXIT_CODE = 42
@@ -52,116 +53,9 @@ class MainWindow(QtWidgets.QMainWindow):
         tabs = QtWidgets.QTabWidget()
         tabs.setDocumentMode(True)
 
-        # Dashboard tab
-        dash = QtWidgets.QWidget()
-        dash_layout = QtWidgets.QVBoxLayout(dash)
-
-        self.status_label = QtWidgets.QLabel("Status: unknown")
-        self.status_label.setObjectName("statusLabel")
-        dash_layout.addWidget(self.status_label)
-
-        monitor_box = QtWidgets.QGroupBox("Bot Monitor")
-        monitor_grid = QtWidgets.QGridLayout(monitor_box)
-        monitor_grid.setHorizontalSpacing(12)
-        monitor_grid.setVerticalSpacing(6)
-
-        self.mon_ready = QtWidgets.QLabel("—")
-        self.mon_user = QtWidgets.QLabel("—")
-        self.mon_ping = QtWidgets.QLabel("—")
-        self.mon_uptime = QtWidgets.QLabel("—")
-        self.mon_cpu = QtWidgets.QLabel("—")
-        self.mon_mem = QtWidgets.QLabel("—")
-        self.mon_cogs = QtWidgets.QLabel("—")
-
-        monitor_grid.addWidget(QtWidgets.QLabel("Ready:"), 0, 0)
-        monitor_grid.addWidget(self.mon_ready, 0, 1)
-        monitor_grid.addWidget(QtWidgets.QLabel("User:"), 0, 2)
-        monitor_grid.addWidget(self.mon_user, 0, 3)
-        monitor_grid.addWidget(QtWidgets.QLabel("Ping:"), 1, 0)
-        monitor_grid.addWidget(self.mon_ping, 1, 1)
-        monitor_grid.addWidget(QtWidgets.QLabel("Uptime:"), 1, 2)
-        monitor_grid.addWidget(self.mon_uptime, 1, 3)
-        monitor_grid.addWidget(QtWidgets.QLabel("CPU:"), 2, 0)
-        monitor_grid.addWidget(self.mon_cpu, 2, 1)
-        monitor_grid.addWidget(QtWidgets.QLabel("Memory:"), 2, 2)
-        monitor_grid.addWidget(self.mon_mem, 2, 3)
-        monitor_grid.addWidget(QtWidgets.QLabel("Cogs:"), 3, 0)
-        monitor_grid.addWidget(self.mon_cogs, 3, 1)
-
-        console_box = QtWidgets.QGroupBox("Live Console")
-        console_layout = QtWidgets.QVBoxLayout(console_box)
-        self.dash_console = QtWidgets.QPlainTextEdit()
-        self.dash_console.setReadOnly(True)
-        self.dash_console.setMaximumBlockCount(0)
-        self.dash_console.setPlaceholderText("Start the app via start_all.bat/start_all.py to see terminal output here.")
-        console_layout.addWidget(self.dash_console)
-
-        btn_row = QtWidgets.QHBoxLayout()
-        self.refresh_btn = QtWidgets.QPushButton("Refresh Status")
-        self.reload_btn = QtWidgets.QPushButton("Reload Cogs")
-        self.shutdown_btn = QtWidgets.QPushButton("Shutdown Bot")
-        self.restart_btn = QtWidgets.QPushButton("Restart Bot & UI")
-
-        for w in (self.refresh_btn, self.reload_btn, self.shutdown_btn):
-            btn_row.addWidget(w)
-        # place restart button to the right of shutdown
-        btn_row.addWidget(self.restart_btn)
-
-        tools_box = QtWidgets.QGroupBox("Tools")
-        tools_layout = QtWidgets.QHBoxLayout(tools_box)
-        tools_layout.addLayout(btn_row)
-        tools_layout.addStretch()
-        dash_layout.addWidget(tools_box)
-        dash_layout.addWidget(monitor_box)
-        dash_layout.addWidget(console_box)
-
-        # pin Help box at the bottom
-        dash_layout.addStretch()
-
-        help_box = QtWidgets.QGroupBox("Help")
-        help_layout = QtWidgets.QHBoxLayout(help_box)
-        self.tutorial_btn = QtWidgets.QPushButton("Bot Tutorial")
-        self.commands_btn = QtWidgets.QPushButton("Commands")
-        help_layout.addWidget(self.tutorial_btn)
-        help_layout.addWidget(self.commands_btn)
-        help_layout.addStretch()
-        dash_layout.addWidget(help_box)
-
-        # connect dashboard buttons
-        self.refresh_btn.clicked.connect(self.on_refresh)
-        self.reload_btn.clicked.connect(self.on_reload)
-        self.tutorial_btn.clicked.connect(self.on_open_bot_tutorial)
-        self.commands_btn.clicked.connect(self.on_open_commands_guide)
-        # config editor is available as its own tab; dashboard button removed
-        self.shutdown_btn.clicked.connect(self.on_shutdown)
-        self.restart_btn.clicked.connect(self.on_restart_and_restart_ui)
-
-        # Dashboard quick summary removed — detailed preview is in the Preview tab
-
-        tabs.addTab(dash, "Dashboard")
-
-        # Logs tab (live tail)
-        logs = QtWidgets.QWidget()
-        logs_layout = QtWidgets.QVBoxLayout(logs)
-        top_row = QtWidgets.QHBoxLayout()
-        self.choose_log_btn = QtWidgets.QPushButton("Choose Log...")
-        self.clear_log_btn = QtWidgets.QPushButton("Clear")
-        top_row.addWidget(self.choose_log_btn)
-        top_row.addWidget(self.clear_log_btn)
-        top_row.addStretch()
-        logs_layout.addLayout(top_row)
-
-        self.log_text = QtWidgets.QPlainTextEdit()
-        self.log_text.setReadOnly(True)
-        logs_layout.addWidget(self.log_text)
-        # wire buttons
-        self.choose_log_btn.clicked.connect(self._choose_log_file)
-        self.clear_log_btn.clicked.connect(lambda: self.log_text.clear())
-        tabs.addTab(logs, "Logs")
-
-        # Config editor tab
-        self.cfg_editor = ConfigEditor(self)
-        tabs.addTab(self.cfg_editor, "Configs")
+        build_dashboard_tab(self, tabs)
+        build_logs_tab(self, tabs)
+        build_configs_tab(self, tabs, ConfigEditor)
 
         # Preview tab (detailed settings + render)
         preview_w = QtWidgets.QWidget()
@@ -935,7 +829,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._title_font_lookup = {}
         self._dash_console_path = os.path.join(self._repo_root, "data", "logs", "start_all_console.log")
         self._dash_console_pos = 0
-        self._dash_console_history_loaded = False
         try:
             self._load_title_font_choices()
             self._load_user_font_choices()
@@ -1001,7 +894,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # dashboard live console poller (reads start_all supervisor output)
         try:
-            self._load_dashboard_console_history()
             self._dash_console_timer = QtCore.QTimer(self)
             self._dash_console_timer.timeout.connect(self._poll_dashboard_console)
             self._dash_console_timer.start(1000)
@@ -2367,7 +2259,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
             if not os.path.exists(path):
                 self._dash_console_pos = 0
-                self._dash_console_history_loaded = False
                 return
 
             try:
@@ -2393,27 +2284,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.dash_console.appendPlainText("\n".join(lines))
                 sb = self.dash_console.verticalScrollBar()
                 sb.setValue(sb.maximum())
-        except Exception:
-            pass
-
-    def _load_dashboard_console_history(self):
-        try:
-            if getattr(self, "_dash_console_history_loaded", False):
-                return
-            path = getattr(self, "_dash_console_path", None)
-            if not path or not os.path.exists(path):
-                return
-
-            with open(path, "r", encoding="utf-8", errors="replace") as fh:
-                content = fh.read()
-                self._dash_console_pos = fh.tell()
-
-            if content:
-                self.dash_console.setPlainText(content)
-                sb = self.dash_console.verticalScrollBar()
-                sb.setValue(sb.maximum())
-
-            self._dash_console_history_loaded = True
         except Exception:
             pass
 
