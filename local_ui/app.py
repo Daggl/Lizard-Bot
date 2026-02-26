@@ -299,6 +299,17 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
         return super().closeEvent(event)
 
+    def _debug_log(self, message: str):
+        try:
+            if os.environ.get("UI_DEBUG") != "1":
+                return
+            log_dir = os.path.join(self._repo_root, "data", "logs")
+            os.makedirs(log_dir, exist_ok=True)
+            with open(os.path.join(log_dir, "ui_debug.log"), "a", encoding="utf-8", errors="ignore") as fh:
+                fh.write(f"{datetime.now().isoformat()} {message}\n")
+        except Exception:
+            pass
+
     def _safe_stop_timer(self, name: str):
         try:
             timer = getattr(self, name, None)
@@ -621,8 +632,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         try:
             self._set_status("Restart: preparing...")
-        except Exception:
-            pass
+        except Exception as e:
+            self._debug_log(f"restart status set failed: {e}")
         ok = QtWidgets.QMessageBox.question(self, "Restart", "Restart the bot and the UI? This will stop the bot and relaunch both.", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         if ok != QtWidgets.QMessageBox.Yes:
             return
@@ -633,34 +644,34 @@ class MainWindow(QtWidgets.QMainWindow):
             try:
                 self._set_status("Restart: requesting supervised restart...")
                 self.statusBar().showMessage("Restart wird an Supervisor übergeben...", 2500)
-            except Exception:
-                pass
+            except Exception as e:
+                self._debug_log(f"supervised restart status failed: {e}")
             try:
                 marker_dir = os.path.join(self._repo_root, "data", "logs")
                 os.makedirs(marker_dir, exist_ok=True)
                 marker_path = os.path.join(marker_dir, "ui_restart.request")
                 with open(marker_path, "w", encoding="utf-8") as fh:
                     fh.write(datetime.now().isoformat())
-            except Exception:
-                pass
+            except Exception as e:
+                self._debug_log(f"restart marker write failed: {e}")
             try:
                 send_cmd({"action": "shutdown"}, timeout=2.5)
-            except Exception:
-                pass
+            except Exception as e:
+                self._debug_log(f"supervised restart shutdown request failed: {e}")
             try:
                 QtWidgets.QApplication.exit(UI_RESTART_EXIT_CODE)
             except Exception:
                 try:
                     os._exit(UI_RESTART_EXIT_CODE)
-                except Exception:
-                    pass
+                except Exception as e:
+                    self._debug_log(f"forced supervised exit failed: {e}")
             return
 
         # 1) request bot shutdown via control API (best-effort) and wait briefly
         try:
             send_cmd({"action": "shutdown"}, timeout=2.5)
-        except Exception:
-            pass
+        except Exception as e:
+            self._debug_log(f"restart shutdown request failed: {e}")
 
         # wait until old API is down (or timeout), to reduce restart races
         try:
@@ -670,8 +681,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 if not p.get("ok"):
                     break
                 time.sleep(0.25)
-        except Exception:
-            pass
+        except Exception as e:
+            self._debug_log(f"restart ping wait failed: {e}")
 
         bot_started = False
         ui_started = False
@@ -763,8 +774,8 @@ class MainWindow(QtWidgets.QMainWindow):
             if r.get("ok"):
                 try:
                     self._load_rank_config()
-                except Exception:
-                    pass
+                except Exception as e:
+                    self._debug_log(f"reload-after-rank: load_rank_config failed: {e}")
                 reloaded = r.get("reloaded", [])
                 failed = r.get("failed", {})
                 msg = f"Reloaded: {len(reloaded)} modules. Failed: {len(failed)}"
@@ -773,16 +784,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.information(self, "Reload", msg)
             else:
                 QtWidgets.QMessageBox.warning(self, "Reload failed", f"{r}")
-        except Exception:
-            pass
+        except Exception as e:
+            self._debug_log(f"reload-after-rank handler failed: {e}")
 
     def _on_reload_after_save_preview(self, r: dict):
         try:
             if r.get("ok"):
                 try:
                     self._load_welcome_message_from_file()
-                except Exception:
-                    pass
+                except Exception as e:
+                    self._debug_log(f"reload-after-preview: load_welcome_message failed: {e}")
                 reloaded = r.get("reloaded", [])
                 failed = r.get("failed", {})
                 msg = f"Reloaded: {len(reloaded)} modules. Failed: {len(failed)}"
@@ -791,8 +802,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.information(self, "Reload", msg)
             else:
                 QtWidgets.QMessageBox.warning(self, "Reload failed", f"{r}")
-        except Exception:
-            pass
+        except Exception as e:
+            self._debug_log(f"reload-after-preview handler failed: {e}")
 
     def on_edit_configs(self):
         # switch to Configs tab (if available) or open modal
@@ -837,29 +848,29 @@ class MainWindow(QtWidgets.QMainWindow):
             poller.new_line.connect(self._on_new_log_line)
             poller.start()
             self._log_poller = poller
-        except Exception:
-            pass
+        except Exception as e:
+            self._debug_log(f"start_log_poller failed: {e}")
 
     def _on_new_log_line(self, line: str):
         try:
             try:
                 self.log_text.appendPlainText(line)
-            except Exception:
-                pass
+            except Exception as e:
+                self._debug_log(f"append log line failed: {e}")
             try:
                 if getattr(self, "_tracked_fp", None):
                     self._tracked_fp.write(line + "\n")
                     self._tracked_fp.flush()
-            except Exception:
-                pass
+            except Exception as e:
+                self._debug_log(f"tracked log write failed: {e}")
             try:
                 self.log_text.verticalScrollBar().setValue(
                     self.log_text.verticalScrollBar().maximum()
                 )
-            except Exception:
-                pass
-        except Exception:
-            pass
+            except Exception as e:
+                self._debug_log(f"log autoscroll failed: {e}")
+        except Exception as e:
+            self._debug_log(f"on_new_log_line failed: {e}")
 
     # ==================================================
     # Log tailing & preview helpers
