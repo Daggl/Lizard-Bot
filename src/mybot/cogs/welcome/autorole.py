@@ -1,9 +1,11 @@
 import os
 import sqlite3
+import shutil
 
 from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
+from mybot.utils.paths import get_db_path
 
 def _cfg() -> dict:
     try:
@@ -41,7 +43,7 @@ def _cfg_str(name: str, default: str = "") -> str:
 
 
 def _db_path() -> str:
-    return _cfg_str("DB_PATH", "data/autorole.db")
+    return _cfg_str("DB_PATH", get_db_path("autorole"))
 
 # ==========================================================
 # DATABASE
@@ -51,6 +53,14 @@ def _db_path() -> str:
 def setup_database():
 
     db_path = _db_path()
+    try:
+        default_db = str(get_db_path("autorole") or "")
+        legacy_db = os.path.join("data", "autorole.db")
+        if default_db and db_path == default_db and os.path.exists(legacy_db) and not os.path.exists(default_db):
+            os.makedirs(os.path.dirname(default_db) or ".", exist_ok=True)
+            shutil.move(legacy_db, default_db)
+    except Exception:
+        pass
     db_dir = os.path.dirname(db_path) or "."
     os.makedirs(db_dir, exist_ok=True)
 

@@ -1,4 +1,5 @@
 .env
+data/autorole.db
 data/logs/logs.db
 __pycache__/
 data/logs/*.json

@@ -62,7 +62,7 @@ def get_db_path(name: str) -> str:
 
 def ensure_runtime_storage() -> None:
     ensure_dirs()
-    for db_name in ("logs", "tickets"):
+    for db_name in ("logs", "tickets", "autorole"):
         db_path = get_db_path(db_name)
         if os.path.exists(db_path):
             continue
