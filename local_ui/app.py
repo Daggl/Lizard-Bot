@@ -9,174 +9,32 @@ JSON response. This is a minimal example to get started.
 import sys
 import os
 import json
-import socket
 import threading
 import sqlite3
 import subprocess
-import traceback
 import time
 from datetime import datetime
 # HTML embed removed; no html module required
 from PySide6 import QtWidgets, QtCore, QtGui
+from config_editor import ConfigEditor
+from config_io import config_json_path, load_json_dict, save_json_merged
+from control_api_client import send_cmd
+from exception_handler import install_exception_hook
+from file_ops import open_tracked_writer, prune_backups, rotate_log_file
+from guides import open_bot_tutorial, open_commands_guide
+from log_format import format_db_row
+from log_poller import LogPoller
+from runtime import run_main_window
+from startup_trace import write_startup_trace
 
 
-API_ADDR = ("127.0.0.1", 8765)
 UI_RESTART_EXIT_CODE = 42
 
 
-# Background thread to poll log files or sqlite DBs without blocking the UI
-class LogPoller(QtCore.QThread):
-    new_line = QtCore.Signal(str)
-
-    def __init__(self, path: str, mode: str = "file", table: str = None, last_rowid: int = 0, interval: float = 5.0):
-        super().__init__()
-        self.path = path
-        self.mode = mode  # 'file' or 'db'
-        self.table = table
-        self._last_rowid = int(last_rowid or 0)
-        self._interval = float(interval)
-        self._stopped = False
-
-    def stop(self):
-        self._stopped = True
-        try:
-            self.wait(2000)
-        except Exception:
-            pass
-
-    def run(self):
-        try:
-            if self.mode == "db":
-                # open local sqlite connection here
-                try:
-                    conn = sqlite3.connect(self.path)
-                    conn.row_factory = sqlite3.Row
-                    cur = conn.cursor()
-                except Exception:
-                    return
-
-                while not self._stopped:
-                    try:
-                        cur.execute(f"SELECT rowid, * FROM '{self.table}' WHERE rowid > ? ORDER BY rowid ASC", (self._last_rowid,))
-                        rows = cur.fetchall()
-                        for row in rows:
-                            try:
-                                # emit formatted row as string; caller will format further if needed
-                                try:
-                                    data = dict(row)
-                                    s = json.dumps(data, ensure_ascii=False)
-                                except Exception:
-                                    s = str(tuple(row))
-                                self.new_line.emit(s)
-                            except Exception:
-                                pass
-                            try:
-                                self._last_rowid = int(row['rowid'])
-                            except Exception:
-                                try:
-                                    self._last_rowid = int(row[0])
-                                except Exception:
-                                    pass
-                    except Exception:
-                        pass
-                    # sleep in ms-aware chunks
-                    for _ in range(int(self._interval * 10)):
-                        if self._stopped:
-                            break
-                        self.msleep(100)
-                try:
-                    conn.close()
-                except Exception:
-                    pass
-            else:
-                # file mode: tail the file
-                try:
-                    with open(self.path, 'r', encoding='utf-8', errors='ignore') as fh:
-                        fh.seek(0, os.SEEK_END)
-                        while not self._stopped:
-                            line = fh.readline()
-                            if line:
-                                self.new_line.emit(line.rstrip('\n'))
-                            else:
-                                self.msleep(int(self._interval * 1000))
-                except Exception:
-                    pass
-        except Exception:
-            pass
+write_startup_trace()
 
 
-# Event tracing is expensive; enable only when UI_EVENT_TRACE=1 is set in the environment.
-if os.environ.get("UI_EVENT_TRACE") == "1":
-    try:
-        _trace_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "logs")
-        os.makedirs(_trace_dir, exist_ok=True)
-        with open(os.path.join(_trace_dir, "ui_run_trace.log"), "a", encoding="utf-8") as _tf:
-            _tf.write(f"startup: {datetime.now().isoformat()}\n")
-        print("UI startup: trace written", flush=True)
-    except Exception:
-        try:
-            print("UI startup: trace failed", flush=True)
-        except Exception:
-            pass
-
-
-def send_cmd(cmd: dict, timeout: float = 1.0):
-    try:
-        # attach token from environment if present
-        token = os.environ.get("CONTROL_API_TOKEN")
-        payload = dict(cmd)
-        if token:
-            payload["token"] = token
-
-        with socket.create_connection(API_ADDR, timeout=timeout) as s:
-            s.sendall((json.dumps(payload) + "\n").encode())
-            # read a line
-            buf = b""
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                buf += chunk
-                if b"\n" in buf:
-                    break
-            line = buf.split(b"\n", 1)[0]
-            return json.loads(line.decode())
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-# Global exception handler so click-time crashes show a dialog and are logged
-def _handle_uncaught_exception(exc_type, exc_value, exc_tb):
-    tb = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
-    try:
-        # print to stderr/console
-        print(tb, file=sys.stderr)
-    except Exception:
-        pass
-    try:
-        # attempt to show a dialog if Qt is running
-        app = QtWidgets.QApplication.instance()
-        if app:
-            try:
-                QtWidgets.QMessageBox.critical(None, "Unhandled Exception", tb)
-            except Exception:
-                pass
-    except Exception:
-        pass
-    try:
-        # write to a persistent ui crash log
-        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        log_dir = os.path.join(repo_root, "data", "logs")
-        os.makedirs(log_dir, exist_ok=True)
-        path = os.path.join(log_dir, "ui_crash.log")
-        with open(path, "a", encoding="utf-8") as fh:
-            fh.write(f"--- {datetime.now().isoformat()} ---\n")
-            fh.write(tb + "\n")
-    except Exception:
-        pass
-
-
-sys.excepthook = _handle_uncaught_exception
+install_exception_hook()
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -1590,407 +1448,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_open_bot_tutorial(self):
         try:
-            dlg = QtWidgets.QDialog(self)
-            dlg.setWindowTitle("Lizard Bot — Beginner Guide")
-            dlg.resize(900, 680)
-
-            layout = QtWidgets.QVBoxLayout(dlg)
-            guide = QtWidgets.QTextBrowser()
-            guide.setOpenExternalLinks(True)
-            guide.setMarkdown(
-                """
-# Lizard Bot — Beginner Guide
-
-Welcome! This guide explains what every main area does, where settings are stored,
-and what values you can safely put into each config.
-
-## 0) Where files are located
-
-- **Bot/UI root folder**: this project directory
-- **Main config folder**: `config/`
-- **Default template**: `data/config.example.json`
-- **Persistent bot data**: `data/` (for example `data/levels.json`)
-- **Assets (images/fonts)**: `assets/`
-
-If a config file is missing, run startup once (`start_all.py`) so the project can create defaults.
-
-## 1) Quick Start
-
-1. Start the bot and UI with `start_all.py` (or `start_all.bat`).
-2. Open the **Dashboard** tab and click **Refresh Status**.
-3. Confirm the bot is **Ready** and cogs are loaded.
-4. Configure **Welcome** and **Rank**, then click **Save + Reload**.
-
-## 2) Dashboard (exact behavior)
-
-- **Refresh Status**
-    - Calls the control API status endpoint.
-    - Updates Ready/User/Ping/Uptime/CPU/Memory/Cogs.
-- **Reload Cogs**
-    - Reloads bot modules so changed config values are used immediately.
-- **Bot Tutorial**
-    - Opens this guide dialog.
-- **Shutdown Bot**
-    - Sends shutdown to bot and closes UI.
-- **Restart Bot & UI**
-    - Full restart flow (or supervised restart if launched via `start_all.py`).
-
-## 3) Welcome Tab (new member experience)
-
-Use this tab to design the image + text shown for new members.
-
-- **General**: example name, banner image path, welcome text.
-- **Background**: mode (`cover`, `contain`, `stretch`), zoom, X/Y offset.
-- **Typography**: title/username fonts, sizes, and colors.
-- **Position**: title/username/text/avatar offsets.
-- **Placeholders** in message:
-    - `{mention}`, `{rules_channel}`, `{verify_channel}`, `{aboutme_channel}`
-
-Saved primarily to: `config/welcome.json`
-
-## 4) Rank Tab (Level card + leveling messages)
-
-Use this tab to control rank card styling and leveling announcements.
-
-- **General/Background/Typography**: visual style of rank image.
-- **Messages**:
-    - **Level-up message** (embed description)
-    - **Achievement message**
-    - **Leading emoji ID/tag** and **Trailing emoji ID/tag**
-- Placeholder examples:
-    - Level-up: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{level}`, `{leading_emoji}`, `{trailing_emoji}`
-    - Achievement: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{achievement_name}`
-
-Saved to:
-- Visual rank settings: `config/rank.json`
-- Leveling text/emoji settings: `config/leveling.json`
-
-## 5) Configs Tab (manual JSON editing)
-
-Use this tab when you want direct control over JSON values.
-
-- Pick a file from `config/`.
-- Edit key/value pairs.
-- Save, then use **Reload Cogs** (Dashboard) if runtime refresh is needed.
-
-### Important value types
-
-- **IDs** (channel/role/user IDs): use integers, e.g. `123456789012345678`
-- **Booleans**: `true` / `false`
-- **Text**: normal string
-- **Arrays**: `[1, 2, 3]`
-
-## 6) What each config file in `config/` is for
-
-- `welcome.json` — welcome banner/message + related channel/role IDs
-- `rank.json` — rank card visual styling (background/fonts/colors/offsets)
-- `leveling.json` — leveling channel, emojis, level-up/achievement templates
-- `autorole.json` — verification/reaction role setup
-- `tickets.json` — ticket category, support role, ticket log channel
-- `log_chat.json` — destination channel for chat logs
-- `log_member.json` — destination channel for member join/leave logs
-- `log_mod.json` — destination channel for moderation logs
-- `log_server.json` — destination channel for server-level logs
-- `log_voice.json` — destination channel for voice activity logs
-- `count.json` — counting game channel
-- `birthdays.json` — birthday channel/settings
-
-If you are unsure which key is required, compare with `data/config.example.json`.
-
-## 7) Logs Tab
-
-- Tail log files or SQLite tables to monitor behavior.
-- Best place to debug startup errors, reload problems, and missing IDs.
-
-## 8) Common mistakes and how to avoid them
-
-- **Bot is offline in Dashboard**
-    - Check token/env setup and start through `start_all.py`.
-- **Config changed but bot still uses old values**
-    - Click **Save + Reload** or Dashboard **Reload Cogs**.
-- **No message sent in Discord**
-    - Verify channel IDs in config and bot permissions in that channel.
-- **Wrong placeholder text in output**
-    - Use exact placeholder names (case-sensitive).
-
-## 9) Recommended beginner workflow
-
-1. Start via `start_all.py`.
-2. Confirm Dashboard status.
-3. Configure Welcome and test preview.
-4. Configure Rank visuals and messages.
-5. Save + Reload.
-6. Validate in Discord with a test user/event.
-7. Use Logs tab for any issue.
-
-## 10) Quick placeholder reference
-
-- Welcome: `{mention}`, `{rules_channel}`, `{verify_channel}`, `{aboutme_channel}`
-- Leveling: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{level}`, `{achievement_name}`, `{leading_emoji}`, `{trailing_emoji}`
-
-
-                """
-            )
-            layout.addWidget(guide)
-
-            close_btns = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
-            close_btns.rejected.connect(dlg.reject)
-            close_btns.accepted.connect(dlg.accept)
-            layout.addWidget(close_btns)
-
-            dlg.exec()
+            open_bot_tutorial(self)
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Tutorial", f"Failed to open tutorial: {e}")
 
     def on_open_commands_guide(self):
         try:
-            dlg = QtWidgets.QDialog(self)
-            dlg.setWindowTitle("Lizard Bot — Commands Reference")
-            dlg.resize(980, 720)
-
-            layout = QtWidgets.QVBoxLayout(dlg)
-            guide = QtWidgets.QTextBrowser()
-            guide.setOpenExternalLinks(True)
-            guide.setMarkdown(
-                """
-# Lizard Bot — Full Commands Reference
-
-This list describes all currently implemented commands in this bot build.
-
-## Prefix
-
-Commands are prefix commands (example prefix is often `*`), unless noted as hybrid.
-Hybrid commands can also be available as slash commands depending on sync/setup.
-
----
-
-## Core
-
-### `ping`
-- **What it does:** Checks if the bot responds.
-- **Usage:** `ping`
-- **Permission:** Everyone
-
----
-
-## Help
-
-### `help`
-- **What it does:** Opens the bot help/tutorial embed in Discord.
-- **Usage:** `help`
-- **Permission:** Everyone
-
-### `admin_help`
-- **What it does:** Opens administrator control/help UI.
-- **Usage:** `admin_help`
-- **Permission:** Administrator
-
----
-
-## Welcome
-
-### `testwelcome`
-- **What it does:** Sends the welcome flow for the command caller (admin test).
-- **Usage:** `testwelcome`
-- **Permission:** Administrator
-
----
-
-## Leveling / Rank
-
-### `rank [member]`
-- **What it does:** Shows rank card for you or the specified member.
-- **Usage:** `rank` or `rank @User`
-- **Permission:** Everyone
-
-### `rankuser <member>`
-- **What it does:** Admin rank card command for a target member.
-- **Usage:** `rankuser @User`
-- **Permission:** Administrator
-
-### `addxp <member> <amount>`
-- **What it does:** Adds XP to a member and re-checks achievements.
-- **Usage:** `addxp @User 250`
-- **Permission:** Administrator
-
-### `removexp <member> <amount>`
-- **What it does:** Removes XP from a member (not below 0).
-- **Usage:** `removexp @User 100`
-- **Permission:** Administrator
-
-### `reset <member>`
-- **What it does:** Resets one user’s leveling stats (XP/level/messages/voice/achievements).
-- **Usage:** `reset @User`
-- **Permission:** Administrator
-
-### `givexp <member> <amount>`
-- **What it does:** Directly adds XP to a member (admin utility).
-- **Usage:** `givexp @User 150`
-- **Permission:** Administrator
-
-### `setxp <member> <amount>`
-- **What it does:** Sets a member’s XP to an exact value.
-- **Usage:** `setxp @User 500`
-- **Permission:** Administrator
-
-### `setlevel <member> <level>`
-- **What it does:** Sets a member’s level directly.
-- **Usage:** `setlevel @User 10`
-- **Permission:** Administrator
-
-### `testachievement <member> <name>`
-- **What it does:** Grants a custom achievement label for testing.
-- **Usage:** `testachievement @User Veteran`
-- **Permission:** Administrator
-
----
-
-## Counting
-
-### `countstats`
-- **What it does:** Shows current counter stats.
-- **Usage:** `countstats`
-- **Permission:** Everyone
-
-### `counttop`
-- **What it does:** Shows top counting contributors.
-- **Usage:** `counttop`
-- **Permission:** Everyone
-
-### `countreset`
-- **What it does:** Resets counting data.
-- **Usage:** `countreset`
-- **Permission:** Administrator
-
----
-
-## Birthdays
-
-### `birthday <DD.MM>`
-- **What it does:** Saves your birthday for reminders.
-- **Usage:** `birthday 21.08`
-- **Permission:** Everyone
-
----
-
-## Polls
-
-### `poll`
-- **What it does:** Starts an interactive poll setup (question, duration, options).
-- **Usage:** `poll`
-- **Permission:** Everyone
-
-### `delete_poll <poll_id>`
-- **What it does:** Deletes a saved poll by ID.
-- **Usage:** `delete_poll <id>`
-- **Permission:** Administrator
-
----
-
-## Tickets
-
-### `ticketpanel`
-- **What it does:** Posts the ticket panel with open-ticket button.
-- **Usage:** `ticketpanel`
-- **Permission:** Administrator
-
-### `ticket`
-- **What it does:** Creates a support ticket for the caller.
-- **Usage:** `ticket`
-- **Permission:** Everyone
-
-### `transcript <#channel>`
-- **What it does:** Exports a transcript file for a ticket channel.
-- **Usage:** `transcript #ticket-channel`
-- **Permission:** Administrator
-
-### `close_ticket <#channel>`
-- **What it does:** Closes a ticket channel.
-- **Usage:** `close_ticket #ticket-channel`
-- **Permission:** Administrator
-
----
-
-## Music (hybrid where noted)
-
-### `join` (hybrid)
-- **What it does:** Bot joins your current voice channel.
-- **Usage:** `join`
-
-### `mjoin`
-- **What it does:** Prefix alias for join.
-- **Usage:** `mjoin`
-
-### `leave` (hybrid)
-- **What it does:** Leaves voice and clears queue.
-- **Usage:** `leave`
-
-### `play <query|url>` (hybrid)
-- **What it does:** Queues/plays from YouTube URL or search query.
-- **Usage:** `play never gonna give you up`
-
-### `spotify <url> [max_tracks]` (hybrid)
-- **What it does:** Imports Spotify track/playlist into queue.
-- **Usage:** `spotify <spotify_url> 25`
-- **Note:** Requires Spotify client credentials in environment.
-
-### `skip` (hybrid)
-- **What it does:** Skips the current track.
-- **Usage:** `skip`
-
-### `queue` (hybrid)
-- **What it does:** Shows current queue.
-- **Usage:** `queue`
-
-### `now` (hybrid)
-- **What it does:** Shows current track.
-- **Usage:** `now`
-
-### `stop` (hybrid)
-- **What it does:** Stops playback, disconnects, clears queue.
-- **Usage:** `stop`
-
----
-
-## Utility / Messaging
-
-### `say <text> [| image_url]`
-- **What it does:** Sends a styled embed message as admin tool.
-- **Usage:** `say Hello world` or `say Hello | https://.../image.png`
-- **Permission:** Administrator
-
-### `adminpanel`
-- **What it does:** Opens the live admin status panel message.
-- **Usage:** `adminpanel`
-- **Permission:** Administrator
-
----
-
-## Where command behavior/config comes from
-
-- Welcome behavior: `config/welcome.json`
-- Rank visuals: `config/rank.json`
-- Leveling templates/channels/emojis: `config/leveling.json`
-- Tickets: `config/tickets.json`
-- Logging channels: `config/log_*.json`
-- Birthday channel: `config/birthdays.json`
-- Counter channel/settings: `config/count.json`
-
-If a command seems inactive, check:
-1. Bot status on Dashboard
-2. Correct channel/role IDs in config
-3. Permissions for the bot and the user
-4. Logs tab for runtime errors
-                """
-            )
-            layout.addWidget(guide)
-
-            close_btns = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
-            close_btns.rejected.connect(dlg.reject)
-            close_btns.accepted.connect(dlg.accept)
-            layout.addWidget(close_btns)
-
-            dlg.exec()
+            open_commands_guide(self)
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Commands", f"Failed to open commands guide: {e}")
 
@@ -2323,121 +1787,7 @@ If a command seems inactive, check:
             pass
 
     def _format_db_row(self, row: sqlite3.Row) -> str:
-        """Format a sqlite3.Row by detecting common message/timestamp columns.
-
-        Returns a single-line string like "[time] message" when possible,
-        otherwise falls back to a dict/string representation.
-        """
-        try:
-            data = dict(row)
-        except Exception:
-            try:
-                return str(tuple(row))
-            except Exception:
-                return str(row)
-
-        # prioritized keys commonly used for messages and timestamps
-        msg_priority = ("message", "msg", "text", "content", "body", "payload", "data")
-        ts_priority = ("created_at", "timestamp", "ts", "time", "date", "created")
-
-        def _extract_message(d):
-            # direct matches
-            for k in msg_priority:
-                if k in d and d.get(k) is not None:
-                    return d.get(k)
-            # substring matches
-            for k in d.keys():
-                lk = k.lower()
-                if any(x in lk for x in ("message", "text", "content", "body", "payload")):
-                    return d.get(k)
-            return None
-
-        def _extract_timestamp(d):
-            for k in ts_priority:
-                if k in d and d.get(k) is not None:
-                    return d.get(k)
-            for k in d.keys():
-                lk = k.lower()
-                if "time" in lk or "date" in lk or lk in ("ts", "timestamp", "created_at", "created"):
-                    return d.get(k)
-            return None
-
-        msg_val = _extract_message(data)
-        ts_val = _extract_timestamp(data)
-
-        # if message looks like JSON string, try to parse and extract inner message
-        if isinstance(msg_val, str):
-            s = msg_val.strip()
-            if (s.startswith('{') and s.endswith('}')) or (s.startswith('[') and s.endswith(']')):
-                try:
-                    inner = json.loads(s)
-                    if isinstance(inner, dict):
-                        m2 = _extract_message(inner)
-                        if m2 is not None:
-                            msg_val = m2
-                        else:
-                            msg_val = inner
-                except Exception:
-                    pass
-
-        # timestamp parsing helpers
-        ts_str = None
-        if ts_val is not None:
-            try:
-                if isinstance(ts_val, (int, float)):
-                    # handle milliseconds vs seconds
-                    v = float(ts_val)
-                    if v > 1e12:
-                        v = v / 1000.0
-                    ts_str = datetime.fromtimestamp(v).isoformat(sep=' ')
-                else:
-                    s = str(ts_val).strip()
-                    # numeric string
-                    if s.isdigit():
-                        v = float(s)
-                        if v > 1e12:
-                            v = v / 1000.0
-                        ts_str = datetime.fromtimestamp(v).isoformat(sep=' ')
-                    else:
-                        # try ISO parser
-                        try:
-                            # handle trailing Z
-                            s2 = s.replace('Z', '+00:00') if s.endswith('Z') else s
-                            ts_str = datetime.fromisoformat(s2).isoformat(sep=' ')
-                        except Exception:
-                            ts_str = s
-            except Exception:
-                try:
-                    ts_str = str(ts_val)
-                except Exception:
-                    ts_str = None
-
-        # normalize message into a single-line string
-        if msg_val is not None:
-            try:
-                if isinstance(msg_val, (dict, list)):
-                    m = json.dumps(msg_val, ensure_ascii=False)
-                else:
-                    m = str(msg_val)
-                m = m.replace('\n', ' ').strip()
-            except Exception:
-                m = str(msg_val)
-            if ts_str:
-                return f"[{ts_str}] {m}"
-            return m
-
-        # fallback: include timestamp if present
-        if ts_str:
-            try:
-                return f"[{ts_str}] {json.dumps(data, ensure_ascii=False)}"
-            except Exception:
-                return f"[{ts_str}] {str(data)}"
-
-        # last fallback
-        try:
-            return json.dumps(data, ensure_ascii=False)
-        except Exception:
-            return str(data)
+        return format_db_row(row)
 
     def _choose_rank_bg(self):
         try:
@@ -2466,28 +1816,15 @@ If a command seems inactive, check:
 
     def _rank_config_paths(self):
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        cfg_dir = os.path.join(repo_root, "config")
-        os.makedirs(cfg_dir, exist_ok=True)
-        cfg_path = os.path.join(cfg_dir, "rank.json")
-        return cfg_path
+        return config_json_path(repo_root, "rank.json")
 
     def _leveling_config_paths(self):
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        cfg_dir = os.path.join(repo_root, "config")
-        os.makedirs(cfg_dir, exist_ok=True)
-        cfg_path = os.path.join(cfg_dir, "leveling.json")
-        return cfg_path
+        return config_json_path(repo_root, "leveling.json")
 
     def _load_leveling_config(self):
         cfg_path = self._leveling_config_paths()
-        try:
-            if os.path.exists(cfg_path):
-                with open(cfg_path, "r", encoding="utf-8") as fh:
-                    cfg = json.load(fh) or {}
-            else:
-                cfg = {}
-        except Exception:
-            cfg = {}
+        cfg = load_json_dict(cfg_path)
 
         levelup_tpl = str(
             cfg.get(
@@ -2517,29 +1854,12 @@ If a command seems inactive, check:
 
     def _save_leveling_config(self, data: dict):
         cfg_path = self._leveling_config_paths()
-        try:
-            try:
-                with open(cfg_path, "r", encoding="utf-8") as fh:
-                    existing = json.load(fh) or {}
-            except Exception:
-                existing = {}
-            existing.update(data or {})
-            with open(cfg_path, "w", encoding="utf-8") as fh:
-                json.dump(existing, fh, indent=2, ensure_ascii=False)
-        except Exception:
-            pass
+        save_json_merged(cfg_path, data or {})
 
     def _load_rank_config(self):
         cfg_path = self._rank_config_paths()
         self._rank_config_path = cfg_path
-        try:
-            if os.path.exists(cfg_path):
-                with open(cfg_path, "r", encoding="utf-8") as fh:
-                    cfg = json.load(fh) or {}
-            else:
-                cfg = {}
-        except Exception:
-            cfg = {}
+        cfg = load_json_dict(cfg_path)
         self._rank_config = cfg
         # populate UI fields if empty
         try:
@@ -2577,18 +1897,7 @@ If a command seems inactive, check:
 
     def _save_rank_config(self, data: dict):
         cfg_path = self._rank_config_paths()
-        try:
-            try:
-                with open(cfg_path, "r", encoding="utf-8") as fh:
-                    existing = json.load(fh) or {}
-            except Exception:
-                existing = {}
-            existing.update(data or {})
-            with open(cfg_path, "w", encoding="utf-8") as fh:
-                json.dump(existing, fh, indent=2, ensure_ascii=False)
-            self._rank_config = existing
-        except Exception:
-            pass
+        self._rank_config = save_json_merged(cfg_path, data or {})
 
     def _save_rank_preview(self, reload_after: bool = False):
         try:
@@ -2797,65 +2106,17 @@ If a command seems inactive, check:
         self._load_font_choices(self.rk_info_font, selected_path)
 
     def _prune_backups(self, target_path: str, keep: int = 5):
-        try:
-            folder = os.path.dirname(target_path)
-            base = os.path.basename(target_path)
-            prefix = f"{base}.bak."
-            backups = []
-            for name in os.listdir(folder):
-                if not name.startswith(prefix):
-                    continue
-                full = os.path.join(folder, name)
-                try:
-                    mtime = os.path.getmtime(full)
-                except Exception:
-                    mtime = 0
-                backups.append((mtime, full))
-
-            backups.sort(key=lambda item: item[0], reverse=True)
-            for _, old_path in backups[max(0, int(keep)):]:
-                try:
-                    os.remove(old_path)
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        prune_backups(target_path, keep=keep)
 
     def _rotate_log_file(self, log_path: str, max_bytes: int = 2_000_000, keep: int = 5):
-        try:
-            if not log_path or not os.path.exists(log_path):
-                return
-            if os.path.getsize(log_path) < int(max_bytes):
-                return
-            import time
-
-            rotated = f"{log_path}.bak.{int(time.time())}"
-            os.replace(log_path, rotated)
-            self._prune_backups(log_path, keep=keep)
-        except Exception:
-            pass
+        rotate_log_file(log_path, max_bytes=max_bytes, keep=keep)
 
     def _open_tracked_writer(self, header: str):
-        try:
-            tracked_dir = os.path.join(self._repo_root, "data", "logs")
-            os.makedirs(tracked_dir, exist_ok=True)
-            tracked_path = os.path.join(tracked_dir, "tracked.log")
-            self._rotate_log_file(tracked_path, max_bytes=2_000_000, keep=5)
-
-            if getattr(self, "_tracked_fp", None):
-                try:
-                    self._tracked_fp.close()
-                except Exception:
-                    pass
-
-            self._tracked_fp = open(tracked_path, "a", encoding="utf-8", errors="ignore")
-            try:
-                self._tracked_fp.write(header + "\n")
-                self._tracked_fp.flush()
-            except Exception:
-                pass
-        except Exception:
-            pass
+        self._tracked_fp = open_tracked_writer(
+            self._repo_root,
+            getattr(self, "_tracked_fp", None),
+            header,
+        )
 
     def _save_preview(self, reload_after: bool = False):
         try:
@@ -3278,256 +2539,8 @@ If a command seems inactive, check:
             pass
 
 
-class ConfigEditor(QtWidgets.QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Edit Cog Configs")
-        self.resize(700, 420)
-
-        layout = QtWidgets.QVBoxLayout(self)
-
-        top = QtWidgets.QHBoxLayout()
-        self.list = QtWidgets.QListWidget()
-        self.load_button = QtWidgets.QPushButton("Refresh List")
-        top.addWidget(self.list, 1)
-        top.addWidget(self.load_button)
-        layout.addLayout(top)
-
-        self.table = QtWidgets.QTableWidget(0, 2)
-        self.table.setHorizontalHeaderLabels(["Key", "Value"])
-        self.table.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.table, 1)
-
-        row = QtWidgets.QHBoxLayout()
-        self.save_btn = QtWidgets.QPushButton("Save")
-        self.add_btn = QtWidgets.QPushButton("Add Key")
-        self.remove_btn = QtWidgets.QPushButton("Remove Selected")
-        row.addWidget(self.add_btn)
-        row.addWidget(self.remove_btn)
-        row.addStretch()
-        row.addWidget(self.save_btn)
-        layout.addLayout(row)
-
-        self.load_button.clicked.connect(self.refresh_list)
-        self.list.currentItemChanged.connect(self.on_select)
-        self.save_btn.clicked.connect(self.on_save)
-        self.add_btn.clicked.connect(self.on_add)
-        self.remove_btn.clicked.connect(self.on_remove)
-
-        self.repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        os.makedirs(os.path.join(self.repo_root, "config"), exist_ok=True)
-
-        self.refresh_list()
-
-    def refresh_list(self):
-        cfg_dir = os.path.join(self.repo_root, "config")
-        self.list.clear()
-        try:
-            for fn in sorted(os.listdir(cfg_dir)):
-                if fn.endswith(".json"):
-                    self.list.addItem(fn)
-        except Exception:
-            pass
-
-    def on_select(self, current, prev=None):
-        if current is None:
-            return
-        name = current.text()
-        path = os.path.join(self.repo_root, "config", name)
-        try:
-            with open(path, "r", encoding="utf-8") as fh:
-                data = json.load(fh)
-        except Exception:
-            data = {}
-
-        self.table.setRowCount(0)
-        if isinstance(data, dict):
-            for k, v in data.items():
-                r = self.table.rowCount()
-                self.table.insertRow(r)
-                key_item = QtWidgets.QTableWidgetItem(str(k))
-                key_item.setFlags(key_item.flags() & ~QtCore.Qt.ItemIsEditable)
-                # represent simple values; for complex, show JSON
-                if isinstance(v, (dict, list)):
-                    val_text = json.dumps(v, ensure_ascii=False)
-                else:
-                    val_text = str(v) if v is not None else ""
-                val_item = QtWidgets.QTableWidgetItem(val_text)
-                self.table.setItem(r, 0, key_item)
-                self.table.setItem(r, 1, val_item)
-
-    def on_save(self):
-        item = self.list.currentItem()
-        if not item:
-            return
-        name = item.text()
-        path = os.path.join(self.repo_root, "config", name)
-        data = {}
-        for r in range(self.table.rowCount()):
-            k = self.table.item(r, 0).text()
-            vtxt = self.table.item(r, 1).text()
-            # try to interpret as int, bool, null, float, or JSON
-            val = None
-            if vtxt.lower() in ("null", "none", ""):
-                val = None
-            elif vtxt.lower() in ("true", "false"):
-                val = vtxt.lower() == "true"
-            else:
-                try:
-                    val = int(vtxt)
-                except Exception:
-                    try:
-                        val = float(vtxt)
-                    except Exception:
-                        try:
-                            val = json.loads(vtxt)
-                        except Exception:
-                            val = vtxt
-            data[k] = val
-
-        try:
-            with open(path, "w", encoding="utf-8") as fh:
-                json.dump(data, fh, indent=2, ensure_ascii=False)
-            QtWidgets.QMessageBox.information(self, "Saved", f"Saved {name}")
-            # if parent has update_preview, call it so UI preview updates
-            try:
-                parent = self.parent()
-                if parent and hasattr(parent, "update_preview"):
-                    parent.update_preview()
-            except Exception:
-                pass
-        except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save: {e}")
-
-    def on_add(self):
-        r = self.table.rowCount()
-        self.table.insertRow(r)
-        self.table.setItem(r, 0, QtWidgets.QTableWidgetItem("NEW_KEY"))
-        self.table.setItem(r, 1, QtWidgets.QTableWidgetItem(""))
-
-    def on_remove(self):
-        rows = sorted({idx.row() for idx in self.table.selectedIndexes()}, reverse=True)
-        for r in rows:
-            self.table.removeRow(r)
-
-
 def main():
-    # Prevent running multiple UI instances: try to bind an internal lock port.
-    # If the port is already in use, assume another UI is running and exit.
-    _lock_sock = None
-    try:
-        _lock_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        _lock_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        _lock_sock.bind(("127.0.0.1", 8766))
-        _lock_sock.listen(1)
-    except Exception:
-        try:
-            print("Another UI instance seems to be running; exiting.")
-        except Exception:
-            pass
-        try:
-            if _lock_sock:
-                _lock_sock.close()
-        except Exception:
-            pass
-        return
-
-    app = QtWidgets.QApplication(sys.argv)
-    # Install a global event filter to trace mouse/key events for debugging
-    class _EventLogger(QtCore.QObject):
-        def eventFilter(self, obj, event):
-            try:
-                t = event.type()
-            except Exception:
-                t = None
-
-            # Only log discrete input events (avoid high-frequency events like MouseMove)
-            try:
-                interesting = (
-                    QtCore.QEvent.MouseButtonPress,
-                    QtCore.QEvent.MouseButtonRelease,
-                    QtCore.QEvent.KeyPress,
-                    QtCore.QEvent.KeyRelease,
-                    QtCore.QEvent.FocusIn,
-                    QtCore.QEvent.FocusOut,
-                )
-            except Exception:
-                interesting = ()
-
-            if t in interesting:
-                try:
-                    name = None
-                    if hasattr(QtCore.QEvent, 'typeToString'):
-                        try:
-                            name = QtCore.QEvent.typeToString(t)
-                        except Exception:
-                            name = str(t)
-                    else:
-                        name = str(t)
-                    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                    objname = getattr(obj, '__class__', type(obj)).__name__
-                    line = f"EVENT {datetime.now().isoformat()} {name} obj={objname}\n"
-                    # buffer instead of writing immediately
-                    try:
-                        buf = getattr(self, '_evbuf', None)
-                        if buf is None:
-                            self._evbuf = []
-                            buf = self._evbuf
-                        buf.append(line)
-                    except Exception:
-                        # best-effort fallback to direct append
-                        try:
-                            trace = os.path.join(repo_root, 'data', 'logs', 'ui_run_trace.log')
-                            with open(trace, 'a', encoding='utf-8') as fh:
-                                fh.write(line)
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-
-            return super().eventFilter(obj, event)
-
-    # Only enable event tracing if specifically requested via environment
-    if os.environ.get("UI_EVENT_TRACE") == "1":
-        try:
-            evlogger = _EventLogger(app)
-            app.installEventFilter(evlogger)
-        except Exception:
-            evlogger = None
-        # setup periodic flush of the event buffer to file to avoid blocking
-        def _flush_events():
-            try:
-                buf = getattr(evlogger, '_evbuf', None)
-                if not buf:
-                    return
-                repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                trace = os.path.join(repo_root, 'data', 'logs', 'ui_run_trace.log')
-                # swap buffer
-                towrite = None
-                try:
-                    towrite = list(buf)
-                    evlogger._evbuf.clear()
-                except Exception:
-                    towrite = buf
-                    evlogger._evbuf = []
-                try:
-                    with open(trace, 'a', encoding='utf-8') as fh:
-                        fh.writelines(towrite)
-                except Exception:
-                    pass
-            except Exception:
-                pass
-
-        try:
-            flush_timer = QtCore.QTimer(app)
-            flush_timer.setInterval(700)
-            flush_timer.timeout.connect(_flush_events)
-            flush_timer.start()
-        except Exception:
-            pass
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec())
+    sys.exit(run_main_window(MainWindow))
 
 
 if __name__ == "__main__":
