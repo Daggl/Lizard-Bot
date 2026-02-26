@@ -92,7 +92,7 @@ class MainWindow(QtWidgets.QMainWindow):
         console_layout = QtWidgets.QVBoxLayout(console_box)
         self.dash_console = QtWidgets.QPlainTextEdit()
         self.dash_console.setReadOnly(True)
-        self.dash_console.setMaximumBlockCount(1200)
+        self.dash_console.setMaximumBlockCount(0)
         self.dash_console.setPlaceholderText("Start the app via start_all.bat/start_all.py to see terminal output here.")
         console_layout.addWidget(self.dash_console)
 
@@ -935,6 +935,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._title_font_lookup = {}
         self._dash_console_path = os.path.join(self._repo_root, "data", "logs", "start_all_console.log")
         self._dash_console_pos = 0
+        self._dash_console_history_loaded = False
         try:
             self._load_title_font_choices()
             self._load_user_font_choices()
@@ -1000,6 +1001,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # dashboard live console poller (reads start_all supervisor output)
         try:
+            self._load_dashboard_console_history()
             self._dash_console_timer = QtCore.QTimer(self)
             self._dash_console_timer.timeout.connect(self._poll_dashboard_console)
             self._dash_console_timer.start(1000)
@@ -2365,6 +2367,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
             if not os.path.exists(path):
                 self._dash_console_pos = 0
+                self._dash_console_history_loaded = False
                 return
 
             try:
@@ -2390,6 +2393,27 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.dash_console.appendPlainText("\n".join(lines))
                 sb = self.dash_console.verticalScrollBar()
                 sb.setValue(sb.maximum())
+        except Exception:
+            pass
+
+    def _load_dashboard_console_history(self):
+        try:
+            if getattr(self, "_dash_console_history_loaded", False):
+                return
+            path = getattr(self, "_dash_console_path", None)
+            if not path or not os.path.exists(path):
+                return
+
+            with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                content = fh.read()
+                self._dash_console_pos = fh.tell()
+
+            if content:
+                self.dash_console.setPlainText(content)
+                sb = self.dash_console.verticalScrollBar()
+                sb.setValue(sb.maximum())
+
+            self._dash_console_history_loaded = True
         except Exception:
             pass
 
