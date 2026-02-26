@@ -126,7 +126,23 @@ If you are unsure which key is required, compare with `data/config.example.json`
 6. Validate in Discord with a test user/event.
 7. Use Logs tab for any issue.
 
-## 10) Quick placeholder reference
+## 10) Feature test commands (admin QA)
+
+Use this as a practical checklist to verify the bot after config changes.
+
+- Core health: `testping` (checks bot responsiveness and returns latency in ms)
+- Welcome: `testwelcome` (runs the real welcome flow using your own user as target)
+- Rank card: `testrank` or `testrank @User` (renders rank image and verifies card generation)
+- Leveling admin flow: `testlevel @User 50`, `testachievement @User Veteran` (writes XP/achievement data and verifies output)
+- Counting: `testcount` (executes `countstats` and `counttop` to verify stats + leaderboard reads)
+- Birthdays: `testbirthday 21.08` (stores a birthday date and confirms persistence)
+- Polls: `testpoll 45 Quick system check` (starts guided interactive poll wizard; test buttons/votes manually)
+- Tickets: `testticketpanel`, then `ticket` (posts panel and validates ticket creation path)
+- Music: `testmusic` (voice smoke test: join your voice channel, then leave)
+- Admin messaging: `testsay Hello world` (sends admin-formatted embed message)
+- Logs: `testlog system Test entry` (writes DB test log; also trigger real events for chat/voice/mod logs)
+
+## 11) Quick placeholder reference
 
 - Welcome: `{mention}`, `{rules_channel}`, `{verify_channel}`, `{aboutme_channel}`
 - Leveling: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{level}`, `{achievement_name}`, `{leading_emoji}`, `{trailing_emoji}`
@@ -142,6 +158,21 @@ This list describes all currently implemented commands in this bot build.
 
 Commands are prefix commands (example prefix is often `*`), unless noted as hybrid.
 Hybrid commands can also be available as slash commands depending on sync/setup.
+
+## Quick Test Matrix (Admin)
+
+Use these commands as the fastest per-feature smoke test:
+
+- Core: `testping` — confirms command dispatch + bot heartbeat and returns latency.
+- Welcome: `testwelcome` — executes full welcome message/banner path for the command caller.
+- Leveling/Rank: `testrank @User`, `testlevel @User 50`, `testachievement @User Demo` — validates XP write, rank render, achievement write.
+- Counting: `testcount` — validates read path of counting statistics and top users.
+- Birthdays: `testbirthday 21.08` — validates birthday save format and storage.
+- Polls: `testpoll 45 Quick check` — starts normal poll wizard to test interaction flow.
+- Tickets: `testticketpanel`, `ticket` — validates panel posting and ticket creation path.
+- Music: `testmusic` — validates voice connect/disconnect basics (requires you in voice).
+- Utility/Admin: `testsay Hello world`, `adminpanel` — validates admin embed send + status panel rendering.
+- Logs: `testlog system Quick check` + real events — validates DB log write plus channel log pipelines.
 
 ---
 
@@ -343,6 +374,60 @@ Hybrid commands can also be available as slash commands depending on sync/setup.
 ### `adminpanel`
 - **What it does:** Opens the live admin status panel message.
 - **Usage:** `adminpanel`
+- **Permission:** Administrator
+
+---
+
+## Admin Test Commands
+
+### `testping`
+- **What it does:** Runs a lightweight bot health check and prints measured websocket latency.
+- **Usage:** `testping`
+- **Permission:** Administrator
+
+### `testrank [member]`
+- **What it does:** Calls rank rendering for yourself or a target user to validate image generation and rank data read.
+- **Usage:** `testrank` or `testrank @User`
+- **Permission:** Administrator
+
+### `testcount`
+- **What it does:** Executes counting summary and top list commands to verify stored counting data can be read correctly.
+- **Usage:** `testcount`
+- **Permission:** Administrator
+
+### `testbirthday [DD.MM]`
+- **What it does:** Writes a birthday date for the caller (or today if omitted) and confirms persistence command output.
+- **Usage:** `testbirthday 21.08`
+- **Permission:** Administrator
+
+### `testpoll [seconds] [question]`
+- **What it does:** Starts the regular interactive poll flow and provides suggested input so poll UI/buttons can be tested quickly.
+- **Usage:** `testpoll 45 Quick check`
+- **Permission:** Administrator
+
+### `testticketpanel`
+- **What it does:** Posts the ticket creation panel so you can validate open-ticket button behavior end-to-end.
+- **Usage:** `testticketpanel`
+- **Permission:** Administrator
+
+### `testmusic`
+- **What it does:** Performs a minimal voice pipeline test by joining your current channel and leaving shortly after.
+- **Usage:** `testmusic`
+- **Permission:** Administrator
+
+### `testsay [text]`
+- **What it does:** Calls the admin `say` flow to verify embed formatting and message dispatch permissions.
+- **Usage:** `testsay Hello world`
+- **Permission:** Administrator
+
+### `testlevel <member> [xp]`
+- **What it does:** Adds XP through the leveling system and then displays rank card for quick before/after validation.
+- **Usage:** `testlevel @User 50`
+- **Permission:** Administrator
+
+### `testlog [category] [message]`
+- **What it does:** Writes a manual test entry into the log database so storage/log tooling can be validated independently of live events.
+- **Usage:** `testlog system Quick check`
 - **Permission:** Administrator
 
 ---

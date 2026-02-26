@@ -2,8 +2,9 @@ import json
 import os
 from typing import Dict, List
 
-from mybot.utils.config_store import config_json_path, load_json_dict, save_json, save_json_merged
-from mybot.utils.paths import REPO_ROOT
+from .config_store import (config_json_path, load_json_dict, save_json,
+                           save_json_merged)
+from .paths import REPO_ROOT
 
 _CACHE: Dict[str, dict] = {}
 _CACHE_MTIME: Dict[str, float] = {}

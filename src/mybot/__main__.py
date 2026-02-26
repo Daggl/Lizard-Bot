@@ -19,6 +19,12 @@ from .utils.paths import REPO_ROOT
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
+# Ensure `src` is on sys.path so absolute `mybot.*` imports work when
+# this package is launched as `python -m src.mybot`.
+SRC_ROOT = os.path.join(REPO_ROOT, "src")
+if SRC_ROOT not in sys.path:
+    sys.path.insert(0, SRC_ROOT)
+
 os.environ.setdefault("DC_BOT_REPO_ROOT", REPO_ROOT)
 
 # Resolve the callable `main` from either the package runner or a top-level

@@ -73,160 +73,60 @@ class AdminHelpView(discord.ui.View):
             title="📊 Admin Control Commands", color=discord.Color.red()
         )
 
+        embed.description = (
+            "All commands below are admin-only and grouped by purpose."
+        )
+
         embed.add_field(
-            name="*say",
+            name="🧰 Messaging & Panels",
             value=(
-                "Makes the bot send a message.\n"
-                "Syntax: *say #channel Message\n"
-                "Attach image: add |link at the end of the message\n"
-                "Example: *say Hello world!"
+                "`*say <text> [|image_url]`\n"
+                "↳ Send a bot embed message (optional image with `|url`)\n\n"
+                "`*adminpanel`\n"
+                "↳ Open live admin status panel"
             ),
             inline=False,
         )
 
         embed.add_field(
-            name="*adminpanel",
+            name="🏆 Leveling & XP",
             value=(
-                "Opens the status panel.\n\n"
-                "Shows:\n"
-                "• Bot ping & uptime\n"
-                "• Loaded cogs\n"
-                "• Server count\n"
-                "• Level system status\n"
-                "• Achievement status\n"
-                "• Reward roles control\n"
+                "`*rankuser @user` ↳ Show rank card for target user\n"
+                "`*addxp @user <amount>` ↳ Add XP + trigger normal checks\n"
+                "`*removexp @user <amount>` ↳ Remove XP (not below 0)\n"
+                "`*givexp @user <amount>` ↳ Direct admin XP utility\n"
+                "`*setxp @user <amount>` ↳ Set exact XP value\n"
+                "`*setlevel @user <level>` ↳ Set exact level\n"
+                "`*reset @user` ↳ Reset leveling stats completely"
             ),
             inline=False,
         )
 
         embed.add_field(
-            name="*addxp @user amount",
+            name="🏅 Achievements",
             value=(
-                "Manually add XP to a user.\n"
-                "Used for tests or events.\n\n"
-                "Automatically triggers:\n"
-                "• Level up check\n"
-                "• Achievement check\n"
-                "• Reward roles check\n"
+                "`*giveachievement @user <name>` ↳ Add achievement manually\n"
+                "`*removeachievement @user <name>` ↳ Remove achievement manually\n"
+                "`*testachievement @user <name>` ↳ Test helper for achievement grant"
             ),
             inline=False,
         )
 
         embed.add_field(
-            name="*removexp @user amount",
+            name="🎫 Tickets & Polls",
             value=(
-                "Manually remove XP from a user.\n"
-                "Useful for corrections or penalties.\n\n"
-                "Will not reduce levels below 0."
+                "`*ticketpanel` ↳ Post ticket panel\n"
+                "`*transcript <#channel>` ↳ Export transcript file\n"
+                "`*close_ticket <#channel>` ↳ Force close ticket\n"
+                "`*delete_poll <poll_id>` ↳ Delete poll from database"
             ),
             inline=False,
         )
 
         embed.add_field(
-            name="*giveachievement @user achievementname",
+            name="🔢 Counting",
             value=(
-                "Grants an achievement to a user.\n"
-                "Useful for special occasions or rewards.\n\n"
-                "Example: *giveachievement @user First Kill"
-            ),
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*removeachievement @user achievementname",
-            value=(
-                "Removes an achievement from a user.\n"
-                "Useful for corrections or penalties.\n\n"
-                "Example: *removeachievement @user First Kill"
-            ),
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*reset @user",
-            value="Resets a user's XP, level & achievements completely.",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*rankuser @user", value="Displays a user's rank.", inline=False
-        )
-
-        embed.add_field(
-            name="*delete_poll <poll_id>",
-            value=(
-                "Deletes a poll from the database by its ID.\n"
-                "Requires admin privileges."
-            ),
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*countreset",
-            value=(
-                "Resets the counting channel data and statistics.\n"
-                "Requires admin privileges."
-            ),
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*givexp @user amount",
-            value=(
-                "Add XP to a user (alternative admin XP command).\n"
-                "Useful for events and manual adjustments."
-            ),
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*setxp @user amount",
-            value=(
-                "Set a user's XP to a specific value.\n" "Requires admin privileges."
-            ),
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*setlevel @user level",
-            value=(
-                "Set a user's level to a specific value.\n" "Requires admin privileges."
-            ),
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*testachievement @user name",
-            value=(
-                "Grant a named achievement to a user for testing.\n"
-                "Requires admin privileges."
-            ),
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*ticketpanel",
-            value=(
-                "Posts the ticket creation panel for users to open support tickets.\n"
-                "Requires admin privileges."
-            ),
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*transcript <#channel>",
-            value=(
-                "Saves and returns a transcript for the specified ticket channel.\n"
-                "Requires admin privileges."
-            ),
-            inline=False,
-        )
-
-        embed.add_field(
-            name="*close_ticket <#channel>",
-            value=(
-                "Force-close and archive a ticket channel.\n"
-                "Requires admin privileges."
+                "`*countreset` ↳ Reset counting stats/data"
             ),
             inline=False,
         )
@@ -309,14 +209,84 @@ class AdminHelpView(discord.ui.View):
 
         embed = discord.Embed(title="🧪 Test Commands", color=discord.Color.green())
 
+        embed.description = (
+            "Use these commands to verify each major bot feature quickly.\n"
+            "(Only where it makes practical sense.)"
+        )
+
         embed.add_field(
-            name="*ping",
-            value="A simple test command to check the bot's responsiveness.",
+            name="*testping",
+            value="Checks bot responsiveness and shows current latency.",
             inline=False,
         )
 
         embed.add_field(
-            name="*testwelcome", value="Tests the welcome system.", inline=False
+            name="*testwelcome",
+            value="Tests the welcome flow with your own account.",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="*testrank [@user]",
+            value="Tests rank card rendering for yourself or a target user.",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="*testcount",
+            value="Runs counting feature checks (stats + leaderboard).",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="*testbirthday [DD.MM]",
+            value="Tests birthday save flow (uses today if no date is provided).",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="*testpoll [seconds] [question]",
+            value="Starts a guided poll smoke test via the normal poll wizard.",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="*testticketpanel",
+            value="Posts the ticket panel to validate ticket entry flow.",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="*testmusic",
+            value="Smoke-tests music voice pipeline (join + leave).",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="*testsay [text]",
+            value="Tests admin message/embed output.",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="*testlevel @user [xp]",
+            value="Tests leveling write + rank output in one command.",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="*testachievement @user name",
+            value="Tests manual achievement assignment.",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="*testlog [category] [message]",
+            value=(
+                "Writes a manual test entry into the log database.\n"
+                "Use event-based checks additionally for chat/voice/mod/server/member logs."
+            ),
+            inline=False,
         )
 
         await interaction.response.edit_message(embed=embed)
