@@ -26,6 +26,7 @@ from log_format import format_db_row
 from log_poller import LogPoller
 from repo_paths import get_repo_root
 from runtime import run_main_window
+from setup_wizard import SetupWizardDialog
 from startup_trace import write_startup_trace
 from ui_tabs import build_configs_tab, build_dashboard_tab, build_logs_tab, build_welcome_and_rank_tabs
 
@@ -760,6 +761,78 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Commands", f"Failed to open commands guide: {e}")
 
+    def on_open_setup_wizard(self):
+        try:
+            dlg = SetupWizardDialog(self._repo_root, self, read_only=self._is_safe_read_only())
+            if dlg.exec() == QtWidgets.QDialog.Accepted:
+                try:
+                    self._load_rank_config()
+                except Exception:
+                    pass
+                try:
+                    self._load_leveling_config()
+                except Exception:
+                    pass
+                try:
+                    self._load_welcome_message_from_file()
+                except Exception:
+                    pass
+                try:
+                    self.update_preview()
+                except Exception:
+                    pass
+                try:
+                    self._set_status("Setup Wizard: saved")
+                except Exception:
+                    pass
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Setup Wizard", f"Failed to open setup wizard: {e}")
+
+    def _is_safe_read_only(self) -> bool:
+        try:
+            chk = getattr(self, "safe_read_only_chk", None)
+            return bool(chk.isChecked()) if chk is not None else False
+        except Exception:
+            return False
+
+    def _is_safe_auto_reload_off(self) -> bool:
+        try:
+            chk = getattr(self, "safe_auto_reload_off_chk", None)
+            return bool(chk.isChecked()) if chk is not None else False
+        except Exception:
+            return False
+
+    def _apply_safe_debug_logging(self):
+        try:
+            chk = getattr(self, "safe_debug_logging_chk", None)
+            enabled = bool(chk.isChecked()) if chk is not None else False
+            if enabled:
+                os.environ["UI_DEBUG"] = "1"
+            else:
+                os.environ.pop("UI_DEBUG", None)
+        except Exception:
+            pass
+
+    def on_safe_mode_flags_changed(self, *_args):
+        try:
+            read_only = self._is_safe_read_only()
+            debug_on = bool(getattr(self, "safe_debug_logging_chk", None).isChecked()) if getattr(self, "safe_debug_logging_chk", None) is not None else False
+            auto_reload_off = self._is_safe_auto_reload_off()
+            self._apply_safe_debug_logging()
+            self._save_ui_settings(
+                {
+                    "safe_read_only": read_only,
+                    "safe_debug_logging": debug_on,
+                    "safe_auto_reload_off": auto_reload_off,
+                }
+            )
+            try:
+                self._set_status("Safe Mode updated")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     def _event_tester_channel_id_text(self) -> str:
         try:
             line_edit = getattr(self, "event_test_channel_id", None)
@@ -1198,6 +1271,26 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.event_test_channel_id.setText(channel_id)
         except Exception:
             pass
+        try:
+            read_only = bool(self._ui_settings.get("safe_read_only", False))
+            debug_on = bool(self._ui_settings.get("safe_debug_logging", False))
+            auto_reload_off = bool(self._ui_settings.get("safe_auto_reload_off", False))
+            for attr, value in (
+                ("safe_read_only_chk", read_only),
+                ("safe_debug_logging_chk", debug_on),
+                ("safe_auto_reload_off_chk", auto_reload_off),
+            ):
+                chk = getattr(self, attr, None)
+                if chk is None:
+                    continue
+                try:
+                    chk.blockSignals(True)
+                    chk.setChecked(value)
+                finally:
+                    chk.blockSignals(False)
+            self._apply_safe_debug_logging()
+        except Exception:
+            pass
 
     def _save_ui_settings(self, data: dict):
         path = self._ui_settings_path()
@@ -1283,6 +1376,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _save_rank_preview(self, reload_after: bool = False):
         try:
+            if self._is_safe_read_only():
+                QtWidgets.QMessageBox.information(self, "Safe Mode", "Nur lesen ist aktiv: Speichern ist deaktiviert.")
+                return
+            if reload_after and self._is_safe_auto_reload_off():
+                reload_after = False
+                QtWidgets.QMessageBox.information(self, "Safe Mode", "Auto reload ist aus: Speichern ohne Reload.")
             data = {}
             name = self.rk_name.text() or None
             bg = self.rk_bg_path.text() or None
@@ -1502,6 +1601,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _save_preview(self, reload_after: bool = False):
         try:
+            if self._is_safe_read_only():
+                QtWidgets.QMessageBox.information(self, "Safe Mode", "Nur lesen ist aktiv: Speichern ist deaktiviert.")
+                return
+            if reload_after and self._is_safe_auto_reload_off():
+                reload_after = False
+                QtWidgets.QMessageBox.information(self, "Safe Mode", "Auto reload ist aus: Speichern ohne Reload.")
             try:
                 self._set_status("Preview: saving...")
             except Exception:

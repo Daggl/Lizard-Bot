@@ -50,10 +50,12 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.reload_btn = QtWidgets.QPushButton("Reload Cogs")
     window.shutdown_btn = QtWidgets.QPushButton("Shutdown Bot")
     window.restart_btn = QtWidgets.QPushButton("Restart Bot & UI")
+    window.setup_wizard_btn = QtWidgets.QPushButton("Setup Wizard")
 
     for w in (window.refresh_btn, window.reload_btn, window.shutdown_btn):
         btn_row.addWidget(w)
     btn_row.addWidget(window.restart_btn)
+    btn_row.addWidget(window.setup_wizard_btn)
 
     tools_box = QtWidgets.QGroupBox("Tools")
     tools_layout = QtWidgets.QHBoxLayout(tools_box)
@@ -87,6 +89,17 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     test_layout.addStretch()
     dash_layout.addWidget(test_box)
 
+    safe_box = QtWidgets.QGroupBox("Safe Mode")
+    safe_layout = QtWidgets.QHBoxLayout(safe_box)
+    window.safe_read_only_chk = QtWidgets.QCheckBox("Nur lesen")
+    window.safe_debug_logging_chk = QtWidgets.QCheckBox("Debug logging an")
+    window.safe_auto_reload_off_chk = QtWidgets.QCheckBox("Auto reload aus")
+    safe_layout.addWidget(window.safe_read_only_chk)
+    safe_layout.addWidget(window.safe_debug_logging_chk)
+    safe_layout.addWidget(window.safe_auto_reload_off_chk)
+    safe_layout.addStretch()
+    dash_layout.addWidget(safe_box)
+
     dash_layout.addWidget(monitor_box)
     dash_layout.addWidget(console_box)
 
@@ -107,8 +120,12 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.commands_btn.clicked.connect(window.on_open_commands_guide)
     window.shutdown_btn.clicked.connect(window.on_shutdown)
     window.restart_btn.clicked.connect(window.on_restart_and_restart_ui)
+    window.setup_wizard_btn.clicked.connect(window.on_open_setup_wizard)
     window.run_event_test_btn.clicked.connect(window.on_run_admin_test_command)
     window.event_test_channel_id.editingFinished.connect(window.on_event_test_channel_changed)
+    window.safe_read_only_chk.stateChanged.connect(window.on_safe_mode_flags_changed)
+    window.safe_debug_logging_chk.stateChanged.connect(window.on_safe_mode_flags_changed)
+    window.safe_auto_reload_off_chk.stateChanged.connect(window.on_safe_mode_flags_changed)
 
     tabs.addTab(dash, "Dashboard")
 
