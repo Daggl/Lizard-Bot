@@ -294,47 +294,49 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event):
         try:
-            try:
-                self.status_timer.stop()
-            except Exception:
-                pass
-            try:
-                self.log_timer.stop()
-            except Exception:
-                pass
-            try:
-                if getattr(self, "_alive_timer", None):
-                    self._alive_timer.stop()
-            except Exception:
-                pass
-            try:
-                if getattr(self, "_dash_console_timer", None):
-                    self._dash_console_timer.stop()
-            except Exception:
-                pass
-            try:
-                if getattr(self, "_log_poller", None):
-                    self._log_poller.stop()
-            except Exception:
-                pass
-            try:
-                if getattr(self, "_log_fp", None):
-                    self._log_fp.close()
-            except Exception:
-                pass
-            try:
-                if getattr(self, "_tracked_fp", None):
-                    self._tracked_fp.close()
-            except Exception:
-                pass
-            try:
-                if getattr(self, "_db_conn", None):
-                    self._db_conn.close()
-            except Exception:
-                pass
+            self._cleanup_runtime_resources()
         except Exception:
             pass
         return super().closeEvent(event)
+
+    def _safe_stop_timer(self, name: str):
+        try:
+            timer = getattr(self, name, None)
+            if timer:
+                timer.stop()
+        except Exception:
+            pass
+
+    def _safe_close_attr(self, name: str):
+        try:
+            obj = getattr(self, name, None)
+            if obj:
+                obj.close()
+        except Exception:
+            pass
+        finally:
+            try:
+                setattr(self, name, None)
+            except Exception:
+                pass
+
+    def _cleanup_runtime_resources(self):
+        for timer_name in ("status_timer", "log_timer", "_alive_timer", "_dash_console_timer"):
+            self._safe_stop_timer(timer_name)
+        try:
+            poller = getattr(self, "_log_poller", None)
+            if poller:
+                poller.stop()
+        except Exception:
+            pass
+        finally:
+            try:
+                self._log_poller = None
+            except Exception:
+                pass
+        self._safe_close_attr("_log_fp")
+        self._safe_close_attr("_tracked_fp")
+        self._safe_close_attr("_db_conn")
 
     def send_cmd_async(self, cmd: dict, timeout: float = 1.0, cb=None):
         def _worker():
@@ -947,25 +949,11 @@ class MainWindow(QtWidgets.QMainWindow):
             path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Choose log file", start_dir, "Log files (*.log *.txt);;All files (*)")
             if path:
                 try:
-                    # close any previous file or DB connection
-                    try:
-                        self._stop_log_poller()
-                        if getattr(self, "_db_conn", None):
-                            try:
-                                self._db_conn.close()
-                            except Exception:
-                                pass
-                            self._db_conn = None
-                            self._db_table = None
-                            self._db_last_rowid = 0
-                        if getattr(self, "_log_fp", None):
-                            try:
-                                self._log_fp.close()
-                            except Exception:
-                                pass
-                            self._log_fp = None
-                    except Exception:
-                        pass
+                    self._stop_log_poller()
+                    self._safe_close_attr("_db_conn")
+                    self._db_table = None
+                    self._db_last_rowid = 0
+                    self._safe_close_attr("_log_fp")
 
                     # handle sqlite DB files
                     if path.lower().endswith(('.db', '.sqlite')):
