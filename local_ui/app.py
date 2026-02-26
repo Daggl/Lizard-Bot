@@ -221,6 +221,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._title_font_lookup = {}
         self._dash_console_path = os.path.join(self._repo_root, "data", "logs", "start_all_console.log")
         self._dash_console_pos = 0
+        self._ui_settings = {}
         try:
             self._load_title_font_choices()
             self._load_user_font_choices()
@@ -237,6 +238,10 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
         try:
             self._load_leveling_config()
+        except Exception:
+            pass
+        try:
+            self._load_ui_settings()
         except Exception:
             pass
         # helper to update status label and force UI repaint
@@ -463,7 +468,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._set_status("Preview: requesting...")
             except Exception:
                 pass
-            name = self.pv_name.text() or "NewMember"
             overrides = {
                 "BANNER_PATH": self.pv_banner_path.text() or None,
                 "BG_MODE": self.pv_bg_mode.currentData() or "cover",
@@ -489,12 +493,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.send_cmd_async(
                 {"action": "ping"},
                 timeout=0.6,
-                cb=lambda ping, name=name, overrides=overrides: self._on_preview_ping_result(ping, name, overrides),
+                cb=lambda ping, overrides=overrides: self._on_preview_ping_result(ping, overrides),
             )
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Preview error", str(e))
 
-    def _on_preview_ping_result(self, ping: dict, name: str, overrides: dict):
+    def _on_preview_ping_result(self, ping: dict, overrides: dict):
         try:
             if not ping.get("ok"):
                 QtWidgets.QMessageBox.warning(self, "Preview", f"Control API not available, using local banner ({ping.get('error')})")
@@ -504,7 +508,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     pass
                 return
             self.send_cmd_async(
-                {"action": "banner_preview", "name": name, "overrides": overrides},
+                {"action": "banner_preview", "overrides": overrides},
                 timeout=5.0,
                 cb=self._on_preview_banner_result,
             )
@@ -544,10 +548,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._set_status("Rank Preview: requesting...")
             except Exception:
                 pass
-            name = self.rk_name.text() or (self.pv_name.text() or "NewMember")
             # prefer explicit field; if empty, use persisted config
             bg = self.rk_bg_path.text() or self._rank_config.get("BG_PATH") if getattr(self, "_rank_config", None) is not None else None
-            req = {"action": "rank_preview", "name": name}
+            req = {"action": "rank_preview"}
             if bg:
                 req["bg_path"] = bg
             req["bg_mode"] = self.rk_bg_mode.currentData() or "cover"
@@ -756,6 +759,83 @@ class MainWindow(QtWidgets.QMainWindow):
             open_commands_guide(self)
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Commands", f"Failed to open commands guide: {e}")
+
+    def _event_tester_channel_id_text(self) -> str:
+        try:
+            line_edit = getattr(self, "event_test_channel_id", None)
+            if line_edit is None:
+                return ""
+            return str(line_edit.text() or "").strip()
+        except Exception:
+            return ""
+
+    def on_event_test_channel_changed(self):
+        try:
+            raw = self._event_tester_channel_id_text()
+            if raw and not raw.isdigit():
+                QtWidgets.QMessageBox.warning(self, "Event Tester", "Channel ID must contain only digits.")
+                return
+            self._save_ui_settings({"event_test_channel_id": raw})
+            try:
+                self._set_status("Event Tester: channel saved")
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _run_event_test(self, command_name: str, label: str):
+        try:
+            try:
+                self._set_status(f"Event Tester: {label}...")
+            except Exception:
+                pass
+            req = {"action": "event_test", "test": command_name}
+            channel_id = self._event_tester_channel_id_text()
+            if channel_id:
+                if not channel_id.isdigit():
+                    QtWidgets.QMessageBox.warning(self, "Event Tester", "Channel ID must contain only digits.")
+                    return
+                req["channel_id"] = channel_id
+            self.send_cmd_async(
+                req,
+                timeout=25.0,
+                cb=lambda r, lbl=label: self._on_event_test_result(lbl, r),
+            )
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Event Tester", f"Failed to request test: {e}")
+
+    def on_run_admin_test_command(self):
+        combo = getattr(self, "event_test_combo", None)
+        if combo is None:
+            QtWidgets.QMessageBox.warning(self, "Event Tester", "Test selector not available.")
+            return
+        command_name = str(combo.currentData() or "").strip()
+        label = str(combo.currentText() or command_name)
+        if not command_name:
+            QtWidgets.QMessageBox.warning(self, "Event Tester", "Please select a test command.")
+            return
+        self._run_event_test(command_name, label)
+
+    def _on_event_test_result(self, label: str, r: dict):
+        try:
+            if r.get("ok"):
+                details = r.get("details")
+                msg = f"{label} test finished successfully."
+                if details:
+                    msg = f"{msg}\n\n{details}"
+                QtWidgets.QMessageBox.information(self, "Event Tester", msg)
+                try:
+                    self._set_status(f"Event Tester: {label} done")
+                except Exception:
+                    pass
+            else:
+                QtWidgets.QMessageBox.warning(self, "Event Tester", f"{label} test failed: {r}")
+                try:
+                    self._set_status(f"Event Tester: {label} failed")
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _on_reload_result(self, r: dict):
         if r.get("ok"):
@@ -1104,6 +1184,25 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _leveling_config_paths(self):
         return config_json_path(self._repo_root, "leveling.json")
+
+    def _ui_settings_path(self):
+        return config_json_path(self._repo_root, "local_ui.json")
+
+    def _load_ui_settings(self):
+        path = self._ui_settings_path()
+        cfg = load_json_dict(path)
+        self._ui_settings = cfg if isinstance(cfg, dict) else {}
+        channel_id = str(self._ui_settings.get("event_test_channel_id", "") or "").strip()
+        try:
+            if hasattr(self, "event_test_channel_id"):
+                self.event_test_channel_id.setText(channel_id)
+        except Exception:
+            pass
+
+    def _save_ui_settings(self, data: dict):
+        path = self._ui_settings_path()
+        merged = save_json_merged(path, data or {})
+        self._ui_settings = merged if isinstance(merged, dict) else dict(data or {})
 
     def _load_leveling_config(self):
         cfg_path = self._leveling_config_paths()

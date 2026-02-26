@@ -135,6 +135,12 @@ class AdminTools(commands.Cog):
         if poll_cmd is None:
             await ctx.send("❌ Command not available: `poll`")
             return
+        if getattr(ctx, "is_ui_event_test", False):
+            await ctx.send(
+                "✅ Poll test (UI mode): poll command found. "
+                "Interactive poll wizard skipped to avoid timeout in Event Tester."
+            )
+            return
         await ctx.send(
             "ℹ️ `testpoll` uses the normal interactive poll wizard.\n"
             f"Provide this duration when asked: **{max(10, min(duration, 3600))}** seconds\n"
@@ -149,7 +155,12 @@ class AdminTools(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def testmusic(self, ctx):
+    async def testmusic(
+        self,
+        ctx,
+        *,
+        url: str = "https://www.youtube.com/watch?v=5jGWMtEhS1c",
+    ):
         if not getattr(ctx.author, "voice", None) or not ctx.author.voice.channel:
             await ctx.send("❌ Join a voice channel first for `testmusic`.")
             return
@@ -157,8 +168,9 @@ class AdminTools(commands.Cog):
         ok_join = await self._invoke_or_error(ctx, "join")
         if not ok_join:
             return
-        await asyncio.sleep(2)
-        await self._invoke_or_error(ctx, "leave")
+        ok_play = await self._invoke_or_error(ctx, "play", query=url)
+        if ok_play:
+            await ctx.send(f"✅ Music test started: {url}")
 
     @commands.command()
     @commands.has_permissions(administrator=True)

@@ -13,6 +13,7 @@ import os
 import importlib
 import sys
 import time
+from types import SimpleNamespace
 from typing import Dict
 import inspect
 from discord.ext import commands as _commands
@@ -44,6 +45,237 @@ def _clear_config_cache():
 # simple auth token read from env
 CONTROL_API_TOKEN = os.getenv("CONTROL_API_TOKEN")
 CONTROL_API_STARTED_AT = time.time()
+
+ADMIN_TEST_COMMANDS = {
+    "testping",
+    "testrank",
+    "testcount",
+    "testbirthday",
+    "testpoll",
+    "testticketpanel",
+    "testmusic",
+    "testsay",
+    "testlevel",
+    "testachievement",
+    "testlog",
+}
+
+
+def _pick_test_guild(bot):
+    try:
+        guilds = list(getattr(bot, "guilds", []) or [])
+    except Exception:
+        guilds = []
+    return guilds[0] if guilds else None
+
+
+def _pick_test_channel(guild, requested_channel_id=None):
+    if guild is None:
+        return None
+    me = getattr(guild, "me", None)
+    channels = list(getattr(guild, "text_channels", []) or [])
+    if requested_channel_id not in (None, ""):
+        try:
+            chan_id = int(requested_channel_id)
+        except Exception:
+            return None
+        try:
+            requested = guild.get_channel(chan_id)
+        except Exception:
+            requested = None
+        if requested is None:
+            return None
+        try:
+            perms = requested.permissions_for(me) if me is not None else None
+            if perms is None or getattr(perms, "send_messages", False):
+                return requested
+        except Exception:
+            return None
+        return None
+    for channel in channels:
+        try:
+            perms = channel.permissions_for(me) if me is not None else None
+            if perms is None or getattr(perms, "send_messages", False):
+                return channel
+        except Exception:
+            continue
+    return channels[0] if channels else None
+
+
+def _pick_test_voice_channel(guild):
+    if guild is None:
+        return None
+    me = getattr(guild, "me", None)
+    channels = list(getattr(guild, "voice_channels", []) or [])
+    for channel in channels:
+        try:
+            perms = channel.permissions_for(me) if me is not None else None
+            if perms is None:
+                continue
+            if getattr(perms, "connect", False) and getattr(perms, "speak", False):
+                return channel
+        except Exception:
+            continue
+    return channels[0] if channels else None
+
+
+def _pick_test_member(guild):
+    if guild is None:
+        return None
+    try:
+        members = list(getattr(guild, "members", []) or [])
+    except Exception:
+        members = []
+    for member in members:
+        try:
+            if not getattr(member, "bot", False):
+                return member
+        except Exception:
+            continue
+    if members:
+        return members[0]
+    return getattr(guild, "me", None)
+
+
+class _UiTestContext:
+    def __init__(self, bot, guild, channel, author):
+        self.bot = bot
+        self.guild = guild
+        self.channel = channel
+        self.author = author
+        self.is_ui_event_test = True
+        self.sent_messages = []
+        self.message = _UiTestMessage(author=author, channel=channel, guild=guild)
+
+    @property
+    def voice_client(self):
+        try:
+            return getattr(self.guild, "voice_client", None)
+        except Exception:
+            return None
+
+    async def trigger_typing(self):
+        try:
+            if self.channel is not None:
+                await self.channel.trigger_typing()
+        except Exception:
+            pass
+
+    async def send(self, content=None, **kwargs):
+        text = ""
+        if content is not None:
+            try:
+                text = str(content)
+            except Exception:
+                text = ""
+        self.sent_messages.append(text)
+        if self.channel is None:
+            raise RuntimeError("No channel available for ctx.send")
+        try:
+            return await self.channel.send(content=content, **kwargs)
+        except Exception as exc:
+            raise RuntimeError(f"ctx.send failed: {exc}") from exc
+
+    async def invoke(self, command, *args, **kwargs):
+        if command is None:
+            raise RuntimeError("Command not found")
+        callback = getattr(command, "callback", None)
+        if callback is None:
+            raise RuntimeError("Command callback missing")
+        cog = getattr(command, "cog", None)
+        if cog is not None:
+            return await callback(cog, self, *args, **kwargs)
+        return await callback(self, *args, **kwargs)
+
+
+class _UiTestMessage:
+    def __init__(self, author=None, channel=None, guild=None):
+        self.author = author
+        self.channel = channel
+        self.guild = guild
+        try:
+            self.id = int(time.time() * 1000)
+        except Exception:
+            self.id = 0
+
+    async def delete(self):
+        return None
+
+
+def _test_command_kwargs(command_name: str, member):
+    if command_name == "testachievement":
+        return {"member": member, "name": "UI Test Achievement"}
+    if command_name == "testpoll":
+        return {"duration": 45, "question": "System test poll"}
+    if command_name == "testsay":
+        return {"text": "✅ Test message from UI Event Tester"}
+    if command_name == "testlevel":
+        return {"member": member, "xp": 50}
+    if command_name == "testlog":
+        return {"category": "system", "message": "Manual log test from UI Event Tester"}
+    return {}
+
+
+async def _run_admin_test(bot, command_name: str, requested_channel_id=None):
+    admin_cog = bot.get_cog("AdminTools") or bot.cogs.get("AdminTools")
+    if admin_cog is None:
+        return {"ok": False, "error": "AdminTools cog not loaded"}
+
+    command = bot.get_command(command_name)
+    if command is None:
+        return {"ok": False, "error": f"Command not found: {command_name}"}
+
+    guild = _pick_test_guild(bot)
+    if guild is None:
+        return {"ok": False, "error": "Bot is in no guild; cannot run admin test"}
+
+    channel = _pick_test_channel(guild, requested_channel_id=requested_channel_id)
+    if channel is None:
+        if requested_channel_id not in (None, ""):
+            return {"ok": False, "error": f"Requested channel not available: {requested_channel_id}"}
+        return {"ok": False, "error": "No text channel available for admin test"}
+
+    member = _pick_test_member(guild)
+    if member is None:
+        return {"ok": False, "error": "No member available for member-based admin tests"}
+
+    bot_member = getattr(guild, "me", None)
+    ctx_author = bot_member if command_name == "testrank" and bot_member is not None else member
+
+    if command_name == "testmusic":
+        voice_channel = _pick_test_voice_channel(guild)
+        if voice_channel is None:
+            return {"ok": False, "error": "No voice channel available for testmusic"}
+        ctx_author = SimpleNamespace(
+            id=getattr(member, "id", 0),
+            name=getattr(member, "name", "UI Test User"),
+            display_name=getattr(member, "display_name", "UI Test User"),
+            mention=getattr(member, "mention", "@UI-Test"),
+            voice=SimpleNamespace(channel=voice_channel),
+        )
+
+    ctx = _UiTestContext(bot, guild, channel, ctx_author)
+    kwargs = _test_command_kwargs(command_name, member)
+
+    try:
+        await ctx.invoke(command, **kwargs)
+    except TypeError as exc:
+        return {"ok": False, "error": f"{command_name} invalid args: {exc}"}
+    except Exception as exc:
+        return {"ok": False, "error": f"{command_name} failed: {exc}"}
+
+    lines = [
+        f"Executed: {command_name}",
+        f"Guild: {getattr(guild, 'name', 'unknown')}",
+        f"Channel: {getattr(channel, 'name', 'unknown')} ({getattr(channel, 'id', 'n/a')})",
+    ]
+    if ctx.sent_messages:
+        preview = "\n".join(m for m in ctx.sent_messages[-5:] if m)
+        if preview:
+            lines.append("")
+            lines.append("Output:")
+            lines.append(preview)
+    return {"ok": True, "details": "\n".join(lines)}
 
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, bot):
@@ -225,7 +457,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             # Request the welcome cog to render a banner for a dummy member and
             # return the PNG as base64 so the UI can show exactly what the bot
             # would send.
-            name = req.get("name") or "NewMember"
+            name = req.get("name") or getattr(getattr(bot, "user", None), "name", None) or "NewMember"
             avatar_url = req.get("avatar_url")
             overrides = req.get("overrides") if isinstance(req.get("overrides"), dict) else None
 
@@ -300,12 +532,26 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             except Exception as e:
                 resp = {"ok": False, "error": str(e)}
 
+        elif action == "event_test":
+            test_name = str(req.get("test") or "").strip().lower()
+            channel_id = req.get("channel_id")
+            if not test_name:
+                resp = {"ok": False, "error": "missing test command"}
+            elif test_name not in ADMIN_TEST_COMMANDS:
+                resp = {
+                    "ok": False,
+                    "error": f"unsupported test command: {test_name}",
+                    "available": sorted(ADMIN_TEST_COMMANDS),
+                }
+            else:
+                resp = await _run_admin_test(bot, test_name, requested_channel_id=channel_id)
+
         else:
             resp = {"ok": False, "error": "unknown action"}
 
         # Rank card preview: generate rank image for a dummy member using Rank cog
         if action == "rank_preview":
-            name = req.get("name") or "NewMember"
+            name = req.get("name") or getattr(getattr(bot, "user", None), "name", None) or "NewMember"
             avatar_url = req.get("avatar_url")
             try:
                 rank_cog = bot.get_cog("Rank") or bot.cogs.get("Rank")
