@@ -14,6 +14,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from mybot.utils.paths import REPO_ROOT
+from mybot.utils.env_store import ensure_env_file
 
 # ensure project root's `src` is importable (when running as module)
 _src = os.path.join(REPO_ROOT, "src")
@@ -56,6 +57,11 @@ DEFAULT_EXTENSIONS = [
 # ==========================================================
 # LOAD ENVIRONMENT / TOKEN
 # ==========================================================
+
+try:
+    ensure_env_file(REPO_ROOT)
+except Exception:
+    pass
 
 # loads variables from .env file
 load_dotenv()
@@ -143,9 +149,6 @@ def _import_control_api_module():
 
 
 def _start_control_api_task(bot_instance: commands.Bot) -> Optional[asyncio.Task]:
-    if os.getenv("LOCAL_UI_ENABLE") != "1":
-        return None
-
     control_api_module = _import_control_api_module()
     if control_api_module is None:
         return None

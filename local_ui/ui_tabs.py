@@ -55,7 +55,6 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     for w in (window.refresh_btn, window.reload_btn, window.shutdown_btn):
         btn_row.addWidget(w)
     btn_row.addWidget(window.restart_btn)
-    btn_row.addWidget(window.setup_wizard_btn)
 
     tools_box = QtWidgets.QGroupBox("Tools")
     tools_layout = QtWidgets.QHBoxLayout(tools_box)
@@ -109,6 +108,7 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     help_layout = QtWidgets.QHBoxLayout(help_box)
     window.tutorial_btn = QtWidgets.QPushButton("Bot Tutorial")
     window.commands_btn = QtWidgets.QPushButton("Commands")
+    help_layout.addWidget(window.setup_wizard_btn)
     help_layout.addWidget(window.tutorial_btn)
     help_layout.addWidget(window.commands_btn)
     help_layout.addStretch()
@@ -705,6 +705,7 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     window.lv_rewards_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
     window.lv_rewards_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
     window.lv_rewards_table.horizontalHeader().setStretchLastSection(True)
+    window.lv_rewards_table.setSortingEnabled(True)
     window.lv_rewards_table.setMinimumHeight(170)
     lv_form.addRow("Level rewards:", window.lv_rewards_table)
 
@@ -716,24 +717,27 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     rewards_btns.addStretch()
     lv_form.addRow("", rewards_btns)
 
-    window.lv_achievements_table = QtWidgets.QTableWidget(0, 3)
-    window.lv_achievements_table.setHorizontalHeaderLabels(["Achievement", "Type", "Value"])
+    window.lv_achievements_table = QtWidgets.QTableWidget(0, 4)
+    window.lv_achievements_table.setHorizontalHeaderLabels(["Achievement", "Type", "Value", "Image (URL/Path)"])
     window.lv_achievements_table.verticalHeader().setVisible(False)
     window.lv_achievements_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
     window.lv_achievements_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
     window.lv_achievements_table.horizontalHeader().setStretchLastSection(True)
+    window.lv_achievements_table.setSortingEnabled(True)
     window.lv_achievements_table.setMinimumHeight(220)
     lv_form.addRow("Achievements:", window.lv_achievements_table)
 
     ach_btns = QtWidgets.QHBoxLayout()
     window.lv_achievements_add_btn = QtWidgets.QPushButton("Add achievement")
     window.lv_achievements_remove_btn = QtWidgets.QPushButton("Remove selected")
+    window.lv_achievements_choose_image_btn = QtWidgets.QPushButton("Choose image...")
     ach_btns.addWidget(window.lv_achievements_add_btn)
     ach_btns.addWidget(window.lv_achievements_remove_btn)
+    ach_btns.addWidget(window.lv_achievements_choose_image_btn)
     ach_btns.addStretch()
     lv_form.addRow("", ach_btns)
 
-    req_hint = QtWidgets.QLabel("Type supports: messages, voice_time, level, xp")
+    req_hint = QtWidgets.QLabel("Type supports: messages, voice_time, level, xp • Image supports URL or local path")
     req_hint.setStyleSheet("color:#9aa0a6;")
     lv_form.addRow("", req_hint)
 
@@ -780,6 +784,7 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     window.lv_rewards_remove_btn.clicked.connect(window.on_leveling_remove_reward_row)
     window.lv_achievements_add_btn.clicked.connect(window.on_leveling_add_achievement_row)
     window.lv_achievements_remove_btn.clicked.connect(window.on_leveling_remove_achievement_row)
+    window.lv_achievements_choose_image_btn.clicked.connect(window.on_leveling_choose_achievement_image)
     window.lv_save.clicked.connect(lambda: window._save_leveling_settings(reload_after=False))
     window.lv_save_reload.clicked.connect(lambda: window._save_leveling_settings(reload_after=True))
     window.rk_save.clicked.connect(lambda: window._save_rank_preview(reload_after=False))

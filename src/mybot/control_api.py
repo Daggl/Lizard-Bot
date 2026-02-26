@@ -42,8 +42,6 @@ def _clear_config_cache():
     except Exception:
         pass
 
-# simple auth token read from env
-CONTROL_API_TOKEN = os.getenv("CONTROL_API_TOKEN")
 CONTROL_API_STARTED_AT = time.time()
 
 ADMIN_TEST_COMMANDS = {
@@ -66,6 +64,23 @@ def _repo_root() -> str:
         return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     except Exception:
         return os.getcwd()
+
+
+def _current_control_api_token() -> str:
+    try:
+        try:
+            from mybot.utils.env_store import env_file_path, load_env_dict
+        except Exception:
+            from src.mybot.utils.env_store import env_file_path, load_env_dict
+
+        path = env_file_path(_repo_root())
+        data = load_env_dict(path)
+        token = str(data.get("CONTROL_API_TOKEN", "") or "").strip()
+        if token:
+            return token
+    except Exception:
+        pass
+    return str(os.getenv("CONTROL_API_TOKEN", "") or "").strip()
 
 
 def _build_guild_snapshot(bot):
@@ -348,8 +363,9 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             return
 
         # simple token auth: require matching token when CONTROL_API_TOKEN is set
-        if CONTROL_API_TOKEN:
-            if req.get("token") != CONTROL_API_TOKEN:
+        control_api_token = _current_control_api_token()
+        if control_api_token:
+            if req.get("token") != control_api_token:
                 resp = {"ok": False, "error": "unauthorized"}
                 writer.write((json.dumps(resp) + "\n").encode())
                 await writer.drain()

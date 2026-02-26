@@ -17,11 +17,13 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-3. Create `.env` in project root
+3. Create `.env` in project root (or let `start_all.bat` generate it once)
 
 ```env
 DISCORD_TOKEN=your_bot_token_here
 ```
+
+`start_all.bat` now auto-creates a default `.env` on first run if it does not exist.
 
 4. Start bot
 

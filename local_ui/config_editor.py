@@ -3,7 +3,11 @@ import os
 
 from PySide6 import QtCore, QtWidgets
 
+from config_io import ensure_env_file, load_env_dict, save_env_dict
 from repo_paths import get_repo_root
+
+
+_HIDDEN_ENV_KEYS = {"LOCAL_UI_ENABLE"}
 
 
 class ConfigEditor(QtWidgets.QDialog):
@@ -44,12 +48,14 @@ class ConfigEditor(QtWidgets.QDialog):
 
         self.repo_root = get_repo_root()
         os.makedirs(os.path.join(self.repo_root, "config"), exist_ok=True)
+        ensure_env_file(self.repo_root)
 
         self.refresh_list()
 
     def refresh_list(self):
         cfg_dir = os.path.join(self.repo_root, "config")
         self.list.clear()
+        self.list.addItem(".env")
         try:
             for fn in sorted(os.listdir(cfg_dir)):
                 if fn.endswith(".json"):
@@ -61,20 +67,31 @@ class ConfigEditor(QtWidgets.QDialog):
         if current is None:
             return
         name = current.text()
-        path = os.path.join(self.repo_root, "config", name)
-        try:
-            with open(path, "r", encoding="utf-8") as fh:
-                data = json.load(fh)
-        except Exception:
-            data = {}
+        is_env = name == ".env"
+        if is_env:
+            try:
+                path, _created = ensure_env_file(self.repo_root)
+                data = load_env_dict(path)
+            except Exception:
+                data = {}
+        else:
+            path = os.path.join(self.repo_root, "config", name)
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+            except Exception:
+                data = {}
 
         self.table.setRowCount(0)
         if isinstance(data, dict):
             for k, v in data.items():
+                if is_env and str(k) in _HIDDEN_ENV_KEYS:
+                    continue
                 r = self.table.rowCount()
                 self.table.insertRow(r)
                 key_item = QtWidgets.QTableWidgetItem(str(k))
-                key_item.setFlags(key_item.flags() & ~QtCore.Qt.ItemIsEditable)
+                if not is_env:
+                    key_item.setFlags(key_item.flags() & ~QtCore.Qt.ItemIsEditable)
                 if isinstance(v, (dict, list)):
                     val_text = json.dumps(v, ensure_ascii=False)
                 else:
@@ -88,11 +105,20 @@ class ConfigEditor(QtWidgets.QDialog):
         if not item:
             return
         name = item.text()
-        path = os.path.join(self.repo_root, "config", name)
+        is_env = name == ".env"
         data = {}
         for r in range(self.table.rowCount()):
-            k = self.table.item(r, 0).text()
-            vtxt = self.table.item(r, 1).text()
+            key_item = self.table.item(r, 0)
+            val_item = self.table.item(r, 1)
+            if key_item is None:
+                continue
+            k = key_item.text().strip()
+            if not k:
+                continue
+            vtxt = val_item.text() if val_item is not None else ""
+            if is_env:
+                data[k] = str(vtxt)
+                continue
             val = None
             if vtxt.lower() in ("null", "none", ""):
                 val = None
@@ -112,8 +138,12 @@ class ConfigEditor(QtWidgets.QDialog):
             data[k] = val
 
         try:
-            with open(path, "w", encoding="utf-8") as fh:
-                json.dump(data, fh, indent=2, ensure_ascii=False)
+            if is_env:
+                save_env_dict(self.repo_root, data)
+            else:
+                path = os.path.join(self.repo_root, "config", name)
+                with open(path, "w", encoding="utf-8") as fh:
+                    json.dump(data, fh, indent=2, ensure_ascii=False)
             QtWidgets.QMessageBox.information(self, "Saved", f"Saved {name}")
             try:
                 parent = self.parent()

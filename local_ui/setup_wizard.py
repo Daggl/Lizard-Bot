@@ -1,6 +1,6 @@
 from PySide6 import QtWidgets
 
-from config_io import config_json_path, load_json_dict, save_json_merged
+from config_io import config_json_path, ensure_env_file, load_env_dict, load_json_dict, save_env_merged, save_json_merged
 from control_api_client import send_cmd
 
 
@@ -29,6 +29,7 @@ ROLE_FIELD_KEYS = [
     ("tickets", "SUPPORT_ROLE_ID", "Support role"),
 ]
 
+HIDDEN_WIZARD_ENV_KEYS = {"APP_ENV"}
 
 class GuildSnapshotPickerDialog(QtWidgets.QDialog):
     def __init__(self, snapshot_payload: dict, parent=None):
@@ -143,6 +144,8 @@ class SetupWizardDialog(QtWidgets.QDialog):
         self._read_only = bool(read_only)
         self._fields = {}
         self._configs = {}
+        self._env_values = None
+        self._load_env_values()
 
         self.setWindowTitle("Setup Wizard")
         self.resize(860, 640)
@@ -164,8 +167,12 @@ class SetupWizardDialog(QtWidgets.QDialog):
         nav = QtWidgets.QHBoxLayout()
         self.back_btn = QtWidgets.QPushButton("Back")
         self.next_btn = QtWidgets.QPushButton("Next")
+        self.help_btn = QtWidgets.QPushButton("Help")
+        self.help_btn.setFlat(True)
+        self.help_btn.setToolTip("Show help for the current setup step")
         self.finish_btn = QtWidgets.QPushButton("Finish")
         self.cancel_btn = QtWidgets.QPushButton("Cancel")
+        nav.addWidget(self.help_btn)
         nav.addStretch()
         nav.addWidget(self.back_btn)
         nav.addWidget(self.next_btn)
@@ -175,9 +182,11 @@ class SetupWizardDialog(QtWidgets.QDialog):
 
         self.back_btn.clicked.connect(self._go_back)
         self.next_btn.clicked.connect(self._go_next)
+        self.help_btn.clicked.connect(self._show_current_page_help)
         self.finish_btn.clicked.connect(self._save_and_close)
         self.cancel_btn.clicked.connect(self.reject)
         self.snapshot_btn.clicked.connect(self._open_snapshot_picker)
+        self.stack.currentChanged.connect(lambda _i: self._update_nav())
 
         self._build_pages()
         self._load_existing_values()
@@ -218,6 +227,13 @@ class SetupWizardDialog(QtWidgets.QDialog):
         self._fields[(file_name, key)] = (line, "str")
         layout.addRow(label, line)
 
+    def _add_env_row(self, layout: QtWidgets.QFormLayout, key: str, label: str, placeholder: str = ""):
+        line = QtWidgets.QLineEdit()
+        if placeholder:
+            line.setPlaceholderText(placeholder)
+        self._fields[("__env__", key)] = (line, "env")
+        layout.addRow(label, line)
+
     def _add_multiline_row(self, layout: QtWidgets.QFormLayout, file_name: str, key: str, label: str):
         text = QtWidgets.QPlainTextEdit()
         text.setMinimumHeight(130)
@@ -244,37 +260,26 @@ class SetupWizardDialog(QtWidgets.QDialog):
         return form
 
     def _build_pages(self):
+        form_env = self._make_page(
+            "1/3 • Environment",
+            "Configure runtime tokens saved to .env in the repository root.",
+        )
+        for key in self._env_keys_for_wizard():
+            self._add_env_row(form_env, key, key)
+
         form_channels = self._make_page(
-            "1/4 • Channel IDs",
+            "2/3 • Channel IDs",
             "Set key channels used by welcome, logs, counting, birthdays, leveling and tickets.",
         )
         for file_name, key, label in CHANNEL_FIELD_KEYS:
             self._add_id_row(form_channels, file_name, key, label)
 
         form_roles = self._make_page(
-            "2/4 • Role IDs",
+            "3/3 • Role IDs",
             "Configure verification/default/support roles used by autorole and tickets.",
         )
         for file_name, key, label in ROLE_FIELD_KEYS:
             self._add_id_row(form_roles, file_name, key, label)
-
-        form_welcome = self._make_page(
-            "3/4 • Welcome Defaults",
-            "Define the welcome banner title, example name and default welcome message.",
-        )
-        self._add_text_row(form_welcome, "welcome", "EXAMPLE_NAME", "Example name", "NewMember")
-        self._add_text_row(form_welcome, "welcome", "BANNER_TITLE", "Banner title", "WELCOME")
-        self._add_multiline_row(form_welcome, "welcome", "WELCOME_MESSAGE", "Welcome message")
-
-        form_rank = self._make_page(
-            "4/4 • Rank Defaults",
-            "Set initial rank card appearance defaults.",
-        )
-        self._add_text_row(form_rank, "rank", "EXAMPLE_NAME", "Rank example name", "NewMember")
-        self._add_text_row(form_rank, "rank", "NAME_COLOR", "Name color", "#FFFFFF")
-        self._add_text_row(form_rank, "rank", "INFO_COLOR", "Info color", "#C8C8C8")
-        self._add_text_row(form_rank, "rank", "NAME_FONT_SIZE", "Name font size", "60")
-        self._add_text_row(form_rank, "rank", "INFO_FONT_SIZE", "Info font size", "40")
 
     def _open_snapshot_picker(self):
         try:
@@ -309,9 +314,26 @@ class SetupWizardDialog(QtWidgets.QDialog):
             except Exception:
                 continue
 
+    def _load_env_values(self):
+        env_path, _created = ensure_env_file(self._repo_root)
+        self._env_values = load_env_dict(env_path)
+
+    def _env_keys_for_wizard(self) -> list[str]:
+        keys = [
+            str(k).strip()
+            for k in (self._env_values or {}).keys()
+            if str(k).strip() and str(k).strip() not in HIDDEN_WIZARD_ENV_KEYS
+        ]
+        if keys:
+            return keys
+        return ["DISCORD_TOKEN", "CONTROL_API_TOKEN", "WEB_INTERNAL_TOKEN"]
+
     def _load_existing_values(self):
         for (file_name, key), (widget, field_type) in self._fields.items():
-            current = self._cfg(file_name).get(key, "")
+            if file_name == "__env__":
+                current = (self._env_values or {}).get(key, "")
+            else:
+                current = self._cfg(file_name).get(key, "")
             if current is None:
                 current = ""
             if field_type == "text":
@@ -341,6 +363,8 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 if not raw:
                     continue
                 value = self._coerce_int(raw, label)
+            elif field_type == "env":
+                value = raw
             elif field_type == "str":
                 if not raw:
                     continue
@@ -354,9 +378,14 @@ class SetupWizardDialog(QtWidgets.QDialog):
     def _save_and_close(self):
         try:
             updates = self._collect_updates()
+            env_updates = updates.pop("__env__", None)
+            if not self._validate_env_before_save(env_updates):
+                return
             for file_name, data in updates.items():
                 path = config_json_path(self._repo_root, f"{file_name}.json")
                 save_json_merged(path, data)
+            if env_updates is not None:
+                save_env_merged(self._repo_root, env_updates)
             QtWidgets.QMessageBox.information(
                 self,
                 "Setup Wizard",
@@ -365,6 +394,26 @@ class SetupWizardDialog(QtWidgets.QDialog):
             self.accept()
         except Exception as exc:
             QtWidgets.QMessageBox.warning(self, "Setup Wizard", f"Failed to save setup: {exc}")
+
+    def _validate_env_before_save(self, env_updates: dict | None) -> bool:
+        env_data = dict(self._env_values or {})
+        if isinstance(env_updates, dict):
+            env_data.update(env_updates)
+
+        token = str(env_data.get("DISCORD_TOKEN", "") or "").strip()
+        if token:
+            return True
+
+        result = QtWidgets.QMessageBox.warning(
+            self,
+            "Setup Wizard",
+            "DISCORD_TOKEN ist leer.\n\n"
+            "Die UI startet trotzdem, aber der Bot bleibt offline bis ein Token gesetzt ist.\n\n"
+            "Trotzdem speichern?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        return result == QtWidgets.QMessageBox.Yes
 
     def _go_back(self):
         i = self.stack.currentIndex()
@@ -386,3 +435,51 @@ class SetupWizardDialog(QtWidgets.QDialog):
         self.back_btn.setEnabled(i > 0)
         self.next_btn.setEnabled(i < total - 1)
         self.finish_btn.setEnabled((i == total - 1) and (not self._read_only))
+
+    def _show_current_page_help(self):
+        page = self.stack.currentIndex()
+        title, text = self._help_text_for_page(page)
+        QtWidgets.QMessageBox.information(self, title, text)
+
+    def _help_text_for_page(self, page_index: int) -> tuple[str, str]:
+        if page_index == 0:
+            return (
+                "Help • Environment",
+                "Diese Seite bearbeitet deine .env Variablen für Tokens und Integrationen.\n\n"
+                "Wo bekommst du die Werte?\n"
+                "- DISCORD_TOKEN: Discord Developer Portal → Bot → Token\n"
+                "- CONTROL_API_TOKEN: frei wählbarer geheimer Wert; muss in Bot und UI gleich sein\n"
+                "- WEB_INTERNAL_TOKEN: frei wählbarer geheimer Wert für Bot↔Web Backend\n"
+                "- SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET: Spotify Developer Dashboard\n"
+                "- DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET: Discord OAuth2 App\n"
+                "- OAUTH_REDIRECT_URI: OAuth Callback URL deines Web-Backends\n"
+                "- APP_ORIGIN / APP_ENV: Frontend-URL und Umgebung (z. B. production)\n\n"
+                "Hinweis: Ohne DISCORD_TOKEN bleibt der Bot offline.",
+            )
+
+        if page_index == 1:
+            return (
+                "Help • Channel IDs",
+                "Hier setzt du Channel-IDs für Welcome, Logs, Count, Birthdays, Tickets und Achievements.\n\n"
+                "Woher bekommst du die IDs?\n"
+                "- In Discord Entwicklermodus aktivieren\n"
+                "- Rechtsklick auf Kanal → ID kopieren\n"
+                "- Nur Zahlen eintragen (keine #, keine Namen)\n\n"
+                "Tipp: Über 'Guild Snapshot Picker' kannst du viele IDs automatisch übernehmen.",
+            )
+
+        if page_index == 2:
+            return (
+                "Help • Role IDs",
+                "Hier setzt du Rollen-IDs für Verifizierung, Default/Starter und Support.\n\n"
+                "Woher bekommst du die IDs?\n"
+                "- In Discord Entwicklermodus aktivieren\n"
+                "- Rechtsklick auf Rolle → ID kopieren\n"
+                "- Nur Zahlen eintragen\n\n"
+                "Tipp: Auch Rollen können über den 'Guild Snapshot Picker' vorausgefüllt werden.",
+            )
+
+        return (
+            "Help",
+            "Keine Hilfe für diese Seite verfügbar.",
+        )

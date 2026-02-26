@@ -90,6 +90,11 @@ def get_level_rewards() -> dict:
 
 
 def get_achievements() -> dict:
+    entries = get_achievement_entries()
+    return {name: data.get("requirements", {}) for name, data in entries.items()}
+
+
+def get_achievement_entries() -> dict:
     cfg = _cfg()
     raw = cfg.get("ACHIEVEMENTS")
     if not isinstance(raw, dict):
@@ -101,8 +106,15 @@ def get_achievements() -> dict:
         name = str(ach_name or "").strip()
         if not name or not isinstance(requirements, dict):
             continue
+
+        image_value = ""
+        req_source = requirements
+        if "requirements" in requirements and isinstance(requirements.get("requirements"), dict):
+            req_source = requirements.get("requirements") or {}
+            image_value = str(requirements.get("image", "") or "").strip()
+
         req_out = {}
-        for key, value in requirements.items():
+        for key, value in req_source.items():
             key_s = str(key or "").strip()
             if key_s not in allowed_keys:
                 continue
@@ -113,5 +125,5 @@ def get_achievements() -> dict:
             if ivalue > 0:
                 req_out[key_s] = ivalue
         if req_out:
-            out[name] = req_out
+            out[name] = {"requirements": req_out, "image": image_value}
     return out

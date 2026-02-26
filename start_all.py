@@ -16,6 +16,8 @@ import subprocess
 import signal
 import time
 
+from src.mybot.utils.env_store import ensure_env_file
+
 
 UI_RESTART_EXIT_CODE = 42
 _CONSOLE_LOG_PATH = None
@@ -120,6 +122,13 @@ def main():
     global _CONSOLE_LOG_PATH
     here = os.path.dirname(os.path.abspath(__file__))
     _maybe_reexec_into_venv(here)
+
+    try:
+        _env_path, created = ensure_env_file(here)
+        if created:
+            print("Created missing .env with default keys. Please set DISCORD_TOKEN.")
+    except Exception as e:
+        print(f"Warning: failed to ensure .env exists: {e}")
 
     dotenv_path = os.path.join(here, ".env")
     env = os.environ.copy()
