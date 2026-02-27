@@ -1,4 +1,4 @@
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtGui
 
 
 def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
@@ -143,6 +143,10 @@ def build_logs_tab(window, tabs: QtWidgets.QTabWidget):
 
     window.log_text = QtWidgets.QPlainTextEdit()
     window.log_text.setReadOnly(True)
+    try:
+        window.log_text.setFont(QtGui.QFont("Consolas", 10))
+    except Exception:
+        pass
     logs_layout.addWidget(window.log_text)
 
     window.choose_log_btn.clicked.connect(window._choose_log_file)

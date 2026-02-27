@@ -11,116 +11,151 @@ def format_db_row(row) -> str:
         except Exception:
             return str(row)
 
-    msg_priority = ("message", "msg", "text", "content", "body", "payload", "data")
-    ts_priority = ("created_at", "timestamp", "ts", "time", "date", "created")
-
-    def _extract_message(d):
-        for k in msg_priority:
-            if k in d and d.get(k) is not None:
-                return d.get(k)
-        for k in d.keys():
-            lk = k.lower()
-            if any(x in lk for x in ("message", "text", "content", "body", "payload")):
-                return d.get(k)
-        return None
-
-    def _extract_timestamp(d):
-        for k in ts_priority:
-            if k in d and d.get(k) is not None:
-                return d.get(k)
-        for k in d.keys():
-            lk = k.lower()
-            if "time" in lk or "date" in lk or lk in ("ts", "timestamp", "created_at", "created"):
-                return d.get(k)
-        return None
-
-    msg_val = _extract_message(data)
-    ts_val = _extract_timestamp(data)
-
-    if msg_val is None:
-        try:
-            category = str(data.get("category") or "").strip()
-            log_type = str(data.get("type") or "").strip()
-            user_name = str(data.get("user_name") or "").strip()
-            moderator_name = str(data.get("moderator_name") or "").strip()
-            channel_name = str(data.get("channel_name") or "").strip()
-            parts = []
-            if category:
-                parts.append(category)
-            if log_type:
-                parts.append(log_type)
-            if user_name:
-                parts.append(f"user={user_name}")
-            if moderator_name:
-                parts.append(f"mod={moderator_name}")
-            if channel_name:
-                parts.append(f"channel={channel_name}")
-            if parts:
-                msg_val = " | ".join(parts)
-        except Exception:
-            pass
-
-    if isinstance(msg_val, str):
-        s = msg_val.strip()
-        if (s.startswith('{') and s.endswith('}')) or (s.startswith('[') and s.endswith(']')):
+    def _pick(*keys):
+        for key in keys:
             try:
-                inner = json.loads(s)
-                if isinstance(inner, dict):
-                    m2 = _extract_message(inner)
-                    if m2 is not None:
-                        msg_val = m2
-                    else:
-                        msg_val = inner
+                val = data.get(key)
+                if val is not None and str(val).strip() != "":
+                    return val
             except Exception:
-                pass
+                continue
+        return None
 
-    ts_str = None
-    if ts_val is not None:
+    def _format_ts(value):
+        if value is None:
+            return "-"
         try:
-            if isinstance(ts_val, (int, float)):
-                v = float(ts_val)
+            if isinstance(value, (int, float)):
+                v = float(value)
                 if v > 1e12:
                     v = v / 1000.0
-                ts_str = datetime.fromtimestamp(v).isoformat(sep=' ')
-            else:
-                s = str(ts_val).strip()
-                if s.isdigit():
-                    v = float(s)
-                    if v > 1e12:
-                        v = v / 1000.0
-                    ts_str = datetime.fromtimestamp(v).isoformat(sep=' ')
-                else:
-                    try:
-                        s2 = s.replace('Z', '+00:00') if s.endswith('Z') else s
-                        ts_str = datetime.fromisoformat(s2).isoformat(sep=' ')
-                    except Exception:
-                        ts_str = s
-        except Exception:
+                return datetime.fromtimestamp(v).strftime("%Y-%m-%d %H:%M:%S")
+            s = str(value).strip()
+            if not s:
+                return "-"
+            if s.isdigit():
+                v = float(s)
+                if v > 1e12:
+                    v = v / 1000.0
+                return datetime.fromtimestamp(v).strftime("%Y-%m-%d %H:%M:%S")
+            s2 = s.replace("Z", "+00:00") if s.endswith("Z") else s
             try:
-                ts_str = str(ts_val)
+                return datetime.fromisoformat(s2).strftime("%Y-%m-%d %H:%M:%S")
             except Exception:
-                ts_str = None
-
-    if msg_val is not None:
-        try:
-            if isinstance(msg_val, (dict, list)):
-                m = json.dumps(msg_val, ensure_ascii=False)
-            else:
-                m = str(msg_val)
-            m = m.replace('\n', ' ').strip()
+                return s
         except Exception:
-            m = str(msg_val)
-        if ts_str:
-            return f"[{ts_str}] {m}"
-        return m
+            return "-"
 
-    if ts_str:
+    def _to_text(value):
+        if value is None:
+            return "-"
         try:
-            return f"[{ts_str}] {json.dumps(data, ensure_ascii=False)}"
+            if isinstance(value, (dict, list)):
+                return json.dumps(value, ensure_ascii=False)
+            return str(value).replace("\n", " ").strip() or "-"
         except Exception:
-            return f"[{ts_str}] {str(data)}"
+            return "-"
 
-    try:
-        return json.dumps(data, ensure_ascii=False)
-    except Exception:
-        return str(data)
+    def _truncate(text: str, max_len: int = 180) -> str:
+        value = (text or "-").strip()
+        if len(value) <= max_len:
+            return value
+        return value[: max_len - 1].rstrip() + "…"
+
+    def _marker_for(action_text: str, category_text: str, content_value: str) -> str:
+        hay = " ".join([action_text or "", category_text or "", content_value or ""]).lower()
+        if any(x in hay for x in ("error", "failed", "exception", "traceback", "denied", "forbidden")):
+            return "🔴"
+        if any(x in hay for x in ("ban", "kick", "timeout", "mute", "warn", "unban", "mod", "admin")):
+            return "🟥"
+        if any(x in hay for x in ("ticket", "transcript", "support")):
+            return "🟧"
+        if any(x in hay for x in ("voice", "tempvoice", "join", "leave", "move")):
+            return "🟪"
+        if any(x in hay for x in ("message", "chat", "say", "poll", "edit")):
+            return "🟦"
+        if any(x in hay for x in ("create", "created", "success", "enabled", "start", "open")):
+            return "🟩"
+        if any(x in hay for x in ("delete", "remove", "close", "disabled", "stop")):
+            return "🟨"
+        return "⚪"
+
+    def _detect_status(action_text: str, content_value: str):
+        hay = " ".join([action_text or "", content_value or ""]).lower()
+        if any(x in hay for x in ("error", "failed", "exception", "traceback", "denied", "forbidden", "timeout")):
+            return "failed"
+        if any(x in hay for x in ("ok", "success", "created", "enabled", "started", "updated", "done")):
+            return "ok"
+        return "-"
+
+    ts_val = _pick("timestamp", "created_at", "ts", "time", "date", "created")
+    user_name = _pick("user_name", "username", "member_name", "moderator_name", "by_name")
+    user_id = _pick("user_id", "user", "member_id", "moderator_id", "by")
+    moderator_name = _pick("moderator_name", "mod_name", "admin_name", "actor_name", "by_name")
+    moderator_id = _pick("moderator_id", "mod_id", "admin_id", "actor_id", "by")
+
+    log_type = _pick("type", "event", "action")
+    category = _pick("category")
+    action = _to_text(log_type)
+    if action == "-" and category is not None:
+        action = _to_text(category)
+    elif category is not None and str(category).strip():
+        action = f"{_to_text(category)}:{action}"
+
+    channel_name = _pick("channel_name", "to_name", "from_name")
+    channel_id = _pick("channel_id", "channel", "to", "from")
+    if channel_name is not None and channel_id is not None:
+        channel = f"{_to_text(channel_name)} ({_to_text(channel_id)})"
+    elif channel_name is not None:
+        channel = _to_text(channel_name)
+    elif channel_id is not None:
+        channel = _to_text(channel_id)
+    else:
+        channel = "-"
+
+    content = _pick("message", "msg", "text", "content", "body", "payload", "data", "extra")
+    content_text = _to_text(content)
+    if content_text == "-":
+        reason = _pick("reason", "details", "detail")
+        if reason is not None:
+            content_text = _to_text(reason)
+    explicit_status = _pick("status", "result", "outcome", "success")
+
+    user_name_text = _to_text(user_name)
+    user_id_text = _to_text(user_id)
+    action_text = _truncate(action)
+    channel_text = _truncate(channel)
+    content_text = _truncate(content_text)
+    marker = _marker_for(action_text, _to_text(category), content_text)
+    action_text = f"{marker} {action_text}"
+
+    mod_name_text = _to_text(moderator_name)
+    mod_id_text = _to_text(moderator_id)
+    if mod_name_text != "-" and mod_id_text != "-":
+        moderator_text = f"{mod_name_text} ({mod_id_text})"
+    elif mod_name_text != "-":
+        moderator_text = mod_name_text
+    elif mod_id_text != "-":
+        moderator_text = mod_id_text
+    else:
+        moderator_text = "-"
+
+    status_text = _to_text(explicit_status)
+    if status_text == "-":
+        status_text = _detect_status(action_text, content_text)
+
+    fields = [
+        ("Time", _format_ts(ts_val)),
+        ("Username", user_name_text),
+        ("UserID", user_id_text),
+        ("Action", action_text),
+        ("Channel", channel_text),
+        ("Content", content_text),
+        ("Moderator", moderator_text),
+        ("Status", status_text),
+    ]
+
+    key_width = max(len(key) for key, _ in fields)
+    lines = [f"{key.ljust(key_width)} | {value}" for key, value in fields]
+    separator = "-" * 96
+    return "\n".join(lines + [separator])
