@@ -3,8 +3,8 @@
 Usage:
     python -m src.mybot
 
-This simply delegates to the existing `bot.py` runner so behaviour
-remains unchanged while allowing a package-style invocation.
+This prefers the package runtime runner and falls back to top-level
+`bot.py` for backward compatibility.
 """
 
 import asyncio
@@ -27,8 +27,8 @@ if SRC_ROOT not in sys.path:
 
 os.environ.setdefault("DC_BOT_REPO_ROOT", REPO_ROOT)
 
-# Resolve the callable `main` from either the package runner or a top-level
-# `bot.py`. Prefer the package module when available (running as
+# Resolve the callable `main` from either the package runtime runner or a
+# top-level `bot.py`. Prefer the package module when available (running as
 # `python -m src.mybot`), but fall back to importing `bot.main` for
 # back-compat when a top-level runner is present.
 main = None

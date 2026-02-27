@@ -483,7 +483,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 # non-fatal, record and continue
                 failed["unload_all"] = str(e)
 
-            # Prefer to reload the explicit extensions list from the main runner
+            # Prefer to reload the explicit extensions list from the runtime runner
             extensions = None
             try:
                 try:

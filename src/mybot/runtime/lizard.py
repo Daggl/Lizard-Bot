@@ -141,6 +141,7 @@ async def on_message(message):
 
 
 def _import_control_api_module():
+    # Prefer runtime package path, then keep legacy wrapper paths for compatibility.
     for module_name in (
         "mybot.runtime.control_api",
         "src.mybot.runtime.control_api",
@@ -152,7 +153,7 @@ def _import_control_api_module():
         except Exception:
             continue
 
-    print("Failed to import local UI control API")
+    print("Failed to import local UI control API (runtime and legacy paths)")
     return None
 
 
