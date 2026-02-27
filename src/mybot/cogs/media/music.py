@@ -11,6 +11,11 @@ import discord
 from discord.ext import commands
 
 try:
+    from mybot.utils.i18n import translate, translate_for_ctx, translate_for_interaction
+except Exception:  # pragma: no cover
+    from src.mybot.utils.i18n import translate, translate_for_ctx, translate_for_interaction
+
+try:
     from yt_dlp import YoutubeDL
 except Exception:
     YoutubeDL = None
@@ -61,6 +66,10 @@ class Music(commands.Cog, name="music"):
     async def cog_load(self):
         # called when cog is loaded
         return
+
+    @staticmethod
+    def _t(ctx, key: str, default: str, **fmt) -> str:
+        return translate_for_ctx(ctx, key, default=default, **fmt)
 
     # --- Spotify helpers ---
     async def _get_spotify_token(self) -> Optional[str]:
@@ -224,7 +233,13 @@ class Music(commands.Cog, name="music"):
         # ensure author is in a voice channel
         author_vc = getattr(ctx.author, "voice", None)
         if not author_vc or not author_vc.channel:
-            await ctx.send("You are not connected to a voice channel.")
+            await ctx.send(
+                self._t(
+                    ctx,
+                    "music.error.not_in_voice",
+                    "You are not connected to a voice channel.",
+                )
+            )
             return None
 
         channel = author_vc.channel
@@ -232,26 +247,44 @@ class Music(commands.Cog, name="music"):
         # check bot permissions in that channel
         me = ctx.guild.me if ctx.guild else None
         if me is None:
-            await ctx.send("Unable to determine bot member in this guild.")
+            await ctx.send(
+                self._t(
+                    ctx,
+                    "music.error.bot_identity",
+                    "Unable to determine bot member in this guild.",
+                )
+            )
             return None
 
         perms = channel.permissions_for(me)
         if not perms.connect:
             await ctx.send(
-                "I don't have permission to connect to your voice channel "
-                "(Connect permission missing)."
+                self._t(
+                    ctx,
+                    "music.error.connect_permission",
+                    "I don't have permission to connect to your voice channel (Connect permission missing).",
+                )
             )
             return None
         if not perms.speak:
             await ctx.send(
-                "I don't have permission to speak in your voice channel "
-                "(Speak permission missing)."
+                self._t(
+                    ctx,
+                    "music.error.speak_permission",
+                    "I don't have permission to speak in your voice channel (Speak permission missing).",
+                )
             )
             return None
 
         # Stage channels require special handling
         if getattr(channel, "stage_instance", None) is not None:
-            await ctx.send("Stage channels are not supported by this bot.")
+            await ctx.send(
+                self._t(
+                    ctx,
+                    "music.error.stage_unsupported",
+                    "Stage channels are not supported by this bot.",
+                )
+            )
             return None
 
         # attempt to connect
@@ -259,7 +292,14 @@ class Music(commands.Cog, name="music"):
             vc = await channel.connect()
             return vc
         except Exception as e:
-            await ctx.send(f"Failed to join voice channel: {e}")
+            await ctx.send(
+                self._t(
+                    ctx,
+                    "music.error.join_failed",
+                    "Failed to join voice channel: {error}",
+                    error=str(e),
+                )
+            )
             return None
 
     async def _play_next(self, guild_id: int):
@@ -297,7 +337,14 @@ class Music(commands.Cog, name="music"):
     async def join(self, ctx: commands.Context):
         vc = await self._ensure_voice(ctx)
         if vc:
-            await ctx.send(f"Connected to {vc.channel.mention}")
+            await ctx.send(
+                self._t(
+                    ctx,
+                    "music.msg.connected",
+                    "Connected to {channel}",
+                    channel=vc.channel.mention,
+                )
+            )
 
     @commands.hybrid_command(
         name="leave", description="Leave voice channel and clear queue"
@@ -308,7 +355,13 @@ class Music(commands.Cog, name="music"):
             await ctx.voice_client.disconnect()
         self.queues.pop(guild_id, None)
         self.now_playing[guild_id] = None
-        await ctx.send("Left the voice channel and cleared the queue.")
+        await ctx.send(
+            self._t(
+                ctx,
+                "music.msg.left",
+                "Left the voice channel and cleared the queue.",
+            )
+        )
 
     @commands.hybrid_command(
         name="play", description="Play a YouTube URL or search term"
@@ -316,7 +369,11 @@ class Music(commands.Cog, name="music"):
     async def play(self, ctx: commands.Context, *, query: str):
         if YoutubeDL is None:
             await ctx.send(
-                "Playback requires `yt-dlp`. Install with `pip install yt-dlp`."
+                self._t(
+                    ctx,
+                    "music.error.ytdlp_missing",
+                    "Playback requires `yt-dlp`. Install with `pip install yt-dlp`.",
+                )
             )
             return
 
@@ -345,7 +402,14 @@ class Music(commands.Cog, name="music"):
         try:
             info = await self._resolve_query(query)
         except Exception as e:
-            await ctx.send(f"Error resolving source: {e}")
+            await ctx.send(
+                self._t(
+                    ctx,
+                    "music.error.resolve_source",
+                    "Error resolving source: {error}",
+                    error=str(e),
+                )
+            )
             return
 
         if "entries" in info:
@@ -353,7 +417,13 @@ class Music(commands.Cog, name="music"):
 
         url = info.get("url") or info.get("webpage_url")
         if not url:
-            await ctx.send("Could not resolve a playable URL for that query.")
+            await ctx.send(
+                self._t(
+                    ctx,
+                    "music.error.no_url",
+                    "Could not resolve a playable URL for that query.",
+                )
+            )
             return
 
         stream_url = info.get("url") or info.get("webpage_url")
@@ -366,7 +436,13 @@ class Music(commands.Cog, name="music"):
 
         self.queues.setdefault(guild_id, []).append(track)
         await ctx.send(
-            f"Queued: **{track.title}** (requested by {ctx.author.display_name})"
+            self._t(
+                ctx,
+                "music.msg.queued",
+                "Queued: **{title}** (requested by {requester})",
+                title=track.title,
+                requester=ctx.author.display_name,
+            )
         )
 
         if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
@@ -415,14 +491,34 @@ class Music(commands.Cog, name="music"):
                 if title:
                     queries = [title]
                 else:
-                    await ctx.send(f"Spotify error: {e}")
+                    await ctx.send(
+                        self._t(
+                            ctx,
+                            "music.error.spotify",
+                            "Spotify error: {error}",
+                            error=str(e),
+                        )
+                    )
                     return
             else:
-                await ctx.send(f"Spotify error: {e}")
+                await ctx.send(
+                    self._t(
+                        ctx,
+                        "music.error.spotify",
+                        "Spotify error: {error}",
+                        error=str(e),
+                    )
+                )
                 return
 
         if not queries:
-            await ctx.send("No tracks found or failed to fetch from Spotify.")
+            await ctx.send(
+                self._t(
+                    ctx,
+                    "music.error.spotify_empty",
+                    "No tracks found or failed to fetch from Spotify.",
+                )
+            )
             return
 
         await ctx.defer()
@@ -434,14 +530,19 @@ class Music(commands.Cog, name="music"):
         # send initial status embed and update it periodically
         total = len(queries)
         embed = discord.Embed(
-            title="Spotify Import",
-            description=f"Importing {total} tracks... 0/{total} added",
+            title=self._t(ctx, "music.spotify.title", "Spotify Import"),
+            description=self._t(
+                ctx,
+                "music.spotify.desc_progress",
+                "Importing {total} tracks... 0/{total} added",
+                total=total,
+            ),
             color=0x1DB954,
         )
         # create cancel event and view so user can abort
         cancel_event = asyncio.Event()
         self._import_cancel_events[guild_id] = cancel_event
-        view = ImportCancelView(cancel_event, ctx.author.id)
+        view = ImportCancelView(cancel_event, ctx.author.id, getattr(ctx.guild, "id", None))
         status = await ctx.send(embed=embed, view=view)
 
         added = 0
@@ -467,8 +568,12 @@ class Music(commands.Cog, name="music"):
             # check cancellation
             if cancel_event.is_set():
                 try:
-                    embed.description = (
-                        f"Import abgebrochen: {added} added, {skipped} skipped."
+                    embed.description = self._t(
+                        ctx,
+                        "music.spotify.desc_cancelled",
+                        "Import canceled: {added} added, {skipped} skipped.",
+                        added=added,
+                        skipped=skipped,
                     )
                     for item in view.children:
                         item.disabled = True
@@ -480,17 +585,25 @@ class Music(commands.Cog, name="music"):
             # update status every 5 items or on the last item
             if idx % 5 == 0 or idx == total:
                 try:
-                    embed.description = (
-                        f"Importing {total} tracks... {added}/{total} added "
-                        f"(skipped {skipped})"
+                    embed.description = self._t(
+                        ctx,
+                        "music.spotify.desc_progress_dynamic",
+                        "Importing {total} tracks... {added}/{total} added (skipped {skipped})",
+                        total=total,
+                        added=added,
+                        skipped=skipped,
                     )
                     await status.edit(embed=embed, view=view)
                 except Exception:
                     pass
 
         try:
-            embed.description = (
-                f"Import complete: {added} added, " f"{skipped} skipped."
+            embed.description = self._t(
+                ctx,
+                "music.spotify.desc_complete",
+                "Import complete: {added} added, {skipped} skipped.",
+                added=added,
+                skipped=skipped,
             )
             for item in view.children:
                 item.disabled = True
@@ -511,29 +624,43 @@ class Music(commands.Cog, name="music"):
     async def skip(self, ctx: commands.Context):
         vc = ctx.voice_client
         if not vc or not vc.is_connected():
-            await ctx.send("Not connected.")
+            await ctx.send(self._t(ctx, "music.error.not_connected", "Not connected."))
             return
         if vc.is_playing():
             vc.stop()
-            await ctx.send("Skipped.")
+            await ctx.send(self._t(ctx, "music.msg.skipped", "Skipped."))
         else:
-            await ctx.send("Nothing is playing.")
+            await ctx.send(self._t(ctx, "music.msg.nothing_playing", "Nothing is playing."))
 
     @commands.hybrid_command(name="queue", description="Show the queue")
     async def queue_cmd(self, ctx: commands.Context):
         q = self.queues.get(ctx.guild.id, [])
         if not q:
-            await ctx.send("Queue is empty.")
+            await ctx.send(self._t(ctx, "music.msg.queue_empty", "Queue is empty."))
             return
         now_playing_obj = self.now_playing.get(ctx.guild.id)
         if now_playing_obj and now_playing_obj.title:
             now_title = now_playing_obj.title
         else:
             now_title = "Nothing"
-        lines = [f"Now: **{now_title}**"]
+        lines = [
+            self._t(
+                ctx,
+                "music.msg.queue_now",
+                "Now: **{title}**",
+                title=now_title,
+            )
+        ]
         for i, t in enumerate(q[:10], start=1):
             lines.append(
-                f"{i}. {t.title} " f"— requested by {t.requester.display_name}"
+                self._t(
+                    ctx,
+                    "music.msg.queue_entry",
+                    "{index}. {title} — requested by {requester}",
+                    index=i,
+                    title=t.title,
+                    requester=t.requester.display_name,
+                )
             )
         await ctx.send("\n".join(lines))
 
@@ -541,11 +668,16 @@ class Music(commands.Cog, name="music"):
     async def now(self, ctx: commands.Context):
         now = self.now_playing.get(ctx.guild.id)
         if not now:
-            await ctx.send("Nothing is playing.")
+            await ctx.send(self._t(ctx, "music.msg.nothing_playing", "Nothing is playing."))
             return
         await ctx.send(
-            f"Now playing: **{now.title}** "
-            f"— requested by {now.requester.display_name}"
+            self._t(
+                ctx,
+                "music.msg.now_playing",
+                "Now playing: **{title}** — requested by {requester}",
+                title=now.title,
+                requester=now.requester.display_name,
+            )
         )
 
     @commands.hybrid_command(name="stop", description="Stop and clear the queue")
@@ -557,16 +689,32 @@ class Music(commands.Cog, name="music"):
             await vc.disconnect()
         self.queues[guild_id] = []
         self.now_playing[guild_id] = None
-        await ctx.send("Stopped and cleared the queue.")
+        await ctx.send(
+            self._t(
+                ctx,
+                "music.msg.stopped",
+                "Stopped and cleared the queue.",
+            )
+        )
 
 
 class ImportCancelView(discord.ui.View):
-    def __init__(self, event: asyncio.Event, owner_id: int):
+    def __init__(self, event: asyncio.Event, owner_id: int, guild_id: Optional[int]):
         super().__init__(timeout=None)
         self._event = event
         self._owner_id = owner_id
+        self._guild_id = guild_id
+        for child in self.children:
+            try:
+                child.label = translate(
+                    "music.spotify.button_cancel",
+                    guild_id=guild_id,
+                    default="Cancel",
+                )
+            except Exception:
+                pass
 
-    @discord.ui.button(label="Abbrechen", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         # allow the requester or server admins
         # (administrator / manage_guild / manage_messages)
@@ -579,7 +727,11 @@ class ImportCancelView(discord.ui.View):
                 and (perms.administrator or perms.manage_guild or perms.manage_messages)
             ):
                 await interaction.response.send_message(
-                    "Only the requester or an admin can cancel the import.",
+                    translate_for_interaction(
+                        interaction,
+                        "music.spotify.error_cancel_perms",
+                        default="Only the requester or an admin can cancel the import.",
+                    ),
                     ephemeral=True,
                 )
                 return
@@ -588,7 +740,12 @@ class ImportCancelView(discord.ui.View):
             item.disabled = True
         try:
             await interaction.response.edit_message(
-                content="Import abgebrochen.", view=self
+                content=translate_for_interaction(
+                    interaction,
+                    "music.spotify.msg_cancelled",
+                    default="Import canceled.",
+                ),
+                view=self,
             )
         except Exception:
             pass

@@ -9,6 +9,11 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+try:
+    from mybot.utils.i18n import translate, translate_for_ctx, translate_for_interaction
+except Exception:  # pragma: no cover - fallback for relative imports during packaging
+    from src.mybot.utils.i18n import translate, translate_for_ctx, translate_for_interaction
+
 from mybot.utils.config import load_cog_config
 from mybot.utils.paths import (ensure_dirs, get_db_path,
                                get_ticket_transcript_path, migrate_old_paths)
@@ -36,9 +41,22 @@ def ensure_dir(path: str) -> None:
 
 
 class TicketPanelView(discord.ui.View):
-    def __init__(self, cog: "TicketCog") -> None:
+    def __init__(self, cog: "TicketCog", guild_id: Optional[int] = None) -> None:
         super().__init__(timeout=None)
         self.cog = cog
+        self.guild_id = guild_id
+        self._apply_labels()
+
+    def _apply_labels(self) -> None:
+        label_text = translate(
+            "ticket.button.create",
+            guild_id=self.guild_id,
+            default="Create Ticket",
+        )
+        try:
+            self.create_ticket.label = label_text
+        except Exception:
+            pass
 
     @discord.ui.button(
         label="Create Ticket",
@@ -54,14 +72,33 @@ class TicketPanelView(discord.ui.View):
             interaction.guild, interaction.user, interaction.channel
         )
         await interaction.followup.send(
-            "✅ Your support ticket has been created.", ephemeral=True
+            translate_for_interaction(
+                interaction,
+                "ticket.msg.created",
+                default="✅ Your support ticket has been created.",
+            ),
+            ephemeral=True,
         )
 
 
 class TicketControls(discord.ui.View):
-    def __init__(self, cog: "TicketCog") -> None:
+    def __init__(self, cog: "TicketCog", guild_id: Optional[int] = None) -> None:
         super().__init__(timeout=None)
         self.cog = cog
+        self.guild_id = guild_id
+        self._apply_labels()
+
+    def _apply_labels(self) -> None:
+        mapping = {
+            "ticket_controls:close": ("ticket.button.close", "Close"),
+            "ticket_controls:claim": ("ticket.button.claim", "Claim"),
+            "ticket_controls:transcript": ("ticket.button.transcript", "Transcript"),
+        }
+        for child in self.children:
+            key = getattr(child, "custom_id", None)
+            if key in mapping:
+                trans_key, default = mapping[key]
+                child.label = translate(trans_key, guild_id=self.guild_id, default=default)
 
     @discord.ui.button(
         label="Close",
@@ -74,7 +111,14 @@ class TicketControls(discord.ui.View):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         await self.cog.close_ticket(interaction.channel, interaction.user)
-        await interaction.followup.send("✅ Ticket closed.", ephemeral=True)
+        await interaction.followup.send(
+            translate_for_interaction(
+                interaction,
+                "ticket.msg.closed",
+                default="✅ Ticket closed.",
+            ),
+            ephemeral=True,
+        )
 
     @discord.ui.button(
         label="Claim",
@@ -87,7 +131,14 @@ class TicketControls(discord.ui.View):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         await self.cog.claim_ticket(interaction.channel, interaction.user)
-        await interaction.followup.send("✅ You claimed this ticket.", ephemeral=True)
+        await interaction.followup.send(
+            translate_for_interaction(
+                interaction,
+                "ticket.msg.claimed_self",
+                default="✅ You claimed this ticket.",
+            ),
+            ephemeral=True,
+        )
 
     @discord.ui.button(
         label="Transcript",
@@ -101,10 +152,22 @@ class TicketControls(discord.ui.View):
         await interaction.response.defer(ephemeral=True)
         path = await self.cog.save_transcript(interaction.channel)
         if path:
-            await interaction.followup.send("✅ Transcript saved.", ephemeral=True)
+            await interaction.followup.send(
+                translate_for_interaction(
+                    interaction,
+                    "ticket.msg.transcript_saved",
+                    default="✅ Transcript saved.",
+                ),
+                ephemeral=True,
+            )
         else:
             await interaction.followup.send(
-                "❌ Failed to save transcript.", ephemeral=True
+                translate_for_interaction(
+                    interaction,
+                    "ticket.error.transcript_failed",
+                    default="❌ Failed to save transcript.",
+                ),
+                ephemeral=True,
             )
 
 
@@ -252,16 +315,25 @@ class TicketCog(commands.Cog):
         )
 
         embed = discord.Embed(
-            title="🎫 Support Ticket",
-            description=(
-                f"Hello {user.mention}, thank you for contacting support!\n"
-                "A staff member will be with you shortly."
+            title=translate(
+                "ticket.embed.title",
+                guild_id=getattr(guild, "id", None),
+                default="🎫 Support Ticket",
+            ),
+            description=translate(
+                "ticket.embed.description",
+                guild_id=getattr(guild, "id", None),
+                default=(
+                    "Hello {mention}, thank you for contacting support!\n"
+                    "A staff member will be with you shortly."
+                ),
+                mention=user.mention,
             ),
             color=discord.Color.green(),
             timestamp=datetime.utcnow(),
         )
 
-        view = TicketControls(self)
+        view = TicketControls(self, getattr(guild, "id", None))
         await channel.send(content=user.mention, embed=embed, view=view)
 
         await self._log_action(
@@ -367,7 +439,14 @@ class TicketCog(commands.Cog):
         except Exception:
             pass
 
-        await channel.send(f"👑 Ticket claimed by {by.mention}")
+        await channel.send(
+            translate(
+                "ticket.msg.claimed_announce",
+                guild_id=getattr(channel.guild, "id", None),
+                default="👑 Ticket claimed by {member}",
+                member=by.mention,
+            )
+        )
         await self._log_action(channel.guild, f"Ticket {channel.name} claimed by {by}")
         try:
             await self._db_execute(
@@ -406,12 +485,20 @@ class TicketCog(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def ticket_panel(self, ctx: commands.Context) -> None:
         embed = discord.Embed(
-            title="Need help? Open a ticket",
-            description=("Click the button below to open a private support ticket."),
+            title=translate_for_ctx(
+                ctx,
+                "ticket.panel.title",
+                default="Need help? Open a ticket",
+            ),
+            description=translate_for_ctx(
+                ctx,
+                "ticket.panel.description",
+                default="Click the button below to open a private support ticket.",
+            ),
             color=discord.Color.blurple(),
         )
 
-        view = TicketPanelView(self)
+        view = TicketPanelView(self, getattr(ctx.guild, "id", None))
         msg = await ctx.send(embed=embed, view=view)
         self.panel_message_id = msg.id
 
@@ -423,7 +510,16 @@ class TicketCog(commands.Cog):
         except Exception:
             pass
         await self._create_ticket_for_user(ctx.guild, ctx.author, ctx.channel)
-        await ctx.author.send("Your ticket was created.")
+        try:
+            await ctx.author.send(
+                translate_for_ctx(
+                    ctx,
+                    "ticket.msg.dm_created",
+                    default="Your ticket was created.",
+                )
+            )
+        except Exception:
+            pass
 
     @commands.hybrid_command(name="transcript", description="Transcript cmd command.")
     @app_commands.default_permissions(administrator=True)
@@ -435,7 +531,13 @@ class TicketCog(commands.Cog):
         if path and os.path.exists(path):
             await ctx.send(file=discord.File(path))
         else:
-            await ctx.send("Failed to save transcript.")
+            await ctx.send(
+                translate_for_ctx(
+                    ctx,
+                    "ticket.error.transcript_failed",
+                    default="Failed to save transcript.",
+                )
+            )
 
     @commands.hybrid_command(name="close_ticket", description="Close ticket cmd command.")
     @app_commands.default_permissions(administrator=True)
@@ -444,7 +546,13 @@ class TicketCog(commands.Cog):
         self, ctx: commands.Context, channel: discord.TextChannel
     ) -> None:
         await self.close_ticket(channel, ctx.author)
-        await ctx.send("Ticket closed.")
+        await ctx.send(
+            translate_for_ctx(
+                ctx,
+                "ticket.msg.closed",
+                default="Ticket closed.",
+            )
+        )
 
 
 async def setup(bot: commands.Bot) -> None:

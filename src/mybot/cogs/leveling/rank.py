@@ -8,6 +8,7 @@ from discord import app_commands
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
+from mybot.utils.i18n import translate
 from mybot.utils.paths import REPO_ROOT
 
 from .levels import xp_for_level
@@ -109,8 +110,9 @@ class Rank(commands.Cog):
         self.bot = bot
 
     def _build_achievements_embed(self, member, achievements: list[str]) -> discord.Embed:
+        guild_id = getattr(getattr(member, "guild", None), "id", None)
         embed = discord.Embed(
-            title=f"🏅 Achievements — {member.display_name}",
+            title=translate("rank.embed.achievements.title", guild_id=guild_id, member=member.display_name),
             color=discord.Color.blurple(),
         )
 
@@ -118,7 +120,7 @@ class Rank(commands.Cog):
         if cleaned:
             embed.description = "\n".join(f"• {name}" for name in cleaned)
         else:
-            embed.description = "No achievements unlocked yet."
+            embed.description = translate("rank.embed.achievements.empty", guild_id=guild_id)
 
         return embed
 
@@ -260,13 +262,20 @@ class Rank(commands.Cog):
         font_medium = _safe_truetype(resolved_info_font, int(resolved_info_size * scale))
         font_small = _safe_truetype(resolved_info_font, max(10, int(resolved_info_size * 0.55 * scale)))
 
+        guild_id = getattr(getattr(member, "guild", None), "id", None)
+
         draw.text((int(260 * scale_x) + resolved_text_x, int(50 * scale_y) + resolved_text_y), member.display_name, font=font_big, fill=resolved_name_color)
 
-        draw.text((int(260 * scale_x) + resolved_text_x, int(120 * scale_y) + resolved_text_y), f"Level {level}", font=font_medium, fill=resolved_info_color)
+        draw.text(
+            (int(260 * scale_x) + resolved_text_x, int(120 * scale_y) + resolved_text_y),
+            translate("rank.card.level", guild_id=guild_id, level=level),
+            font=font_medium,
+            fill=resolved_info_color,
+        )
 
         draw.text(
             (int(710 * scale_x) + resolved_text_x, int(140 * scale_y) + resolved_text_y),
-            f"{xp} / {needed} XP",
+            translate("rank.card.xp_progress", guild_id=guild_id, current=xp, needed=needed),
             font=font_small,
             fill=resolved_info_color,
         )
@@ -286,19 +295,22 @@ class Rank(commands.Cog):
         )
 
         draw.text(
-            (int(260 * scale_x) + resolved_text_x, int(220 * scale_y) + resolved_text_y), f"Messages: {messages}", font=font_small, fill=resolved_info_color
+            (int(260 * scale_x) + resolved_text_x, int(220 * scale_y) + resolved_text_y),
+            translate("rank.card.messages", guild_id=guild_id, value=messages),
+            font=font_small,
+            fill=resolved_info_color,
         )
 
         draw.text(
             (int(450 * scale_x) + resolved_text_x, int(220 * scale_y) + resolved_text_y),
-            f"Voice: {voice_minutes} min",
+            translate("rank.card.voice", guild_id=guild_id, value=voice_minutes),
             font=font_small,
             fill=resolved_info_color,
         )
 
         draw.text(
             (int(650 * scale_x) + resolved_text_x, int(220 * scale_y) + resolved_text_y),
-            f"Achievements: {achievements}",
+            translate("rank.card.achievements", guild_id=guild_id, value=achievements),
             font=font_small,
             fill=resolved_info_color,
         )
@@ -330,7 +342,15 @@ class Rank(commands.Cog):
         if achievements:
             await achievements.check_achievements(member)
 
-        await ctx.send(f"✅ {amount} XP added to {member.mention}")
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        await ctx.send(
+            translate(
+                "rank.msg.addxp",
+                guild_id=guild_id,
+                amount=amount,
+                member=member.mention,
+            )
+        )
 
     @commands.hybrid_command(description="Removexp command.")
     @app_commands.default_permissions(administrator=True)
@@ -343,7 +363,15 @@ class Rank(commands.Cog):
 
         self.bot.db.save()
 
-        await ctx.send(f"🗑 {amount} XP removed from {member.mention}")
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        await ctx.send(
+            translate(
+                "rank.msg.removexp",
+                guild_id=guild_id,
+                amount=amount,
+                member=member.mention,
+            )
+        )
 
     @commands.hybrid_command(description="Reset command.")
     @app_commands.default_permissions(administrator=True)
@@ -360,10 +388,8 @@ class Rank(commands.Cog):
 
         self.bot.db.save()
 
-        await ctx.send(
-            "♻ User was reset to level 1 with 0 XP, messages, voice time "
-            "and achievements."
-        )
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        await ctx.send(translate("rank.msg.reset", guild_id=guild_id))
 
 
 async def setup(bot):

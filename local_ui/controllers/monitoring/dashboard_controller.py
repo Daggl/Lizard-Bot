@@ -1,7 +1,8 @@
 import os
+from datetime import datetime
 from urllib import request as _urllib_request
 
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 
 class DashboardControllerMixin:
@@ -149,5 +150,179 @@ class DashboardControllerMixin:
                 self.dash_console.appendPlainText("\n".join(lines))
                 sb = self.dash_console.verticalScrollBar()
                 sb.setValue(sb.maximum())
+        except Exception:
+            pass
+
+    def _log_language_event(self, message: str):
+        try:
+            root = getattr(self, "_repo_root", os.getcwd())
+            log_dir = os.path.join(root, "data", "logs")
+            os.makedirs(log_dir, exist_ok=True)
+            path = os.path.join(log_dir, "ui_languages.log")
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(f"{datetime.now().isoformat()} {message}\n")
+        except Exception:
+            pass
+
+    # ==================================================
+    # LANGUAGE CONTROLS
+    # ==================================================
+
+    def request_language_overview(self):
+        try:
+            try:
+                if hasattr(self, "_set_status"):
+                    self._set_status("Lade Sprachliste...")
+            except Exception:
+                pass
+            self._log_language_event("request_language_overview -> languages_get")
+            self.send_cmd_async({"action": "languages_get"}, timeout=2.0, cb=self._on_language_overview)
+        except Exception:
+            self._log_language_event("request_language_overview FAILED to dispatch")
+            pass
+
+    def _ensure_language_state(self):
+        if not hasattr(self, "_language_overview") or not isinstance(getattr(self, "_language_overview"), dict):
+            self._language_overview = {}
+        return self._language_overview
+
+    def _on_language_overview(self, resp: dict):
+        self._log_language_event(
+            f"_on_language_overview ok={resp.get('ok')} error={resp.get('error')} guilds={len(resp.get('guild_details') or [])}"
+        )
+        if not resp.get("ok"):
+            QtWidgets.QMessageBox.warning(self, "Languages", f"Failed to load languages: {resp}")
+            return
+        self._language_overview = resp or {}
+        self._populate_language_controls()
+        guild_details = self._language_overview.get("guild_details") or []
+        if guild_details:
+            try:
+                self._language_overview_attempts = 0
+                if hasattr(self, "_set_status"):
+                    self._set_status("Sprachen geladen")
+            except Exception:
+                pass
+            return
+
+        attempts = int(getattr(self, "_language_overview_attempts", 0) or 0)
+        warning_threshold = 5
+        if attempts >= warning_threshold and not getattr(self, "_language_overview_warned", False):
+            try:
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Languages",
+                    "Keine Guild-Daten verfügbar. Stelle sicher, dass der Bot online ist und versuche es erneut.",
+                )
+            except Exception:
+                pass
+            self._language_overview_warned = True
+
+        delay_ms = min(8000, 1000 * (attempts + 1))
+        self._language_overview_attempts = attempts + 1
+        self._log_language_event(f"guild list empty; scheduling retry {self._language_overview_attempts} in {delay_ms}ms")
+        try:
+            QtCore.QTimer.singleShot(delay_ms, self.request_language_overview)
+        except Exception:
+            try:
+                self._log_language_event("QtCore.QTimer.singleShot failed; retrying immediately")
+                self.request_language_overview()
+            except Exception:
+                self._log_language_event("request_language_overview retry failed")
+                pass
+
+    def _populate_language_controls(self):
+        guild_combo = getattr(self, "language_guild_combo", None)
+        lang_combo = getattr(self, "language_combo", None)
+        if guild_combo is None or lang_combo is None:
+            return
+        overview = self._ensure_language_state()
+        guild_details = overview.get("guild_details") or []
+        self._log_language_event(f"_populate_language_controls guild_count={len(guild_details)}")
+        with QtCore.QSignalBlocker(guild_combo):
+            guild_combo.clear()
+            for guild in guild_details:
+                gid = str(guild.get("id") or "")
+                if not gid:
+                    continue
+                name = guild.get("name") or gid
+                guild_combo.addItem(f"{name} ({gid})", gid)
+        if guild_combo.count() == 0:
+            guild_combo.addItem("—", None)
+            lang_combo.setEnabled(False)
+            with QtCore.QSignalBlocker(lang_combo):
+                lang_combo.clear()
+                lang_combo.addItem("—", None)
+            self._log_language_event("_populate_language_controls found no guilds; added placeholder")
+            return
+        guild_combo.setCurrentIndex(0)
+        self._populate_language_combo()
+
+    def _selected_language_guild_id(self) -> str:
+        combo = getattr(self, "language_guild_combo", None)
+        if combo is None:
+            return ""
+        data = combo.currentData()
+        return str(data or "").strip()
+
+    def _populate_language_combo(self):
+        lang_combo = getattr(self, "language_combo", None)
+        if lang_combo is None:
+            return
+        overview = self._ensure_language_state()
+        languages = overview.get("languages") or []
+        guild_map = overview.get("guilds") or {}
+        default_lang = overview.get("default") or "en"
+        selected_guild = self._selected_language_guild_id()
+        with QtCore.QSignalBlocker(lang_combo):
+            lang_combo.clear()
+            for entry in languages:
+                code = entry.get("code")
+                label = entry.get("label") or code
+                if not code:
+                    continue
+                lang_combo.addItem(label, code)
+            if lang_combo.count() == 0:
+                lang_combo.addItem("—", None)
+                lang_combo.setEnabled(False)
+                return
+            lang_combo.setEnabled(bool(selected_guild))
+            current = guild_map.get(selected_guild, default_lang)
+            idx = lang_combo.findData(current)
+            if idx < 0:
+                idx = 0
+            lang_combo.setCurrentIndex(idx)
+
+    def on_language_guild_changed(self, *_args):
+        self._populate_language_combo()
+
+    def on_language_selection_changed(self, *_args):
+        lang_combo = getattr(self, "language_combo", None)
+        if lang_combo is None or not lang_combo.isEnabled():
+            return
+        guild_id = self._selected_language_guild_id()
+        code = lang_combo.currentData()
+        if not guild_id or not code:
+            return
+        try:
+            self._set_status(f"Updating language for guild {guild_id}...")
+        except Exception:
+            pass
+        self.send_cmd_async(
+            {"action": "languages_set", "guild_id": guild_id, "language": code},
+            timeout=2.0,
+            cb=lambda resp, gid=guild_id, lang=code: self._on_language_set(gid, lang, resp),
+        )
+
+    def _on_language_set(self, guild_id: str, language_code: str, resp: dict):
+        if not resp.get("ok"):
+            QtWidgets.QMessageBox.warning(self, "Languages", f"Failed to update language: {resp}")
+            return
+        overview = self._ensure_language_state()
+        guild_map = overview.get("guilds") or {}
+        guild_map[str(guild_id)] = language_code
+        overview["guilds"] = guild_map
+        try:
+            self._set_status("Language updated")
         except Exception:
             pass

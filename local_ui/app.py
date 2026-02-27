@@ -60,6 +60,12 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
 
         self.setCentralWidget(tabs)
 
+        # connect async result dispatcher before any background requests
+        try:
+            self._async_done.connect(self._process_async_result)
+        except Exception:
+            pass
+
         # styling
         self.setStyleSheet("""
         QWidget {
@@ -222,6 +228,8 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
         self._dash_console_path = os.path.join(self._repo_root, "data", "logs", "start_all_console.log")
         self._dash_console_pos = 0
         self._ui_settings = {}
+        self._language_overview = {}
+        self._language_overview_attempts = 0
         try:
             self._load_title_font_choices()
             self._load_user_font_choices()
@@ -248,6 +256,10 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
             self._load_ui_settings()
         except Exception:
             pass
+        try:
+            self.request_language_overview()
+        except Exception:
+            pass
         # helper to update status label and force UI repaint
         def _set_status(msg: str):
             try:
@@ -266,10 +278,6 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
                 pass
         # attach helper to instance for use in handlers
         self._set_status = _set_status
-        try:
-            self._async_done.connect(self._process_async_result)
-        except Exception:
-            pass
         # write a startup marker so the user can confirm the UI launched
         try:
             try:

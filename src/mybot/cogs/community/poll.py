@@ -6,6 +6,11 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+try:
+    from mybot.utils.i18n import translate, translate_for_ctx, translate_for_interaction
+except Exception:  # pragma: no cover - fallback for relative imports during packaging
+    from src.mybot.utils.i18n import translate, translate_for_ctx, translate_for_interaction
+
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
 DATA_FOLDER = "data"
@@ -24,6 +29,8 @@ class PollView(discord.ui.View):
     def __init__(self, poll_id):
         super().__init__(timeout=None)
         self.poll_id = poll_id
+        poll = load_polls().get(self.poll_id, {})
+        self.guild_id = poll.get("guild_id")
         self.add_buttons()
 
     def add_buttons(self):
@@ -40,7 +47,11 @@ class PollView(discord.ui.View):
             self.add_item(button)
 
         close_button = discord.ui.Button(
-            label="🔒 Close",
+            label=translate(
+                "poll.button.close",
+                guild_id=self.guild_id,
+                default="🔒 Close",
+            ),
             style=discord.ButtonStyle.danger,
             custom_id=f"close_{self.poll_id}",
         )
@@ -55,20 +66,37 @@ class PollView(discord.ui.View):
 
             if poll["closed"]:
                 await interaction.response.send_message(
-                    "❌ This poll is closed.", ephemeral=True
+                    translate_for_interaction(
+                        interaction,
+                        "poll.error.closed",
+                        default="❌ This poll is closed.",
+                    ),
+                    ephemeral=True,
                 )
                 return
 
             if user_id in poll["votes"]:
                 await interaction.response.send_message(
-                    "❌ You have already voted!", ephemeral=True
+                    translate_for_interaction(
+                        interaction,
+                        "poll.error.already_voted",
+                        default="❌ You have already voted!",
+                    ),
+                    ephemeral=True,
                 )
                 return
 
             poll["votes"][user_id] = index
             save_polls(polls)
 
-            await interaction.response.send_message("✅ Vote counted!", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "poll.msg.vote_counted",
+                    default="✅ Vote counted!",
+                ),
+                ephemeral=True,
+            )
             await self.update_message(interaction.message)
 
         return callback
@@ -80,7 +108,12 @@ class PollView(discord.ui.View):
         save_polls(polls)
 
         await interaction.response.send_message(
-            "🔒 Poll has been closed.", ephemeral=True
+            translate_for_interaction(
+                interaction,
+                "poll.msg.closed",
+                default="🔒 Poll has been closed.",
+            ),
+            ephemeral=True,
         )
         await self.update_message(interaction.message)
 
@@ -103,15 +136,31 @@ class PollView(discord.ui.View):
             description += f"**{option}**\n{bar} {percentage:.1f}% ({count})\n\n"
 
         if poll["closed"]:
-            description += "\n🔒 **Closed**"
+            description += "\n" + translate(
+                "poll.label.closed",
+                guild_id=self.guild_id,
+                default="🔒 **Closed**",
+            )
 
         embed = discord.Embed(
-            title=f"📊 {poll['question']}",
+            title=translate(
+                "poll.embed.title",
+                guild_id=self.guild_id,
+                default="📊 {question}",
+                question=poll["question"],
+            ),
             description=description,
             color=discord.Color.green(),
         )
 
-        embed.set_footer(text=f"Votes: {total_votes}")
+        embed.set_footer(
+            text=translate(
+                "poll.embed.footer",
+                guild_id=self.guild_id,
+                default="Votes: {count}",
+                count=total_votes,
+            )
+        )
 
         await message.edit(embed=embed)
 
@@ -126,31 +175,73 @@ class Poll(commands.Cog):
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel
 
-        await ctx.send("📝 What is the question?")
+        await ctx.send(
+            translate_for_ctx(
+                ctx,
+                "poll.prompt.question",
+                default="📝 What is the question?",
+            )
+        )
         try:
             question_msg = await self.bot.wait_for("message", timeout=60, check=check)
         except asyncio.TimeoutError:
-            return await ctx.send("❌ Time's up.")
+            return await ctx.send(
+                translate_for_ctx(
+                    ctx,
+                    "poll.error.timeout",
+                    default="❌ Time's up.",
+                )
+            )
 
         question = question_msg.content
 
-        await ctx.send("⏳ How many seconds should the poll run?")
+        await ctx.send(
+            translate_for_ctx(
+                ctx,
+                "poll.prompt.duration",
+                default="⏳ How many seconds should the poll run?",
+            )
+        )
         try:
             time_msg = await self.bot.wait_for("message", timeout=60, check=check)
             duration = int(time_msg.content)
         except ValueError:
-            return await ctx.send("❌ Invalid time.")
+            return await ctx.send(
+                translate_for_ctx(
+                    ctx,
+                    "poll.error.invalid_time",
+                    default="❌ Invalid time.",
+                )
+            )
 
-        await ctx.send("📊 Please send the answer options separated by `,`.")
+        await ctx.send(
+            translate_for_ctx(
+                ctx,
+                "poll.prompt.options",
+                default="📊 Please send the answer options separated by `,`.",
+            )
+        )
         try:
             options_msg = await self.bot.wait_for("message", timeout=60, check=check)
         except asyncio.TimeoutError:
-            return await ctx.send("❌ Time's up.")
+            return await ctx.send(
+                translate_for_ctx(
+                    ctx,
+                    "poll.error.timeout",
+                    default="❌ Time's up.",
+                )
+            )
 
         options = [o.strip() for o in options_msg.content.split(",") if o.strip()]
 
         if len(options) < 2:
-            return await ctx.send("❌ At least 2 options are required.")
+            return await ctx.send(
+                translate_for_ctx(
+                    ctx,
+                    "poll.error.minimum_options",
+                    default="❌ At least 2 options are required.",
+                )
+            )
 
         poll_id = str(uuid.uuid4())
         polls = load_polls()
@@ -160,13 +251,23 @@ class Poll(commands.Cog):
             "options": options,
             "votes": {},
             "closed": False,
+            "guild_id": getattr(getattr(ctx, "guild", None), "id", None),
         }
 
         save_polls(polls)
 
         embed = discord.Embed(
-            title=f"📊 {question}",
-            description="No votes yet.",
+            title=translate_for_ctx(
+                ctx,
+                "poll.embed.title",
+                default="📊 {question}",
+                question=question,
+            ),
+            description=translate_for_ctx(
+                ctx,
+                "poll.embed.no_votes",
+                default="No votes yet.",
+            ),
             color=discord.Color.green(),
         )
 
@@ -188,12 +289,24 @@ class Poll(commands.Cog):
         polls = load_polls()
 
         if poll_id not in polls:
-            return await ctx.send("❌ Poll ID not found.")
+            return await ctx.send(
+                translate_for_ctx(
+                    ctx,
+                    "poll.error.not_found",
+                    default="❌ Poll ID not found.",
+                )
+            )
 
         del polls[poll_id]
         save_polls(polls)
 
-        await ctx.send("🗑 Poll removed from database.")
+        await ctx.send(
+            translate_for_ctx(
+                ctx,
+                "poll.msg.deleted",
+                default="🗑 Poll removed from database.",
+            )
+        )
 
     async def cog_load(self):
         polls = load_polls()

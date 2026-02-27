@@ -2,10 +2,22 @@ import os
 import threading
 from datetime import datetime
 
+from PySide6 import QtCore
+
 from services.control_api_client import send_cmd
 
 
 class RuntimeCoreControllerMixin:
+    def _log_async_event(self, message: str):
+        try:
+            repo_root = getattr(self, "_repo_root", os.getcwd())
+            log_dir = os.path.join(repo_root, "data", "logs")
+            os.makedirs(log_dir, exist_ok=True)
+            path = os.path.join(log_dir, "ui_runtime.log")
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(f"{datetime.now().isoformat()} {message}\n")
+        except Exception:
+            pass
     def _debug_log(self, message: str):
         try:
             if os.environ.get("UI_DEBUG") != "1":
@@ -63,16 +75,29 @@ class RuntimeCoreControllerMixin:
             except Exception as e:
                 res = {"ok": False, "error": str(e)}
             try:
-                self._async_done.emit((cb, res))
+                action = cmd.get("action")
             except Exception:
-                pass
+                action = None
+            self._log_async_event(
+                f"worker done action={action} ok={res.get('ok')}"
+            )
+            # Signal emit IS thread-safe and queues the slot in the main thread
+            try:
+                self._async_done.emit((cb, res))
+                self._log_async_event("signal emitted")
+            except Exception as exc:
+                self._log_async_event(f"signal emit FAILED: {exc}")
 
         threading.Thread(target=_worker, daemon=True).start()
 
     def _process_async_result(self, payload):
         try:
             cb, res = payload
+            self._log_async_event(
+                f"_process_async_result ok={res.get('ok')} cb={bool(cb)}"
+            )
             if cb:
                 cb(res)
-        except Exception:
-            pass
+                self._log_async_event("callback finished")
+        except Exception as exc:
+            self._log_async_event(f"_process_async_result error: {exc}")

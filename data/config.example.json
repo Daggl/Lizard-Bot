@@ -104,5 +104,9 @@
     "EMBED_DESCRIPTION": "🎉 Today is {mention}'s birthday!",
     "EMBED_FOOTER": "",
     "EMBED_COLOR": "#F1C40F"
+  },
+  "language": {
+    "DEFAULT_LANGUAGE": "en",
+    "GUILD_LANGUAGES": {}
   }
 }

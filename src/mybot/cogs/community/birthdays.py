@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands, tasks
 
 from mybot.utils.config import load_cog_config
+from mybot.utils.i18n import resolve_localized_value, translate
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
 DATA_FOLDER = "data"
@@ -42,23 +43,26 @@ def _channel_id() -> int:
         return 0
 
 
-def _embed_title() -> str:
+def _embed_title(guild_id: int | None = None) -> str:
     try:
-        return str(_cfg().get("EMBED_TITLE", "") or "")
+        raw = _cfg().get("EMBED_TITLE", "")
+        return str(resolve_localized_value(raw, guild_id=guild_id) or "")
     except Exception:
         return ""
 
 
-def _embed_description() -> str:
+def _embed_description(guild_id: int | None = None) -> str:
     try:
-        return str(_cfg().get("EMBED_DESCRIPTION", "") or "")
+        raw = _cfg().get("EMBED_DESCRIPTION", "")
+        return str(resolve_localized_value(raw, guild_id=guild_id) or "")
     except Exception:
         return ""
 
 
-def _embed_footer() -> str:
+def _embed_footer(guild_id: int | None = None) -> str:
     try:
-        return str(_cfg().get("EMBED_FOOTER", "") or "")
+        raw = _cfg().get("EMBED_FOOTER", "")
+        return str(resolve_localized_value(raw, guild_id=guild_id) or "")
     except Exception:
         return ""
 
@@ -108,7 +112,8 @@ class Birthdays(commands.Cog):
 
         save_birthdays(birthdays)
 
-        await ctx.send(f"🎂 Birthday saved: {date}")
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        await ctx.send(translate("birthdays.msg.saved", guild_id=guild_id, date=date))
 
     @tasks.loop(hours=24)
     async def check_birthdays(self):
@@ -147,6 +152,7 @@ class Birthdays(commands.Cog):
                         channel = self.bot.get_channel(int(channel_id))
 
                     if channel is not None:
+                        guild_id = getattr(getattr(channel, "guild", None), "id", None)
                         values = {
                             "mention": user.mention,
                             "user_name": getattr(user, "name", "User"),
@@ -155,11 +161,11 @@ class Birthdays(commands.Cog):
                             "date": today,
                         }
                         embed = discord.Embed(
-                            title=_safe_format(_embed_title(), values),
-                            description=_safe_format(_embed_description(), values),
+                            title=_safe_format(_embed_title(guild_id), values),
+                            description=_safe_format(_embed_description(guild_id), values),
                             color=_embed_color(),
                         )
-                        footer = _safe_format(_embed_footer(), values).strip()
+                        footer = _safe_format(_embed_footer(guild_id), values).strip()
                         if footer:
                             embed.set_footer(text=footer)
                         await channel.send(embed=embed)

@@ -100,7 +100,8 @@ class Levels(commands.Cog):
 
             if channel:
                 try:
-                    level_up_tpl, _achievement_tpl, win_emoji, heart_emoji = get_message_templates()
+                    guild_id = getattr(getattr(member, "guild", None), "id", None)
+                    level_up_tpl, _achievement_tpl, win_emoji, heart_emoji = get_message_templates(guild_id)
                     template_raw = str(level_up_tpl)
                     includes_win = ("{emoji_win}" in template_raw) or ("{leading_emoji}" in template_raw)
                     includes_heart = ("{emoji_heart}" in template_raw) or ("{trailing_emoji}" in template_raw)

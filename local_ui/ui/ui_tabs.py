@@ -60,6 +60,21 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     tools_layout = QtWidgets.QHBoxLayout(tools_box)
     tools_layout.addLayout(btn_row)
     tools_layout.addStretch()
+
+    language_layout = QtWidgets.QHBoxLayout()
+    language_layout.setSpacing(8)
+    language_layout.addWidget(QtWidgets.QLabel("Guild:"))
+    window.language_guild_combo = QtWidgets.QComboBox()
+    window.language_guild_combo.setMinimumWidth(180)
+    window.language_guild_combo.addItem("—", None)
+    language_layout.addWidget(window.language_guild_combo)
+    language_layout.addWidget(QtWidgets.QLabel("Language:"))
+    window.language_combo = QtWidgets.QComboBox()
+    window.language_combo.setEnabled(False)
+    window.language_combo.setMinimumWidth(140)
+    window.language_combo.addItem("—", None)
+    language_layout.addWidget(window.language_combo)
+    tools_layout.addLayout(language_layout)
     dash_layout.addWidget(tools_box)
 
     test_box = QtWidgets.QGroupBox("Event Tester")
@@ -129,6 +144,8 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.safe_read_only_chk.stateChanged.connect(window.on_safe_mode_flags_changed)
     window.safe_debug_logging_chk.stateChanged.connect(window.on_safe_mode_flags_changed)
     window.safe_auto_reload_off_chk.stateChanged.connect(window.on_safe_mode_flags_changed)
+    window.language_guild_combo.currentIndexChanged.connect(window.on_language_guild_changed)
+    window.language_combo.currentIndexChanged.connect(window.on_language_selection_changed)
 
     tabs.addTab(dash, "Dashboard")
 

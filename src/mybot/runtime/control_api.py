@@ -19,6 +19,16 @@ from typing import Dict
 
 from discord.ext import commands as _commands
 
+from mybot.utils.env_store import ensure_env_file
+from mybot.utils.i18n import (
+    available_languages as _available_languages,
+    describe_language as _describe_language,
+    get_all_guild_languages as _get_all_guild_languages,
+    get_default_language as _get_default_language,
+    set_language_for_guild as _set_language_for_guild,
+)
+from mybot.utils.paths import REPO_ROOT, ensure_runtime_storage
+
 try:
     import psutil  # type: ignore
 except Exception:
@@ -657,6 +667,48 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
         elif action == "guild_snapshot":
             resp = _build_guild_snapshot(bot)
+
+        elif action == "languages_get":
+            guild_details = []
+            try:
+                for guild in getattr(bot, "guilds", []) or []:
+                    guild_details.append(
+                        {
+                            "id": str(getattr(guild, "id", "")),
+                            "name": getattr(guild, "name", "unknown"),
+                        }
+                    )
+            except Exception:
+                guild_details = []
+            resp = {
+                "ok": True,
+                "languages": [
+                    {"code": code, "label": _describe_language(code)} for code in _available_languages()
+                ],
+                "default": _get_default_language(),
+                "guilds": _get_all_guild_languages(),
+                "guild_details": guild_details,
+            }
+
+        elif action == "languages_set":
+            guild_id = req.get("guild_id")
+            language = str(req.get("language") or "").lower()
+            if guild_id in (None, ""):
+                resp = {"ok": False, "error": "guild_id required"}
+            elif not language:
+                resp = {"ok": False, "error": "language required"}
+            else:
+                try:
+                    _set_language_for_guild(int(guild_id), language)
+                except ValueError as exc:
+                    resp = {"ok": False, "error": str(exc)}
+                else:
+                    resp = {
+                        "ok": True,
+                        "guild_id": str(guild_id),
+                        "language": language,
+                        "guilds": _get_all_guild_languages(),
+                    }
 
         else:
             resp = {"ok": False, "error": "unknown action"}

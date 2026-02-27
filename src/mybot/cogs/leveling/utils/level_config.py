@@ -1,4 +1,5 @@
 from mybot.utils.config import load_cog_config
+from mybot.utils.i18n import resolve_localized_value
 
 
 def _cfg() -> dict:
@@ -21,10 +22,10 @@ def _normalize_emoji_input(raw_value, fallback_name: str) -> str:
     return s
 
 
-def get_message_templates():
+def get_message_templates(guild_id: int | None = None):
     cfg = _cfg()
-    level_up_tpl = cfg.get("LEVEL_UP_MESSAGE_TEMPLATE", "")
-    achievement_tpl = cfg.get("ACHIEVEMENT_MESSAGE_TEMPLATE", "")
+    level_up_tpl = resolve_localized_value(cfg.get("LEVEL_UP_MESSAGE_TEMPLATE", ""), guild_id=guild_id)
+    achievement_tpl = resolve_localized_value(cfg.get("ACHIEVEMENT_MESSAGE_TEMPLATE", ""), guild_id=guild_id)
     win_emoji = _normalize_emoji_input(cfg.get("EMOJI_WIN", ""), "win")
     heart_emoji = _normalize_emoji_input(cfg.get("EMOJI_HEART", ""), "heart")
     return str(level_up_tpl), str(achievement_tpl), win_emoji, heart_emoji

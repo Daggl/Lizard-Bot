@@ -5,6 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
+from mybot.utils.i18n import translate
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
 
@@ -98,14 +99,19 @@ class Count(commands.Cog):
 
             return
 
+        guild_id = getattr(getattr(message, "guild", None), "id", None)
+
         if number != expected:
 
             await message.add_reaction("❌")
 
             await message.reply(
-                f"💥 Error! Correct number would have been **{expected}**\n"
-                f"🔄 Counter has been reset\n"
-                f"🏆 Record: **{data['record']}**"
+                translate(
+                    "count.msg.error",
+                    guild_id=guild_id,
+                    expected=expected,
+                    record=data["record"],
+                )
             )
 
             data["current"] = 0
@@ -139,7 +145,12 @@ class Count(commands.Cog):
             data["record_holder"] = str(message.author.id)
 
             await message.channel.send(
-                f"🏆 **NEW RECORD: {number}!**\n" f"👑 by {message.author.mention}"
+                translate(
+                    "count.msg.new_record",
+                    guild_id=guild_id,
+                    number=number,
+                    user=message.author.mention,
+                )
             )
 
         save(data)
@@ -149,13 +160,15 @@ class Count(commands.Cog):
 
         data = load()
 
-        embed = discord.Embed(title="📊 Count Statistics", color=discord.Color.blue())
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
 
-        embed.add_field(name="Current", value=data["current"])
+        embed = discord.Embed(title=translate("count.embed.stats.title", guild_id=guild_id), color=discord.Color.blue())
 
-        embed.add_field(name="Record", value=data["record"])
+        embed.add_field(name=translate("count.embed.stats.current", guild_id=guild_id), value=data["current"])
 
-        embed.add_field(name="Fails", value=data["fails"])
+        embed.add_field(name=translate("count.embed.stats.record", guild_id=guild_id), value=data["record"])
+
+        embed.add_field(name=translate("count.embed.stats.fails", guild_id=guild_id), value=data["fails"])
 
         await ctx.send(embed=embed)
 
@@ -168,7 +181,9 @@ class Count(commands.Cog):
             data["total_counts"].items(), key=lambda x: x[1], reverse=True
         )[:10]
 
-        embed = discord.Embed(title="🏆 Count Leaderboard", color=discord.Color.gold())
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+
+        embed = discord.Embed(title=translate("count.embed.top.title", guild_id=guild_id), color=discord.Color.gold())
 
         text = ""
 
@@ -176,7 +191,7 @@ class Count(commands.Cog):
 
             member = ctx.guild.get_member(int(user))
 
-            name = member.name if member else "Unknown"
+            name = member.name if member else translate("count.label.unknown_user", guild_id=guild_id)
 
             text += f"{i}. {name} — {amount}\n"
 
@@ -191,7 +206,8 @@ class Count(commands.Cog):
 
         save(default_data())
 
-        await ctx.send("✅ Counter has been reset")
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        await ctx.send(translate("count.msg.reset", guild_id=guild_id))
 
 
 async def setup(bot):

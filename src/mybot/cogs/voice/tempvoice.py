@@ -6,6 +6,11 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+try:
+    from mybot.utils.i18n import translate, translate_for_ctx, translate_for_interaction
+except Exception:  # pragma: no cover - fallback for packaging
+    from src.mybot.utils.i18n import translate, translate_for_ctx, translate_for_interaction
+
 from mybot.utils.config import load_cog_config
 from mybot.utils.paths import get_db_path
 
@@ -41,12 +46,22 @@ def _cfg_bool(name: str, default: bool = True) -> bool:
         return bool(default)
 
 
-class RenameModal(discord.ui.Modal, title="Rename Temp Voice"):
-    channel_name = discord.ui.TextInput(label="New channel name", min_length=1, max_length=90)
-
-    def __init__(self, cog: "TempVoice"):
-        super().__init__()
+class RenameModal(discord.ui.Modal):
+    def __init__(self, cog: "TempVoice", guild_id: Optional[int] = None):
+        title = translate("tempvoice.modal.rename.title", guild_id=guild_id, default="Rename Temp Voice")
+        super().__init__(title=title)
         self.cog = cog
+        self.guild_id = guild_id
+        self.channel_name = discord.ui.TextInput(
+            label=translate(
+                "tempvoice.modal.rename.label",
+                guild_id=guild_id,
+                default="New channel name",
+            ),
+            min_length=1,
+            max_length=90,
+        )
+        self.add_item(self.channel_name)
 
     async def on_submit(self, interaction: discord.Interaction):
         channel, err = self.cog._owned_channel_for_interaction(interaction)
@@ -55,21 +70,58 @@ class RenameModal(discord.ui.Modal, title="Rename Temp Voice"):
             return
         new_name = str(self.channel_name.value or "").strip()
         if not new_name:
-            await interaction.response.send_message("Name cannot be empty.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.empty_name",
+                    default="Name cannot be empty.",
+                ),
+                ephemeral=True,
+            )
             return
         try:
             await channel.edit(name=new_name, reason=f"TempVoice rename by {interaction.user}")
-            await interaction.response.send_message(f"✅ Renamed to **{new_name}**", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.msg.renamed",
+                    default="✅ Renamed to **{name}**",
+                    name=new_name,
+                ),
+                ephemeral=True,
+            )
         except Exception as exc:
-            await interaction.response.send_message(f"❌ Failed to rename: {exc}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.rename_failed",
+                    default="❌ Failed to rename: {error}",
+                    error=str(exc),
+                ),
+                ephemeral=True,
+            )
 
 
-class LimitModal(discord.ui.Modal, title="Set User Limit"):
-    user_limit = discord.ui.TextInput(label="User limit (0-99)", placeholder="0 = unlimited", max_length=2)
-
-    def __init__(self, cog: "TempVoice"):
-        super().__init__()
+class LimitModal(discord.ui.Modal):
+    def __init__(self, cog: "TempVoice", guild_id: Optional[int] = None):
+        title = translate("tempvoice.modal.limit.title", guild_id=guild_id, default="Set User Limit")
+        super().__init__(title=title)
         self.cog = cog
+        self.guild_id = guild_id
+        self.user_limit = discord.ui.TextInput(
+            label=translate(
+                "tempvoice.modal.limit.label",
+                guild_id=guild_id,
+                default="User limit (0-99)",
+            ),
+            placeholder=translate(
+                "tempvoice.modal.limit.placeholder",
+                guild_id=guild_id,
+                default="0 = unlimited",
+            ),
+            max_length=2,
+        )
+        self.add_item(self.user_limit)
 
     async def on_submit(self, interaction: discord.Interaction):
         channel, err = self.cog._owned_channel_for_interaction(interaction)
@@ -78,27 +130,75 @@ class LimitModal(discord.ui.Modal, title="Set User Limit"):
             return
         raw = str(self.user_limit.value or "").strip()
         if not raw.isdigit():
-            await interaction.response.send_message("❌ Please enter digits only (0-99).", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.limit_digits",
+                    default="❌ Please enter digits only (0-99).",
+                ),
+                ephemeral=True,
+            )
             return
         limit = int(raw)
         if limit < 0 or limit > 99:
-            await interaction.response.send_message("❌ Limit must be between 0 and 99.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.limit_range",
+                    default="❌ Limit must be between 0 and 99.",
+                ),
+                ephemeral=True,
+            )
             return
         try:
             await channel.edit(user_limit=limit, reason=f"TempVoice limit by {interaction.user}")
             self.cog._set_user_limit(channel.id, limit)
-            text = "unlimited" if limit == 0 else str(limit)
-            await interaction.response.send_message(f"✅ User limit set to **{text}**", ephemeral=True)
+            label_unlimited = translate_for_interaction(
+                interaction,
+                "tempvoice.label.unlimited",
+                default="unlimited",
+            )
+            text = label_unlimited if limit == 0 else str(limit)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.msg.limit_set",
+                    default="✅ User limit set to **{value}**",
+                    value=text,
+                ),
+                ephemeral=True,
+            )
         except Exception as exc:
-            await interaction.response.send_message(f"❌ Failed to set limit: {exc}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.limit_failed",
+                    default="❌ Failed to set limit: {error}",
+                    error=str(exc),
+                ),
+                ephemeral=True,
+            )
 
 
-class TransferModal(discord.ui.Modal, title="Transfer Temp Voice Ownership"):
-    member_value = discord.ui.TextInput(label="Target member (ID or @mention)", max_length=40)
-
-    def __init__(self, cog: "TempVoice"):
-        super().__init__()
+class TransferModal(discord.ui.Modal):
+    def __init__(self, cog: "TempVoice", guild_id: Optional[int] = None):
+        title = translate(
+            "tempvoice.modal.transfer.title",
+            guild_id=guild_id,
+            default="Transfer Temp Voice Ownership",
+        )
+        super().__init__(title=title)
         self.cog = cog
+        self.guild_id = guild_id
+        self.member_value = discord.ui.TextInput(
+            label=translate(
+                "tempvoice.modal.transfer.label",
+                guild_id=guild_id,
+                default="Target member (ID or @mention)",
+            ),
+            max_length=40,
+        )
+        self.add_item(self.member_value)
 
     async def on_submit(self, interaction: discord.Interaction):
         channel, err = self.cog._owned_channel_for_interaction(interaction)
@@ -109,29 +209,86 @@ class TransferModal(discord.ui.Modal, title="Transfer Temp Voice Ownership"):
         raw = str(self.member_value.value or "").strip()
         target_id = self.cog._extract_int(raw)
         if not target_id:
-            await interaction.response.send_message("❌ Could not parse member ID.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.member_parse",
+                    default="❌ Could not parse member ID.",
+                ),
+                ephemeral=True,
+            )
             return
 
         target_member = interaction.guild.get_member(target_id) if interaction.guild else None
         if target_member is None:
-            await interaction.response.send_message("❌ Member not found in this server.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.member_missing",
+                    default="❌ Member not found in this server.",
+                ),
+                ephemeral=True,
+            )
             return
 
         if target_member not in channel.members:
-            await interaction.response.send_message("❌ Target member must be in your temp voice channel.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.member_not_in_channel",
+                    default="❌ Target member must be in your temp voice channel.",
+                ),
+                ephemeral=True,
+            )
             return
 
         ok, message = await self.cog._transfer_owner(channel, target_member, interaction.user)
         if ok:
-            await interaction.response.send_message(f"✅ {message}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.msg.transfer_success",
+                    default="✅ Ownership transferred to {member}.",
+                    member=message,
+                ),
+                ephemeral=True,
+            )
         else:
-            await interaction.response.send_message(f"❌ {message}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.msg.transfer_failed",
+                    default="❌ {message}",
+                    message=message,
+                ),
+                ephemeral=True,
+            )
 
 
 class TempVoicePanelView(discord.ui.View):
-    def __init__(self, cog: "TempVoice"):
+    def __init__(self, cog: "TempVoice", guild_id: Optional[int] = None):
         super().__init__(timeout=None)
         self.cog = cog
+        self.guild_id = guild_id
+        self._apply_labels()
+
+    def _apply_labels(self) -> None:
+        mapping = {
+            "tempvoice:lock": ("tempvoice.button.lock", "Lock"),
+            "tempvoice:unlock": ("tempvoice.button.unlock", "Unlock"),
+            "tempvoice:hide": ("tempvoice.button.hide", "Hide"),
+            "tempvoice:unhide": ("tempvoice.button.unhide", "Unhide"),
+            "tempvoice:rename": ("tempvoice.button.rename", "Rename"),
+            "tempvoice:limit": ("tempvoice.button.limit", "Limit"),
+            "tempvoice:transfer": ("tempvoice.button.transfer", "Transfer"),
+            "tempvoice:claim": ("tempvoice.button.claim", "Claim"),
+            "tempvoice:delete": ("tempvoice.button.delete", "Delete"),
+        }
+        for child in self.children:
+            custom_id = getattr(child, "custom_id", None)
+            if custom_id in mapping:
+                key, default = mapping[custom_id]
+                child.label = translate(key, guild_id=self.guild_id, default=default)
 
     @discord.ui.button(label="Lock", style=discord.ButtonStyle.secondary, emoji="🔒", custom_id="tempvoice:lock")
     async def lock_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
@@ -155,7 +312,9 @@ class TempVoicePanelView(discord.ui.View):
         if channel is None:
             await interaction.response.send_message(err, ephemeral=True)
             return
-        await interaction.response.send_modal(RenameModal(self.cog))
+        await interaction.response.send_modal(
+            RenameModal(self.cog, getattr(interaction.guild, "id", None))
+        )
 
     @discord.ui.button(label="Limit", style=discord.ButtonStyle.primary, emoji="👥", custom_id="tempvoice:limit")
     async def limit_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
@@ -163,7 +322,9 @@ class TempVoicePanelView(discord.ui.View):
         if channel is None:
             await interaction.response.send_message(err, ephemeral=True)
             return
-        await interaction.response.send_modal(LimitModal(self.cog))
+        await interaction.response.send_modal(
+            LimitModal(self.cog, getattr(interaction.guild, "id", None))
+        )
 
     @discord.ui.button(label="Transfer", style=discord.ButtonStyle.primary, emoji="🎯", custom_id="tempvoice:transfer")
     async def transfer_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
@@ -171,7 +332,9 @@ class TempVoicePanelView(discord.ui.View):
         if channel is None:
             await interaction.response.send_message(err, ephemeral=True)
             return
-        await interaction.response.send_modal(TransferModal(self.cog))
+        await interaction.response.send_modal(
+            TransferModal(self.cog, getattr(interaction.guild, "id", None))
+        )
 
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.success, emoji="👑", custom_id="tempvoice:claim")
     async def claim_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
@@ -340,7 +503,14 @@ class TempVoice(commands.Cog):
 
     def _owned_channel_for_interaction(self, interaction: discord.Interaction) -> tuple[Optional[discord.VoiceChannel], str]:
         if not interaction.guild or not isinstance(interaction.user, discord.Member):
-            return None, "❌ This can only be used in a server."
+            return (
+                None,
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.server_only",
+                    default="❌ This can only be used in a server.",
+                ),
+            )
 
         active_temp = self._voice_temp_channel_for_member(interaction.user)
         if active_temp is not None:
@@ -354,12 +524,23 @@ class TempVoice(commands.Cog):
             if isinstance(channel, discord.VoiceChannel):
                 return channel, ""
 
-        return None, "❌ You are not the owner of a temp voice channel."
+        return (
+            None,
+            translate_for_interaction(
+                interaction,
+                "tempvoice.error.not_owner",
+                default="❌ You are not the owner of a temp voice channel.",
+            ),
+        )
 
     async def _transfer_owner(self, channel: discord.VoiceChannel, new_owner: discord.Member, by_user: discord.Member) -> tuple[bool, str]:
         old_owner_id = self._get_owner_id(channel.id)
         if old_owner_id is None:
-            return False, "This is not a tracked temp channel."
+            return False, translate(
+                "tempvoice.error.not_tracked",
+                guild_id=getattr(channel.guild, "id", None),
+                default="This is not a tracked temp channel.",
+            )
         old_owner = channel.guild.get_member(old_owner_id)
         try:
             if old_owner is not None:
@@ -372,15 +553,23 @@ class TempVoice(commands.Cog):
                 move_members=True,
             )
             self._set_owner(channel.id, new_owner.id)
-            return True, f"Ownership transferred to {new_owner.mention}."
+            return True, new_owner.mention
         except Exception as exc:
             return False, str(exc)
 
     async def _create_temp_channel_for_member(self, member: discord.Member) -> tuple[Optional[discord.VoiceChannel], str]:
         if not member.guild:
-            return None, "Server-only action."
+            return None, translate(
+                "tempvoice.error.server_only",
+                guild_id=None,
+                default="Server-only action.",
+            )
         if not _cfg_bool("ENABLED", True):
-            return None, "TempVoice is disabled in config."
+            return None, translate(
+                "tempvoice.error.disabled",
+                guild_id=getattr(member.guild, "id", None),
+                default="TempVoice is disabled in config.",
+            )
 
         existing_id = self._get_owned_channel_id(member.guild.id, member.id)
         if existing_id:
@@ -407,15 +596,35 @@ class TempVoice(commands.Cog):
             self._set_user_limit(channel.id, limit)
             return channel, "created"
         except Exception as exc:
-            return None, str(exc)
+            return None, translate(
+                "tempvoice.error.create_failed",
+                guild_id=getattr(member.guild, "id", None),
+                default="Failed to create channel: {error}",
+                error=str(exc),
+            )
 
     async def _handle_create(self, interaction: discord.Interaction):
         if not interaction.guild or not isinstance(interaction.user, discord.Member):
-            await interaction.response.send_message("❌ Server-only action.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.server_only",
+                    default="❌ Server-only action.",
+                ),
+                ephemeral=True,
+            )
             return
         channel, state = await self._create_temp_channel_for_member(interaction.user)
         if channel is None:
-            await interaction.response.send_message(f"❌ Failed to create channel: {state}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.create_generic",
+                    default="❌ Failed to create channel: {error}",
+                    error=state,
+                ),
+                ephemeral=True,
+            )
             return
 
         try:
@@ -425,9 +634,25 @@ class TempVoice(commands.Cog):
             pass
 
         if state == "existing":
-            await interaction.response.send_message(f"✅ Your temp channel already exists: {channel.mention}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.msg.already_exists",
+                    default="✅ Your temp channel already exists: {channel}",
+                    channel=channel.mention,
+                ),
+                ephemeral=True,
+            )
         else:
-            await interaction.response.send_message(f"✅ Created: {channel.mention}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.msg.created",
+                    default="✅ Created: {channel}",
+                    channel=channel.mention,
+                ),
+                ephemeral=True,
+            )
 
     async def _handle_lock(self, interaction: discord.Interaction, lock: bool):
         channel, err = self._owned_channel_for_interaction(interaction)
@@ -437,9 +662,26 @@ class TempVoice(commands.Cog):
         try:
             await channel.set_permissions(channel.guild.default_role, connect=not lock)
             self._set_lock_hidden(channel.id, locked=lock)
-            await interaction.response.send_message("✅ Locked." if lock else "✅ Unlocked.", ephemeral=True)
+            key = "tempvoice.msg.locked" if lock else "tempvoice.msg.unlocked"
+            default = "✅ Locked." if lock else "✅ Unlocked."
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    key,
+                    default=default,
+                ),
+                ephemeral=True,
+            )
         except Exception as exc:
-            await interaction.response.send_message(f"❌ Failed: {exc}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.generic",
+                    default="❌ Failed: {error}",
+                    error=str(exc),
+                ),
+                ephemeral=True,
+            )
 
     async def _handle_hide(self, interaction: discord.Interaction, hide: bool):
         channel, err = self._owned_channel_for_interaction(interaction)
@@ -449,37 +691,105 @@ class TempVoice(commands.Cog):
         try:
             await channel.set_permissions(channel.guild.default_role, view_channel=not hide)
             self._set_lock_hidden(channel.id, hidden=hide)
-            await interaction.response.send_message("✅ Hidden." if hide else "✅ Unhidden.", ephemeral=True)
+            key = "tempvoice.msg.hidden" if hide else "tempvoice.msg.unhidden"
+            default = "✅ Hidden." if hide else "✅ Unhidden."
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    key,
+                    default=default,
+                ),
+                ephemeral=True,
+            )
         except Exception as exc:
-            await interaction.response.send_message(f"❌ Failed: {exc}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.generic",
+                    default="❌ Failed: {error}",
+                    error=str(exc),
+                ),
+                ephemeral=True,
+            )
 
     async def _handle_claim(self, interaction: discord.Interaction):
         if not interaction.guild or not isinstance(interaction.user, discord.Member):
-            await interaction.response.send_message("❌ Server-only action.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.server_only",
+                    default="❌ Server-only action.",
+                ),
+                ephemeral=True,
+            )
             return
         channel = self._voice_temp_channel_for_member(interaction.user)
         if channel is None:
-            await interaction.response.send_message("❌ Join a temp voice channel to claim it.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.claim_join",
+                    default="❌ Join a temp voice channel to claim it.",
+                ),
+                ephemeral=True,
+            )
             return
 
         owner_id = self._get_owner_id(channel.id)
         if owner_id is None:
-            await interaction.response.send_message("❌ This is not a tracked temp channel.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.not_tracked",
+                    default="❌ This is not a tracked temp channel.",
+                ),
+                ephemeral=True,
+            )
             return
         if owner_id == interaction.user.id:
-            await interaction.response.send_message("ℹ️ You already own this channel.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.info.already_owner",
+                    default="ℹ️ You already own this channel.",
+                ),
+                ephemeral=True,
+            )
             return
 
         owner_member = interaction.guild.get_member(owner_id)
         if owner_member is not None and owner_member in channel.members:
-            await interaction.response.send_message("❌ Owner is still in the channel.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.owner_present",
+                    default="❌ Owner is still in the channel.",
+                ),
+                ephemeral=True,
+            )
             return
 
         ok, message = await self._transfer_owner(channel, interaction.user, interaction.user)
         if ok:
-            await interaction.response.send_message(f"✅ {message}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.msg.claim_transfer",
+                    default="✅ Ownership transferred to {member}.",
+                    member=message,
+                ),
+                ephemeral=True,
+            )
         else:
-            await interaction.response.send_message(f"❌ {message}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.msg.transfer_failed",
+                    default="❌ {message}",
+                    message=message,
+                ),
+                ephemeral=True,
+            )
 
     async def _handle_delete(self, interaction: discord.Interaction):
         channel, err = self._owned_channel_for_interaction(interaction)
@@ -489,9 +799,24 @@ class TempVoice(commands.Cog):
         try:
             self._remove_channel(channel.id)
             await channel.delete(reason=f"TempVoice delete by {interaction.user}")
-            await interaction.response.send_message("✅ Channel deleted.", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.msg.deleted",
+                    default="✅ Channel deleted.",
+                ),
+                ephemeral=True,
+            )
         except Exception as exc:
-            await interaction.response.send_message(f"❌ Failed to delete: {exc}", ephemeral=True)
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "tempvoice.error.delete_failed",
+                    default="❌ Failed to delete: {error}",
+                    error=str(exc),
+                ),
+                ephemeral=True,
+            )
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -533,25 +858,48 @@ class TempVoice(commands.Cog):
     async def tempvoice_panel(self, ctx: commands.Context):
         hub_channel = self._create_channel_hub(ctx.guild) if ctx.guild else None
         if hub_channel is not None:
-            hub_hint = f"Join {hub_channel.mention} to auto-create your temp channel."
+            hub_hint = translate_for_ctx(
+                ctx,
+                "tempvoice.panel.hint_join",
+                default="Join {channel} to auto-create your temp channel.",
+                channel=hub_channel.mention,
+            )
         else:
             configured_id = _cfg_int("CREATE_CHANNEL_ID", 0)
             if configured_id:
-                hub_hint = f"Join your configured create channel (ID: {configured_id}) to auto-create your temp channel."
+                hub_hint = translate_for_ctx(
+                    ctx,
+                    "tempvoice.panel.hint_configured",
+                    default="Join your configured create channel (ID: {channel_id}) to auto-create your temp channel.",
+                    channel_id=configured_id,
+                )
             else:
-                hub_hint = "Set CREATE_CHANNEL_ID in tempvoice config to enable join-to-create."
+                hub_hint = translate_for_ctx(
+                    ctx,
+                    "tempvoice.panel.hint_configure",
+                    default="Set CREATE_CHANNEL_ID in tempvoice config to enable join-to-create.",
+                )
 
         embed = discord.Embed(
-            title="🎙️ Temp Voice",
-            description=(
-                "Manage your temporary voice channel with buttons below.\n\n"
-                "Features: lock/unlock, hide/unhide, rename, user limit, transfer, claim, delete.\n"
-                f"{hub_hint}"
+            title=translate_for_ctx(
+                ctx,
+                "tempvoice.panel.title",
+                default="🎙️ Temp Voice",
+            ),
+            description=translate_for_ctx(
+                ctx,
+                "tempvoice.panel.description",
+                default=(
+                    "Manage your temporary voice channel with the buttons below.\n\n"
+                    "Features: lock/unlock, hide/unhide, rename, user limit, transfer, claim, delete.\n"
+                    "{hint}"
+                ),
+                hint=hub_hint,
             ),
             color=discord.Color.blurple(),
             timestamp=datetime.utcnow(),
         )
-        view = TempVoicePanelView(self)
+        view = TempVoicePanelView(self, getattr(ctx.guild, "id", None))
         await ctx.send(embed=embed, view=view)
 
 
