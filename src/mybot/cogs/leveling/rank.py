@@ -108,6 +108,20 @@ class Rank(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    def _build_achievements_embed(self, member, achievements: list[str]) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"🏅 Achievements — {member.display_name}",
+            color=discord.Color.blurple(),
+        )
+
+        cleaned = [str(a).strip() for a in (achievements or []) if str(a).strip()]
+        if cleaned:
+            embed.description = "\n".join(f"• {name}" for name in cleaned)
+        else:
+            embed.description = "No achievements unlocked yet."
+
+        return embed
+
     # ======================================================
     # USER COMMAND
     # ======================================================
@@ -118,9 +132,13 @@ class Rank(commands.Cog):
 
         member = member or ctx.author
 
+        user = self.bot.db.get_user(member.id)
+        achievements = user.get("achievements", [])
+
         file = await self.generate_rankcard(member)
 
         await ctx.send(file=file)
+        await ctx.send(embed=self._build_achievements_embed(member, achievements))
 
     # ======================================================
     # ADMIN COMMAND - rankuser
