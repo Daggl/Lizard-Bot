@@ -209,6 +209,20 @@ def _pick_test_member(guild):
         members = list(getattr(guild, "members", []) or [])
     except Exception:
         members = []
+
+    preferred_name = str(os.getenv("UI_TEST_MEMBER_NAME", "leutnantbrause") or "").strip().lower()
+    if preferred_name:
+        for member in members:
+            try:
+                if getattr(member, "bot", False):
+                    continue
+                name = str(getattr(member, "name", "") or "").strip().lower()
+                display_name = str(getattr(member, "display_name", "") or "").strip().lower()
+                if name == preferred_name or display_name == preferred_name:
+                    return member
+            except Exception:
+                continue
+
     for member in members:
         try:
             if not getattr(member, "bot", False):
