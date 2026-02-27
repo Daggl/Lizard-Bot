@@ -186,14 +186,14 @@ Use these commands as the fastest per-feature smoke test:
 
 ## Help
 
-### `help`
+### `*help` (aliases: `*tutorial`, `*hilfe`)
 - **What it does:** Opens the bot help/tutorial embed in Discord.
-- **Usage:** `help`
+- **Usage:** `*help`
 - **Permission:** Everyone
 
-### `admin_help`
+### `*admin_help` (aliases: `*adminhelp`, `*ahelp`)
 - **What it does:** Opens administrator control/help UI.
-- **Usage:** `admin_help`
+- **Usage:** `*admin_help`
 - **Permission:** Administrator
 
 ---

@@ -10,7 +10,7 @@ class HelpTutorial(commands.Cog):
 
         bot.remove_command("help")
 
-    @commands.command(name="help")
+    @commands.command(name="help", aliases=["tutorial", "hilfe"])
     async def h(self, ctx):
 
         embed = discord.Embed(
@@ -79,7 +79,9 @@ class HelpTutorial(commands.Cog):
         embed.add_field(
             name="⚙ General",
             value=(
-                "`*ping` → Tests if the bot is online\n" "`*help` → Shows this menu"
+                "`*ping` → Tests if the bot is online\n"
+                "`*help` → Shows this menu\n"
+                "`*admin_help` → Opens admin command center"
             ),
             inline=False,
         )
