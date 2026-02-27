@@ -112,6 +112,18 @@ class HelpTutorial(commands.Cog):
         )
 
         embed.add_field(
+            name="🎙️ TempVoice",
+            value=(
+                "Create temporary voice channels automatically.\n\n"
+                "- Join the configured TempVoice create channel\n"
+                "- The bot creates your own channel and moves you there\n"
+                "- Channel is deleted automatically when everyone leaves\n"
+                "- Management is done via TempVoice panel buttons posted by admins"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
             name="🎵 Music",
             value=(
                 "Play music from YouTube or import Spotify tracks/playlists.\n\n"

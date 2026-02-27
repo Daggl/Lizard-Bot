@@ -12,6 +12,9 @@ CHANNEL_FIELD_KEYS = [
     ("count", "COUNT_CHANNEL_ID", "Count channel"),
     ("birthdays", "CHANNEL_ID", "Birthday channel"),
     ("leveling", "ACHIEVEMENT_CHANNEL_ID", "Achievement channel"),
+    ("tempvoice", "CREATE_CHANNEL_ID", "TempVoice create-join channel"),
+    ("tempvoice", "CONTROL_CHANNEL_ID", "TempVoice control panel channel"),
+    ("tempvoice", "CATEGORY_ID", "TempVoice category"),
     ("tickets", "TICKET_CATEGORY_ID", "Ticket category"),
     ("tickets", "TICKET_LOG_CHANNEL_ID", "Ticket log channel"),
     ("log_chat", "CHANNEL_ID", "Log chat channel"),
@@ -460,11 +463,15 @@ class SetupWizardDialog(QtWidgets.QDialog):
         if page_index == 1:
             return (
                 "Help • Channel IDs",
-                "Hier setzt du Channel-IDs für Welcome, Logs, Count, Birthdays, Tickets und Achievements.\n\n"
+                "Hier setzt du Channel-IDs für Welcome, Logs, Count, Birthdays, TempVoice, Tickets und Achievements.\n\n"
                 "Woher bekommst du die IDs?\n"
                 "- In Discord Entwicklermodus aktivieren\n"
                 "- Rechtsklick auf Kanal → ID kopieren\n"
                 "- Nur Zahlen eintragen (keine #, keine Namen)\n\n"
+                "TempVoice Hinweise:\n"
+                "- CREATE_CHANNEL_ID: Join-to-create Hub Voicechannel\n"
+                "- CONTROL_CHANNEL_ID: Textchannel für *tempvoicepanel\n"
+                "- CATEGORY_ID: Kategorie für neue TempVoice-Channels\n\n"
                 "Tipp: Über 'Guild Snapshot Picker' kannst du viele IDs automatisch übernehmen.",
             )
 

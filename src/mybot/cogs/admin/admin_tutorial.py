@@ -83,7 +83,9 @@ class AdminHelpView(discord.ui.View):
                 "`*say <text> [|image_url]`\n"
                 "↳ Send a bot embed message (optional image with `|url`)\n\n"
                 "`*adminpanel`\n"
-                "↳ Open live admin status panel"
+                "↳ Open live admin status panel\n\n"
+                "`*tempvoicepanel`\n"
+                "↳ Post TempVoice control panel (admin-only)"
             ),
             inline=False,
         )

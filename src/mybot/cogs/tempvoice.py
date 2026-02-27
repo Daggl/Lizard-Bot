@@ -324,6 +324,13 @@ class TempVoice(commands.Cog):
         ch = guild.get_channel(cid)
         return ch if isinstance(ch, discord.TextChannel) else None
 
+    def _create_channel_hub(self, guild: discord.Guild) -> Optional[discord.VoiceChannel]:
+        cid = _cfg_int("CREATE_CHANNEL_ID", 0)
+        if not cid:
+            return None
+        ch = guild.get_channel(cid)
+        return ch if isinstance(ch, discord.VoiceChannel) else None
+
     def _voice_temp_channel_for_member(self, member: discord.Member) -> Optional[discord.VoiceChannel]:
         try:
             channel = member.voice.channel if member.voice else None
@@ -372,50 +379,58 @@ class TempVoice(commands.Cog):
         except Exception as exc:
             return False, str(exc)
 
+    async def _create_temp_channel_for_member(self, member: discord.Member) -> tuple[Optional[discord.VoiceChannel], str]:
+        if not member.guild:
+            return None, "Server-only action."
+        if not _cfg_bool("ENABLED", True):
+            return None, "TempVoice is disabled in config."
+
+        existing_id = self._get_owned_channel_id(member.guild.id, member.id)
+        if existing_id:
+            existing = member.guild.get_channel(existing_id)
+            if isinstance(existing, discord.VoiceChannel):
+                return existing, "existing"
+
+        category = self._temp_category(member.guild)
+        overwrites = {
+            member.guild.default_role: discord.PermissionOverwrite(view_channel=True, connect=True),
+            member: discord.PermissionOverwrite(view_channel=True, connect=True, manage_channels=True, move_members=True),
+        }
+        limit = max(0, min(99, _cfg_int("DEFAULT_USER_LIMIT", 0)))
+
+        try:
+            channel = await member.guild.create_voice_channel(
+                self._channel_name_for(member),
+                category=category,
+                user_limit=limit,
+                overwrites=overwrites,
+                reason=f"TempVoice create by {member}",
+            )
+            self._insert_or_update_channel(channel.id, member.guild.id, member.id)
+            self._set_user_limit(channel.id, limit)
+            return channel, "created"
+        except Exception as exc:
+            return None, str(exc)
+
     async def _handle_create(self, interaction: discord.Interaction):
         if not interaction.guild or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message("❌ Server-only action.", ephemeral=True)
             return
-        if not _cfg_bool("ENABLED", True):
-            await interaction.response.send_message("❌ TempVoice is disabled in config.", ephemeral=True)
+        channel, state = await self._create_temp_channel_for_member(interaction.user)
+        if channel is None:
+            await interaction.response.send_message(f"❌ Failed to create channel: {state}", ephemeral=True)
             return
 
-        existing_id = self._get_owned_channel_id(interaction.guild.id, interaction.user.id)
-        if existing_id:
-            existing = interaction.guild.get_channel(existing_id)
-            if isinstance(existing, discord.VoiceChannel):
-                try:
-                    if interaction.user.voice:
-                        await interaction.user.move_to(existing, reason="Move to existing temp channel")
-                    await interaction.response.send_message(f"✅ Your temp channel already exists: {existing.mention}", ephemeral=True)
-                except Exception as exc:
-                    await interaction.response.send_message(f"❌ Failed to move: {exc}", ephemeral=True)
-                return
-
-        category = self._temp_category(interaction.guild)
-        overwrites = {
-            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=True, connect=True),
-            interaction.user: discord.PermissionOverwrite(view_channel=True, connect=True, manage_channels=True, move_members=True),
-        }
-        limit = max(0, min(99, _cfg_int("DEFAULT_USER_LIMIT", 0)))
         try:
-            channel = await interaction.guild.create_voice_channel(
-                self._channel_name_for(interaction.user),
-                category=category,
-                user_limit=limit,
-                overwrites=overwrites,
-                reason=f"TempVoice create by {interaction.user}",
-            )
-            self._insert_or_update_channel(channel.id, interaction.guild.id, interaction.user.id)
-            self._set_user_limit(channel.id, limit)
             if interaction.user.voice:
-                try:
-                    await interaction.user.move_to(channel, reason="TempVoice auto-move")
-                except Exception:
-                    pass
+                await interaction.user.move_to(channel, reason="TempVoice auto-move")
+        except Exception:
+            pass
+
+        if state == "existing":
+            await interaction.response.send_message(f"✅ Your temp channel already exists: {channel.mention}", ephemeral=True)
+        else:
             await interaction.response.send_message(f"✅ Created: {channel.mention}", ephemeral=True)
-        except Exception as exc:
-            await interaction.response.send_message(f"❌ Failed to create channel: {exc}", ephemeral=True)
 
     async def _handle_lock(self, interaction: discord.Interaction, lock: bool):
         channel, err = self._owned_channel_for_interaction(interaction)
@@ -483,6 +498,18 @@ class TempVoice(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        after_channel = after.channel if isinstance(after.channel, discord.VoiceChannel) else None
+        hub_channel = self._create_channel_hub(member.guild) if member.guild else None
+
+        if after_channel is not None and hub_channel is not None and after_channel.id == hub_channel.id and not getattr(member, "bot", False):
+            channel, state = await self._create_temp_channel_for_member(member)
+            if channel is not None:
+                try:
+                    if member.voice and member.voice.channel and member.voice.channel.id == hub_channel.id:
+                        await member.move_to(channel, reason="TempVoice join-to-create")
+                except Exception:
+                    pass
+
         before_channel = before.channel if isinstance(before.channel, discord.VoiceChannel) else None
         if before_channel is None:
             return
@@ -510,7 +537,8 @@ class TempVoice(commands.Cog):
             title="🎙️ Temp Voice",
             description=(
                 "Create and manage your temporary voice channel with buttons below.\n\n"
-                "Features: create, lock/unlock, hide/unhide, rename, user limit, transfer, claim, delete."
+                "Features: create, lock/unlock, hide/unhide, rename, user limit, transfer, claim, delete.\n"
+                "If CREATE_CHANNEL_ID is configured, joining that channel auto-creates your temp channel."
             ),
             color=discord.Color.blurple(),
             timestamp=datetime.utcnow(),

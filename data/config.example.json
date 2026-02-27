@@ -42,6 +42,7 @@
   "tempvoice": {
     "ENABLED": true,
     "CATEGORY_ID": 0,
+    "CREATE_CHANNEL_ID": 0,
     "CONTROL_CHANNEL_ID": 0,
     "CHANNEL_NAME_TEMPLATE": "🔊 {display_name}",
     "DEFAULT_USER_LIMIT": 0
