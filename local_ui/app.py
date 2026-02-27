@@ -8,12 +8,10 @@ JSON response. This is a minimal example to get started.
 
 import sys
 import os
-import threading
 from datetime import datetime
 # HTML embed removed; no html module required
 from PySide6 import QtWidgets, QtCore
 from config_editor import ConfigEditor
-from control_api_client import send_cmd
 from exception_handler import install_exception_hook
 from repo_paths import get_repo_root
 from runtime import run_main_window
@@ -28,6 +26,7 @@ from controllers.leveling_controller import LevelingControllerMixin
 from controllers.logs_controller import LogsControllerMixin
 from controllers.preview_api_controller import PreviewApiControllerMixin
 from controllers.preview_controller import PreviewControllerMixin
+from controllers.runtime_core_controller import RuntimeCoreControllerMixin
 
 write_startup_trace()
 
@@ -35,7 +34,7 @@ write_startup_trace()
 install_exception_hook()
 
 
-class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControllerMixin, DashboardControllerMixin, AdminControllerMixin, EmojiControllerMixin, PreviewControllerMixin, PreviewApiControllerMixin, LifecycleControllerMixin, QtWidgets.QMainWindow):
+class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControllerMixin, DashboardControllerMixin, AdminControllerMixin, EmojiControllerMixin, PreviewControllerMixin, PreviewApiControllerMixin, LifecycleControllerMixin, RuntimeCoreControllerMixin, QtWidgets.QMainWindow):
     _async_done = QtCore.Signal(object)
 
     def __init__(self):
@@ -307,76 +306,6 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
             pass
         return super().closeEvent(event)
 
-    def _debug_log(self, message: str):
-        try:
-            if os.environ.get("UI_DEBUG") != "1":
-                return
-            log_dir = os.path.join(self._repo_root, "data", "logs")
-            os.makedirs(log_dir, exist_ok=True)
-            with open(os.path.join(log_dir, "ui_debug.log"), "a", encoding="utf-8", errors="ignore") as fh:
-                fh.write(f"{datetime.now().isoformat()} {message}\n")
-        except Exception:
-            pass
-
-    def _safe_stop_timer(self, name: str):
-        try:
-            timer = getattr(self, name, None)
-            if timer:
-                timer.stop()
-        except Exception:
-            pass
-
-    def _safe_close_attr(self, name: str):
-        try:
-            obj = getattr(self, name, None)
-            if obj:
-                obj.close()
-        except Exception:
-            pass
-        finally:
-            try:
-                setattr(self, name, None)
-            except Exception:
-                pass
-
-    def _cleanup_runtime_resources(self):
-        for timer_name in ("status_timer", "log_timer", "_alive_timer", "_dash_console_timer"):
-            self._safe_stop_timer(timer_name)
-        try:
-            poller = getattr(self, "_log_poller", None)
-            if poller:
-                poller.stop()
-        except Exception:
-            pass
-        finally:
-            try:
-                self._log_poller = None
-            except Exception:
-                pass
-        self._safe_close_attr("_log_fp")
-        self._safe_close_attr("_tracked_fp")
-        self._safe_close_attr("_db_conn")
-
-    def send_cmd_async(self, cmd: dict, timeout: float = 1.0, cb=None):
-        def _worker():
-            try:
-                res = send_cmd(cmd, timeout=timeout)
-            except Exception as e:
-                res = {"ok": False, "error": str(e)}
-            try:
-                self._async_done.emit((cb, res))
-            except Exception:
-                pass
-
-        threading.Thread(target=_worker, daemon=True).start()
-
-    def _process_async_result(self, payload):
-        try:
-            cb, res = payload
-            if cb:
-                cb(res)
-        except Exception:
-            pass
 
 def main():
     sys.exit(run_main_window(MainWindow))
