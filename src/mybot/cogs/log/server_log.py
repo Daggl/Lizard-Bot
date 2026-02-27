@@ -31,7 +31,7 @@ class ServerLog(commands.Cog):
     # ==========================================================
 
     def save(self, data):
-        from data.logs import database as db
+        from data.logs.storage import database as db
 
         # Centralized log saving
         db.save_log("server", data)

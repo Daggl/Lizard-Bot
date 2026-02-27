@@ -31,7 +31,7 @@ class ChatLog(commands.Cog):
     # ==========================================================
 
     def save(self, data):
-        from data.logs import database as db
+        from data.logs.storage import database as db
 
         # Use central logs DB; db.save_log will store the raw dict
         db.save_log("chat", data)

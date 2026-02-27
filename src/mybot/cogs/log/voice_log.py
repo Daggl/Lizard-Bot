@@ -31,7 +31,7 @@ class VoiceLog(commands.Cog):
     # ==========================================================
 
     def save(self, data):
-        from data.logs import database as db
+        from data.logs.storage import database as db
 
         # Persist voice logs centrally
         db.save_log("voice", data)

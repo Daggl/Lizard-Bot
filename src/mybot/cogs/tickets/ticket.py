@@ -378,7 +378,7 @@ class TicketCog(commands.Cog):
 
     async def _log_action(self, guild: discord.Guild, text: str) -> None:
         try:
-            from data.logs import database as logs_db
+            from data.logs.storage import database as logs_db
 
             logs_db.save_log(
                 "ticket",

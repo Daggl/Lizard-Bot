@@ -31,7 +31,7 @@ class ModLog(commands.Cog):
     # ==========================================================
 
     def save(self, data):
-        from data.logs import database as db
+        from data.logs.storage import database as db
 
         # Use central logs DB for mod events
         db.save_log("mod", data)

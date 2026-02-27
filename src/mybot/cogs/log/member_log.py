@@ -31,7 +31,7 @@ class MemberLog(commands.Cog):
     # ==========================================================
 
     def save(self, data):
-        from data.logs import database as db
+        from data.logs.storage import database as db
 
         # Persist using central logs DB
         db.save_log("member", data)

@@ -24,7 +24,7 @@ if os.path.isdir(_src) and _src not in sys.path:
 os.environ.setdefault("DC_BOT_REPO_ROOT", REPO_ROOT)
 
 # custom database for logs
-from data.logs import database  # noqa: E402
+from data.logs.storage import database  # noqa: E402
 # ensure per-cog config files exist before loading cogs
 from mybot.utils import sync_cog_configs_from_example  # noqa: E402
 

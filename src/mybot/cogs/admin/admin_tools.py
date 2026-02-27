@@ -188,7 +188,7 @@ class AdminTools(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def testlog(self, ctx, category: str = "system", *, message: str = "Manual log test"):
         try:
-            from data.logs import database as logs_db
+            from data.logs.storage import database as logs_db
 
             logs_db.save_log(
                 category,
