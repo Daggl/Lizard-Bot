@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 
-from repo_paths import get_repo_root
+from .repo_paths import get_repo_root
 
 
 def write_startup_trace():

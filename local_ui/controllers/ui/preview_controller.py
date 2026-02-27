@@ -3,8 +3,8 @@ import os
 
 from PySide6 import QtWidgets, QtCore, QtGui
 
-from config_io import config_json_path, load_json_dict, save_json_merged
-from file_ops import open_tracked_writer, prune_backups, rotate_log_file
+from config.config_io import config_json_path, load_json_dict, save_json_merged
+from services.file_ops import open_tracked_writer, prune_backups, rotate_log_file
 
 
 class PreviewControllerMixin:

@@ -6,7 +6,7 @@ from datetime import datetime
 
 from PySide6 import QtWidgets, QtCore
 
-from control_api_client import send_cmd
+from services.control_api_client import send_cmd
 
 
 UI_RESTART_EXIT_CODE = 42

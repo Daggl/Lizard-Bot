@@ -4,8 +4,8 @@ import sqlite3
 
 from PySide6 import QtCore, QtWidgets
 
-from log_format import format_db_row
-from log_poller import LogPoller
+from services.log_format import format_db_row
+from services.log_poller import LogPoller
 
 
 class LogsControllerMixin:

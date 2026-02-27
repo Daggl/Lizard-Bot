@@ -1,8 +1,8 @@
 from PySide6 import QtWidgets
 
-from config_editor import ConfigEditor
-from guides import open_bot_tutorial, open_commands_guide
-from setup_wizard import SetupWizardDialog
+from config.config_editor import ConfigEditor
+from services.guides import open_bot_tutorial, open_commands_guide
+from ui.setup_wizard import SetupWizardDialog
 
 
 class AdminControllerMixin:

@@ -5,7 +5,7 @@ from datetime import datetime
 
 from PySide6 import QtWidgets
 
-from repo_paths import get_repo_root
+from .repo_paths import get_repo_root
 
 
 def _handle_uncaught_exception(exc_type, exc_value, exc_tb):

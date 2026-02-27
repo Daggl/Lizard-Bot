@@ -11,12 +11,12 @@ import os
 from datetime import datetime
 # HTML embed removed; no html module required
 from PySide6 import QtWidgets, QtCore
-from config_editor import ConfigEditor
-from exception_handler import install_exception_hook
-from repo_paths import get_repo_root
-from runtime import run_main_window
-from startup_trace import write_startup_trace
-from ui_tabs import build_configs_tab, build_dashboard_tab, build_logs_tab, build_welcome_and_rank_tabs
+from config.config_editor import ConfigEditor
+from core.exception_handler import install_exception_hook
+from core.repo_paths import get_repo_root
+from core.runtime import run_main_window
+from core.startup_trace import write_startup_trace
+from ui.ui_tabs import build_configs_tab, build_dashboard_tab, build_logs_tab, build_welcome_and_rank_tabs
 from controllers.ui.admin_controller import AdminControllerMixin
 from controllers.features.birthdays_controller import BirthdaysControllerMixin
 from controllers.monitoring.dashboard_controller import DashboardControllerMixin

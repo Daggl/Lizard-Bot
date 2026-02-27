@@ -2,7 +2,7 @@ import os
 import threading
 from datetime import datetime
 
-from control_api_client import send_cmd
+from services.control_api_client import send_cmd
 
 
 class RuntimeCoreControllerMixin:

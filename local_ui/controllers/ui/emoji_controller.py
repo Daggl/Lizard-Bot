@@ -1,6 +1,6 @@
 from PySide6 import QtWidgets
 
-from dialogs.emoji_picker import GuildEmojiPickerDialog
+from ui.dialogs.emoji_picker import GuildEmojiPickerDialog
 
 
 class EmojiControllerMixin:

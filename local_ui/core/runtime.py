@@ -5,7 +5,7 @@ from datetime import datetime
 
 from PySide6 import QtCore, QtWidgets
 
-from repo_paths import get_repo_root
+from .repo_paths import get_repo_root
 
 
 def run_main_window(main_window_cls):

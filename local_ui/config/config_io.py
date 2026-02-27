@@ -1,7 +1,7 @@
 import os
 import sys
 
-from repo_paths import get_repo_root
+from core.repo_paths import get_repo_root
 
 try:
     from mybot.utils.config_store import (

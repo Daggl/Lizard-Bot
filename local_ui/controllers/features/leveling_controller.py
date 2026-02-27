@@ -3,7 +3,7 @@ import re
 
 from PySide6 import QtWidgets, QtCore
 
-from config_io import config_json_path, load_json_dict, save_json_merged
+from config.config_io import config_json_path, load_json_dict, save_json_merged
 
 
 def _natural_sort_text_key(text: str) -> str:
