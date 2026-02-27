@@ -107,23 +107,18 @@ async def on_ready():
             guild_id_raw = str(os.getenv("DISCORD_GUILD_ID", "") or "").strip()
             if guild_id_raw:
                 guild_obj = discord.Object(id=int(guild_id_raw))
-                synced = await bot.tree.sync(guild=guild_obj)
-                print(f"Synced {len(synced)} slash commands for guild {guild_id_raw}.")
+                await bot.tree.sync(guild=guild_obj)
                 synced_global = await bot.tree.sync()
                 print(f"Synced {len(synced_global)} global slash commands.")
             else:
-                guild_sync_total = 0
                 for guild in getattr(bot, "guilds", []):
                     try:
-                        synced_guild = await bot.tree.sync(guild=guild)
-                        guild_sync_total += len(synced_guild)
-                        print(f"Synced {len(synced_guild)} slash commands for guild ID {guild.id}.")
+                        await bot.tree.sync(guild=guild)
                     except Exception as guild_sync_error:
                         print(f"Failed guild slash sync for guild ID {guild.id}: {guild_sync_error}")
 
                 synced_global = await bot.tree.sync()
                 print(f"Synced {len(synced_global)} global slash commands.")
-                print(f"Guild slash sync total: {guild_sync_total}.")
             _slash_synced = True
         except Exception as e:
             print("Failed to sync slash commands:", e)

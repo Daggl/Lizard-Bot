@@ -330,10 +330,6 @@ Use these commands as the fastest per-feature smoke test:
 - **What it does:** Bot joins your current voice channel.
 - **Usage:** `/join`
 
-### `/mjoin`
-- **What it does:** Prefix alias for join.
-- **Usage:** `/mjoin`
-
 ### `/leave` (hybrid)
 - **What it does:** Leaves voice and clears queue.
 - **Usage:** `/leave`
