@@ -29,29 +29,29 @@ from data.logs import database  # noqa: E402
 from mybot.utils import sync_cog_configs_from_example  # noqa: E402
 
 DEFAULT_EXTENSIONS = [
-    "mybot.cogs.birthdays",
+    "mybot.cogs.community.birthdays",
     "mybot.cogs.welcome.welcome",
-    "mybot.cogs.poll",
+    "mybot.cogs.community.poll",
     "mybot.cogs.leveling.levels",
     "mybot.cogs.leveling.rank",
     "mybot.cogs.leveling.achievements",
     "mybot.cogs.leveling.rewards",
     "mybot.cogs.leveling.tracking",
-    "mybot.cogs.help_tutorial",
+    "mybot.cogs.general.help_tutorial",
     "mybot.cogs.admin.admin_panel",
     "mybot.cogs.admin.admin_tools",
     "mybot.cogs.admin.admin_tutorial",
-    "mybot.cogs.count",
+    "mybot.cogs.community.count",
     "mybot.cogs.log.chat_log",
     "mybot.cogs.log.mod_log",
     "mybot.cogs.log.member_log",
     "mybot.cogs.log.voice_log",
     "mybot.cogs.log.server_log",
     "mybot.cogs.welcome.autorole",
-    "mybot.cogs.tempvoice",
-    "mybot.cogs.say",
+    "mybot.cogs.voice.tempvoice",
+    "mybot.cogs.community.say",
     "mybot.cogs.tickets.ticket",
-    "mybot.cogs.music",
+    "mybot.cogs.media.music",
 ]
 
 # ==========================================================
