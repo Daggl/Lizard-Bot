@@ -1,9 +1,32 @@
 import os
+from urllib import request as _urllib_request
 
-from PySide6 import QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 
 class DashboardControllerMixin:
+    def _update_window_icon_from_avatar(self, avatar_url: str):
+        try:
+            url = str(avatar_url or "").strip()
+            if not url:
+                return
+
+            if getattr(self, "_window_icon_avatar_url", "") == url:
+                return
+
+            req = _urllib_request.Request(url, headers={"User-Agent": "Lizard-UI/1.0"})
+            with _urllib_request.urlopen(req, timeout=5) as resp:
+                raw = resp.read()
+
+            pix = QtGui.QPixmap()
+            if not pix.loadFromData(raw):
+                return
+
+            self.setWindowIcon(QtGui.QIcon(pix))
+            self._window_icon_avatar_url = url
+        except Exception:
+            pass
+
     def _format_uptime(self, seconds: int) -> str:
         try:
             s = int(max(0, seconds or 0))
@@ -44,6 +67,7 @@ class DashboardControllerMixin:
         try:
             if r and r.get("ok"):
                 user = r.get("user") or "(no user)"
+                avatar_url = r.get("avatar_url")
                 ready = bool(r.get("ready"))
                 cogs = r.get("cogs", [])
                 ping_ms = r.get("gateway_ping_ms")
@@ -81,6 +105,10 @@ class DashboardControllerMixin:
                     pass
                 try:
                     self.update_preview()
+                except Exception:
+                    pass
+                try:
+                    self._update_window_icon_from_avatar(avatar_url)
                 except Exception:
                     pass
             else:

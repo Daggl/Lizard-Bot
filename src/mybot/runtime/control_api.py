@@ -443,6 +443,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 "ok": True,
                 "ready": getattr(bot, "is_ready", lambda: False)(),
                 "user": getattr(bot.user, "name", None),
+                "user_id": getattr(bot.user, "id", None),
+                "avatar_url": getattr(getattr(bot.user, "display_avatar", None), "url", None),
                 "cogs": list(getattr(bot, "cogs", {}).keys()),
                 "uptime_seconds": uptime_seconds,
                 "gateway_ping_ms": gateway_ping_ms,

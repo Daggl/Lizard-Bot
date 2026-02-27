@@ -11,6 +11,23 @@ UI_RESTART_EXIT_CODE = 42
 
 
 class LifecycleControllerMixin:
+    def _shutdown_ui_cleanly(self, exit_code: int = 0):
+        try:
+            self._cleanup_runtime_resources()
+        except Exception as e:
+            try:
+                self._debug_log(f"cleanup before shutdown failed: {e}")
+            except Exception:
+                pass
+
+        try:
+            QtCore.QTimer.singleShot(50, lambda: QtWidgets.QApplication.exit(int(exit_code)))
+        except Exception:
+            try:
+                QtWidgets.QApplication.exit(int(exit_code))
+            except Exception:
+                pass
+
     def on_shutdown(self):
         ok = QtWidgets.QMessageBox.question(
             self,
@@ -39,17 +56,7 @@ class LifecycleControllerMixin:
                 except Exception:
                     pass
         finally:
-            try:
-                QtWidgets.QApplication.quit()
-            except Exception:
-                pass
-            try:
-                QtCore.QTimer.singleShot(350, lambda: os._exit(0))
-            except Exception:
-                try:
-                    os._exit(0)
-                except Exception:
-                    pass
+            self._shutdown_ui_cleanly(0)
 
     def on_restart_and_restart_ui(self):
         try:
@@ -79,10 +86,10 @@ class LifecycleControllerMixin:
             except Exception as e:
                 self._debug_log(f"supervised restart shutdown request failed: {e}")
             try:
-                QtWidgets.QApplication.exit(UI_RESTART_EXIT_CODE)
+                self._shutdown_ui_cleanly(UI_RESTART_EXIT_CODE)
             except Exception:
                 try:
-                    os._exit(UI_RESTART_EXIT_CODE)
+                    QtWidgets.QApplication.exit(UI_RESTART_EXIT_CODE)
                 except Exception as e:
                     self._debug_log(f"forced supervised exit failed: {e}")
             return
@@ -140,10 +147,10 @@ class LifecycleControllerMixin:
             except Exception:
                 pass
             try:
-                QtCore.QTimer.singleShot(350, QtWidgets.QApplication.quit)
+                self._shutdown_ui_cleanly(0)
             except Exception:
                 try:
-                    QtWidgets.QApplication.quit()
+                    QtWidgets.QApplication.exit(0)
                 except Exception:
                     try:
                         sys.exit(0)

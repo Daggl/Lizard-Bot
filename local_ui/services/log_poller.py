@@ -29,7 +29,19 @@ class LogPoller(QtCore.QThread):
     def stop(self):
         self._stopped = True
         try:
-            self.wait(2000)
+            self.wait(5000)
+        except Exception:
+            pass
+        try:
+            if self.isRunning():
+                self.requestInterruption()
+                self.wait(1000)
+        except Exception:
+            pass
+        try:
+            if self.isRunning():
+                self.terminate()
+                self.wait(500)
         except Exception:
             pass
 
@@ -43,7 +55,7 @@ class LogPoller(QtCore.QThread):
                 except Exception:
                     return
 
-                while not self._stopped:
+                while not self._stopped and not self.isInterruptionRequested():
                     try:
                         cur.execute(f"SELECT rowid, * FROM '{self.table}' WHERE rowid > ? ORDER BY rowid ASC", (self._last_rowid,))
                         rows = cur.fetchall()
@@ -67,7 +79,7 @@ class LogPoller(QtCore.QThread):
                     except Exception:
                         pass
                     for _ in range(int(self._interval * 10)):
-                        if self._stopped:
+                        if self._stopped or self.isInterruptionRequested():
                             break
                         self.msleep(100)
                 try:
@@ -81,7 +93,7 @@ class LogPoller(QtCore.QThread):
                             fh.seek(0, os.SEEK_END)
                         else:
                             fh.seek(0, os.SEEK_SET)
-                        while not self._stopped:
+                        while not self._stopped and not self.isInterruptionRequested():
                             try:
                                 size_now = os.path.getsize(self.path)
                                 if size_now < fh.tell():
@@ -92,7 +104,11 @@ class LogPoller(QtCore.QThread):
                             if line:
                                 self.new_line.emit(line.rstrip('\n'))
                             else:
-                                self.msleep(int(self._interval * 1000))
+                                remaining_ms = max(1, int(self._interval * 1000))
+                                while remaining_ms > 0 and not self._stopped and not self.isInterruptionRequested():
+                                    step = 100 if remaining_ms > 100 else remaining_ms
+                                    self.msleep(step)
+                                    remaining_ms -= step
                 except Exception:
                     pass
         except Exception:
