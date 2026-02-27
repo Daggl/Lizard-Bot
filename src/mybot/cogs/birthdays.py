@@ -44,19 +44,16 @@ def _channel_id() -> int:
 
 def _embed_title() -> str:
     try:
-        return str(_cfg().get("EMBED_TITLE", "🎂 Birthday") or "🎂 Birthday")
+        return str(_cfg().get("EMBED_TITLE", "") or "")
     except Exception:
-        return "🎂 Birthday"
+        return ""
 
 
 def _embed_description() -> str:
     try:
-        return str(
-            _cfg().get("EMBED_DESCRIPTION", "🎉 Today is {mention}'s birthday!")
-            or "🎉 Today is {mention}'s birthday!"
-        )
+        return str(_cfg().get("EMBED_DESCRIPTION", "") or "")
     except Exception:
-        return "🎉 Today is {mention}'s birthday!"
+        return ""
 
 
 def _embed_footer() -> str:
@@ -67,17 +64,19 @@ def _embed_footer() -> str:
 
 
 def _embed_color() -> discord.Color:
-    raw = "#F1C40F"
+    raw = ""
     try:
-        raw = str(_cfg().get("EMBED_COLOR", "#F1C40F") or "#F1C40F").strip()
+        raw = str(_cfg().get("EMBED_COLOR", "") or "").strip()
     except Exception:
         pass
     try:
+        if not raw:
+            return discord.Color.default()
         if raw.startswith("#"):
             raw = raw[1:]
         return discord.Color(int(raw, 16))
     except Exception:
-        return discord.Color.gold()
+        return discord.Color.default()
 
 
 def _safe_format(template: str, values: dict) -> str:

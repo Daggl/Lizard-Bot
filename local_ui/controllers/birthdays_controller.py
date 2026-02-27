@@ -12,15 +12,12 @@ class BirthdaysControllerMixin:
         if not isinstance(cfg, dict):
             cfg = {}
 
-        channel_id = str(cfg.get("CHANNEL_ID", "") or "").strip()
-        embed_title = str(cfg.get("EMBED_TITLE", "🎂 Birthday") or "🎂 Birthday")
-        embed_desc = str(cfg.get("EMBED_DESCRIPTION", "🎉 Today is {mention}'s birthday!") or "🎉 Today is {mention}'s birthday!")
+        embed_title = str(cfg.get("EMBED_TITLE", "") or "")
+        embed_desc = str(cfg.get("EMBED_DESCRIPTION", "") or "")
         embed_footer = str(cfg.get("EMBED_FOOTER", "") or "")
-        embed_color = str(cfg.get("EMBED_COLOR", "#F1C40F") or "#F1C40F").strip()
+        embed_color = str(cfg.get("EMBED_COLOR", "") or "").strip()
 
         try:
-            if hasattr(self, "bd_channel_id") and not self.bd_channel_id.hasFocus():
-                self.bd_channel_id.setText(channel_id)
             if hasattr(self, "bd_embed_title") and not self.bd_embed_title.hasFocus():
                 self.bd_embed_title.setText(embed_title)
             if hasattr(self, "bd_embed_description") and not self.bd_embed_description.hasFocus():
@@ -62,20 +59,24 @@ class BirthdaysControllerMixin:
                 reload_after = False
                 QtWidgets.QMessageBox.information(self, "Safe Mode", "Auto reload ist aus: Speichern ohne Reload.")
 
-            channel_raw = (self.bd_channel_id.text() or "").strip()
-            if channel_raw and not channel_raw.isdigit():
-                QtWidgets.QMessageBox.warning(self, "Birthdays", "Channel ID must contain only digits.")
-                return
+            existing_cfg = load_json_dict(self._birthdays_config_path())
+            if not isinstance(existing_cfg, dict):
+                existing_cfg = {}
+            existing_channel_id = existing_cfg.get("CHANNEL_ID", 0)
+            try:
+                existing_channel_id = int(existing_channel_id or 0)
+            except Exception:
+                existing_channel_id = 0
 
-            color_raw = (self.bd_embed_color.text() or "").strip() or "#F1C40F"
-            if not QtGui.QColor(color_raw).isValid():
+            color_raw = (self.bd_embed_color.text() or "").strip()
+            if color_raw and not QtGui.QColor(color_raw).isValid():
                 QtWidgets.QMessageBox.warning(self, "Birthdays", "Embed color must be a valid color (e.g. #F1C40F).")
                 return
 
             payload = {
-                "CHANNEL_ID": int(channel_raw) if channel_raw else 0,
-                "EMBED_TITLE": (self.bd_embed_title.text() or "").strip() or "🎂 Birthday",
-                "EMBED_DESCRIPTION": (self.bd_embed_description.toPlainText() or "").strip() or "🎉 Today is {mention}'s birthday!",
+                "CHANNEL_ID": existing_channel_id,
+                "EMBED_TITLE": (self.bd_embed_title.text() or "").strip(),
+                "EMBED_DESCRIPTION": (self.bd_embed_description.toPlainText() or "").strip(),
                 "EMBED_FOOTER": (self.bd_embed_footer.text() or "").strip(),
                 "EMBED_COLOR": color_raw,
             }

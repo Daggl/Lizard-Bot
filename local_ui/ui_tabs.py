@@ -797,10 +797,6 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     bd_form.setHorizontalSpacing(10)
     bd_form.setVerticalSpacing(8)
 
-    window.bd_channel_id = QtWidgets.QLineEdit()
-    window.bd_channel_id.setPlaceholderText("Birthday channel ID")
-    bd_form.addRow("Channel ID:", window.bd_channel_id)
-
     window.bd_embed_title = QtWidgets.QLineEdit()
     window.bd_embed_title.setPlaceholderText("🎂 Birthday")
     bd_form.addRow("Embed title:", window.bd_embed_title)

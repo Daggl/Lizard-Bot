@@ -32,7 +32,7 @@ ROLE_FIELD_KEYS = [
     ("tickets", "SUPPORT_ROLE_ID", "Support role"),
 ]
 
-HIDDEN_WIZARD_ENV_KEYS = {"APP_ENV"}
+HIDDEN_WIZARD_ENV_KEYS = {"APP_ENV", "LOCAL_UI_ENABLE"}
 
 class GuildSnapshotPickerDialog(QtWidgets.QDialog):
     def __init__(self, snapshot_payload: dict, parent=None):
