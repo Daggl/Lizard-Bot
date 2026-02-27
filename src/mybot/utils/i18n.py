@@ -1,7 +1,14 @@
+"""Internationalisation (i18n) system for per-guild language support.
+
+Provides translation lookup, per-guild language configuration and
+locale file management.  Translation files live under ``data/locales/``
+as ``<code>.json`` (e.g. ``en.json``, ``de.json``).
+"""
+
 import json
 import os
 import threading
-from typing import Any, Dict, Iterable, Optional
+from typing import Any
 
 from .config import load_cog_config, write_cog_config
 from .paths import REPO_ROOT
@@ -12,7 +19,8 @@ _DEFAULT_LANGUAGE = "en"
 _LANGUAGE_LOCK = threading.RLock()
 
 
-def _load_locale_file(path: str) -> Dict[str, str]:
+def _load_locale_file(path: str) -> dict[str, str]:
+    """Load a single locale JSON file and return a normalised string→string map."""
     try:
         with open(path, "r", encoding="utf-8") as fh:
             data = json.load(fh)
@@ -24,13 +32,16 @@ def _load_locale_file(path: str) -> Dict[str, str]:
 
 
 class TranslationManager:
+    """Thread-safe registry of locale catalogues loaded from disk."""
+
     def __init__(self) -> None:
         self._lock = threading.RLock()
-        self._translations: Dict[str, Dict[str, str]] = {}
+        self._translations: dict[str, dict[str, str]] = {}
         self.reload()
 
     def reload(self) -> None:
-        translations: Dict[str, Dict[str, str]] = {}
+        """(Re-)load all ``*.json`` files from the locales directory."""
+        translations: dict[str, dict[str, str]] = {}
         if os.path.isdir(_LOCALES_DIR):
             for entry in os.listdir(_LOCALES_DIR):
                 if not entry.lower().endswith(".json"):
@@ -42,11 +53,19 @@ class TranslationManager:
         with self._lock:
             self._translations = translations
 
-    def available_languages(self) -> Iterable[str]:
+    def available_languages(self) -> tuple[str, ...]:
+        """Return sorted tuple of loaded language codes."""
         with self._lock:
             return tuple(sorted(self._translations.keys()))
 
-    def translate(self, key: str, language: Optional[str] = None, fallback: Optional[str] = None, **fmt) -> str:
+    def translate(
+        self,
+        key: str,
+        language: str | None = None,
+        fallback: str | None = None,
+        **fmt,
+    ) -> str:
+        """Look up *key* in the catalogue for *language*, with optional format placeholders."""
         if not key:
             return ""
         code = (language or _DEFAULT_LANGUAGE or "en").lower()
@@ -75,10 +94,12 @@ LANGUAGE_LABELS = {
 
 
 def reload_translations() -> None:
+    """Force re-read of all locale files from disk."""
     _translation_manager.reload()
 
 
 def refresh_language_cache() -> None:
+    """Sync the in-memory guild→language mapping from the config file."""
     data = load_cog_config(_LANGUAGE_CONFIG_NAME) or {}
     default_raw = (
         data.get("DEFAULT_LANGUAGE")
@@ -109,11 +130,13 @@ def get_default_language() -> str:
         return _language_cache.get("default", _DEFAULT_LANGUAGE)
 
 
-def available_languages() -> Iterable[str]:
+def available_languages() -> tuple[str, ...]:
+    """Return all loaded language codes."""
     return _translation_manager.available_languages()
 
 
-def get_language_for_guild(guild_id: Optional[int]) -> str:
+def get_language_for_guild(guild_id: int | None) -> str:
+    """Return the configured language code for a guild (falls back to default)."""
     if guild_id is None:
         return get_default_language()
     gid = str(guild_id)
@@ -122,6 +145,7 @@ def get_language_for_guild(guild_id: Optional[int]) -> str:
 
 
 def set_language_for_guild(guild_id: int, language: str) -> None:
+    """Persist a language choice for *guild_id* and refresh the cache."""
     if guild_id is None:
         raise ValueError("guild_id is required")
     language_code = str(language or "").lower()
@@ -141,6 +165,7 @@ def set_language_for_guild(guild_id: int, language: str) -> None:
 
 
 def set_default_language(language: str) -> None:
+    """Change the global default language and persist to config."""
     language_code = str(language or "").lower()
     if language_code not in available_languages():
         raise ValueError(f"Unsupported language code: {language_code}")
@@ -150,24 +175,36 @@ def set_default_language(language: str) -> None:
     refresh_language_cache()
 
 
-def translate(key: str, guild_id: Optional[int] = None, language: Optional[str] = None, default: Optional[str] = None, **fmt) -> str:
+def translate(
+    key: str,
+    guild_id: int | None = None,
+    language: str | None = None,
+    default: str | None = None,
+    **fmt,
+) -> str:
+    """Top-level translation helper — resolves guild language automatically."""
     lang = (language or get_language_for_guild(guild_id)).lower()
     return _translation_manager.translate(key, language=lang, fallback=default, **fmt)
 
 
-def translate_for_ctx(ctx, key: str, default: Optional[str] = None, **fmt) -> str:
-    guild = getattr(ctx, "guild", None)
-    guild_id = getattr(guild, "id", None)
+def translate_for_ctx(ctx, key: str, default: str | None = None, **fmt) -> str:
+    """Translate using guild info from a ``commands.Context``."""
+    guild_id = getattr(getattr(ctx, "guild", None), "id", None)
     return translate(key, guild_id=guild_id, default=default, **fmt)
 
 
-def translate_for_interaction(interaction, key: str, default: Optional[str] = None, **fmt) -> str:
-    guild = getattr(interaction, "guild", None)
-    guild_id = getattr(guild, "id", None)
+def translate_for_interaction(interaction, key: str, default: str | None = None, **fmt) -> str:
+    """Translate using guild info from a ``discord.Interaction``."""
+    guild_id = getattr(getattr(interaction, "guild", None), "id", None)
     return translate(key, guild_id=guild_id, default=default, **fmt)
 
 
-def resolve_localized_value(value: Any, guild_id: Optional[int] = None, language: Optional[str] = None) -> Any:
+def resolve_localized_value(
+    value: Any,
+    guild_id: int | None = None,
+    language: str | None = None,
+) -> Any:
+    """If *value* is a ``{lang: text}`` dict, pick the best matching translation."""
     if isinstance(value, dict):
         lang = (language or get_language_for_guild(guild_id)).lower()
         normalized = {str(k).lower(): v for k, v in value.items()}
@@ -176,17 +213,17 @@ def resolve_localized_value(value: Any, guild_id: Optional[int] = None, language
         default_lang = get_default_language()
         if default_lang in normalized:
             return normalized[default_lang]
-        for fallback_value in normalized.values():
-            return fallback_value
-        return None
+        return next(iter(normalized.values()), None)
     return value
 
 
 def describe_language(code: str) -> str:
+    """Return a human-readable label for a language code (e.g. ``'de'`` → ``'Deutsch'``)."""
     key = str(code or "").lower()
     return LANGUAGE_LABELS.get(key, key.upper())
 
 
-def get_all_guild_languages() -> Dict[str, str]:
+def get_all_guild_languages() -> dict[str, str]:
+    """Return a copy of the guild→language mapping."""
     with _LANGUAGE_LOCK:
         return dict(_language_cache.get("guilds", {}))

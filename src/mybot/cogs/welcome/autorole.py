@@ -1,3 +1,6 @@
+"""Auto-role cog — assigns and restores roles on member join and reaction events."""
+
+import logging
 import os
 import shutil
 import sqlite3
@@ -6,6 +9,8 @@ from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
 from mybot.utils.paths import get_db_path
+
+log = logging.getLogger(__name__)
 
 
 def _cfg() -> dict:
@@ -65,23 +70,22 @@ def setup_database():
     db_dir = os.path.dirname(db_path) or "."
     os.makedirs(db_dir, exist_ok=True)
 
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS verified_users (
-            user_id INTEGER PRIMARY KEY
-        )
-    """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS verified_users (
+                user_id INTEGER PRIMARY KEY
+            )
+        """)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS rules_accepted (
-            user_id INTEGER PRIMARY KEY
-        )
-    """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rules_accepted (
+                user_id INTEGER PRIMARY KEY
+            )
+        """)
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 # ==========================================================
@@ -107,38 +111,32 @@ class AutoRole(commands.Cog):
         verify_role_id = _cfg_int("VERIFY_ROLE_ID", 0)
         default_role_id = _cfg_int("DEFAULT_ROLE_ID", 0)
 
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
         guild = member.guild
 
-        # Verify Role
-        cursor.execute(
-            "SELECT user_id FROM verified_users WHERE user_id = ?", (member.id,)
-        )
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
 
-        if cursor.fetchone():
+            # Verify Role
+            cursor.execute(
+                "SELECT user_id FROM verified_users WHERE user_id = ?", (member.id,)
+            )
 
-            role = guild.get_role(verify_role_id)
+            if cursor.fetchone():
+                role = guild.get_role(verify_role_id)
+                if role:
+                    await member.add_roles(role)
+                    log.info("Restored verify role for %s", member)
 
-            if role:
-                await member.add_roles(role)
-                print(f"[RESTORE] Verify Role → {member}")
+            # Default Role
+            cursor.execute(
+                "SELECT user_id FROM rules_accepted WHERE user_id = ?", (member.id,)
+            )
 
-        # Default Role
-        cursor.execute(
-            "SELECT user_id FROM rules_accepted WHERE user_id = ?", (member.id,)
-        )
-
-        if cursor.fetchone():
-
-            role = guild.get_role(default_role_id)
-
-            if role:
-                await member.add_roles(role)
-                print(f"[RESTORE] Default Role → {member}")
-
-        conn.close()
+            if cursor.fetchone():
+                role = guild.get_role(default_role_id)
+                if role:
+                    await member.add_roles(role)
+                    log.info("Restored default role for %s", member)
 
     # ======================================================
     # REACTION ADD
@@ -170,62 +168,42 @@ class AutoRole(commands.Cog):
         if not member or member.bot:
             return
 
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
 
-        # VERIFY ROLE
+            # VERIFY ROLE
+            if (
+                payload.channel_id == verify_channel_id
+                and payload.message_id in verify_message_ids
+            ):
+                role = guild.get_role(verify_role_id)
+                if role and role not in member.roles:
+                    await member.add_roles(role)
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO verified_users VALUES (?)", (member.id,)
+                    )
+                    conn.commit()
+                    log.info("Verify role added for %s", member)
 
-        if (
-            payload.channel_id == verify_channel_id
-            and payload.message_id in verify_message_ids
-        ):
+                    # Remove starter role
+                    starter_role = guild.get_role(starter_role_id)
+                    if starter_role and starter_role in member.roles:
+                        await member.remove_roles(starter_role)
+                        log.info("Starter role removed for %s", member)
 
-            role = guild.get_role(verify_role_id)
-
-            if role and role not in member.roles:
-
-                await member.add_roles(role)
-
-                cursor.execute(
-                    "INSERT OR IGNORE INTO verified_users VALUES (?)", (member.id,)
-                )
-
-                conn.commit()
-
-                print(f"[VERIFY ADD] {member}")
-
-                # REMOVE STARTER ROLE
-
-                starter_role = guild.get_role(starter_role_id)
-
-                if starter_role and starter_role in member.roles:
-
-                    await member.remove_roles(starter_role)
-
-                    print(f"[STARTER REMOVE] {member}")
-
-        # DEFAULT ROLE
-
-        if (
-            payload.channel_id == rules_channel_id
-            and payload.message_id in rules_message_ids
-        ):
-
-            role = guild.get_role(default_role_id)
-
-            if role and role not in member.roles:
-
-                await member.add_roles(role)
-
-                cursor.execute(
-                    "INSERT OR IGNORE INTO rules_accepted VALUES (?)", (member.id,)
-                )
-
-                conn.commit()
-
-                print(f"[DEFAULT ADD] {member}")
-
-        conn.close()
+            # DEFAULT ROLE
+            if (
+                payload.channel_id == rules_channel_id
+                and payload.message_id in rules_message_ids
+            ):
+                role = guild.get_role(default_role_id)
+                if role and role not in member.roles:
+                    await member.add_roles(role)
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO rules_accepted VALUES (?)", (member.id,)
+                    )
+                    conn.commit()
+                    log.info("Default role added for %s", member)
 
     # ======================================================
     # REACTION REMOVE
@@ -256,52 +234,36 @@ class AutoRole(commands.Cog):
         if not member:
             return
 
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
 
-        # VERIFY ROLE REMOVE
+            # VERIFY ROLE REMOVE
+            if (
+                payload.channel_id == verify_channel_id
+                and payload.message_id in verify_message_ids
+            ):
+                role = guild.get_role(verify_role_id)
+                if role and role in member.roles:
+                    await member.remove_roles(role)
+                    cursor.execute(
+                        "DELETE FROM verified_users WHERE user_id = ?", (member.id,)
+                    )
+                    conn.commit()
+                    log.info("Verify role removed for %s", member)
 
-        if (
-            payload.channel_id == verify_channel_id
-            and payload.message_id in verify_message_ids
-        ):
-
-            role = guild.get_role(verify_role_id)
-
-            if role and role in member.roles:
-
-                await member.remove_roles(role)
-
-                cursor.execute(
-                    "DELETE FROM verified_users WHERE user_id = ?", (member.id,)
-                )
-
-                conn.commit()
-
-                print(f"[VERIFY REMOVE] {member}")
-
-        # DEFAULT ROLE REMOVE
-
-        if (
-            payload.channel_id == rules_channel_id
-            and payload.message_id in rules_message_ids
-        ):
-
-            role = guild.get_role(default_role_id)
-
-            if role and role in member.roles:
-
-                await member.remove_roles(role)
-
-                cursor.execute(
-                    "DELETE FROM rules_accepted WHERE user_id = ?", (member.id,)
-                )
-
-                conn.commit()
-
-                print(f"[DEFAULT REMOVE] {member}")
-
-        conn.close()
+            # DEFAULT ROLE REMOVE
+            if (
+                payload.channel_id == rules_channel_id
+                and payload.message_id in rules_message_ids
+            ):
+                role = guild.get_role(default_role_id)
+                if role and role in member.roles:
+                    await member.remove_roles(role)
+                    cursor.execute(
+                        "DELETE FROM rules_accepted WHERE user_id = ?", (member.id,)
+                    )
+                    conn.commit()
+                    log.info("Default role removed for %s", member)
 
 
 # ==========================================================

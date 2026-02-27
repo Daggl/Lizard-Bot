@@ -81,10 +81,12 @@ See detailed UI notes in [local_ui/README.md](local_ui/README.md).
 
 - [src/mybot](src/mybot): bot package, cogs, runtime entrypoints
 - [src/mybot/runtime](src/mybot/runtime): bot runtime loop + local control API
+- [src/mybot/cogs](src/mybot/cogs): modular cogs (admin, community, leveling, log, tickets, voice, welcome)
 - [local_ui](local_ui): PySide6 desktop UI
 - [web](web): dashboard backend + frontend (see [web/README.md](web/README.md))
-- [config](config): per-cog runtime configuration
+- [config](config): per-cog runtime configuration (JSON)
 - [data](data): runtime data, logs, uploads
+- [data/locales](data/locales): i18n translation files (`en.json`, `de.json`)
 - [scripts](scripts): maintenance and dev helper scripts
 
 ## Notes

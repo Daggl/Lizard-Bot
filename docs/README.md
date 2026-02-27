@@ -1,28 +1,29 @@
 # Docs Index
 
-Kurze Navigationshilfe für Betrieb, Struktur und Konfiguration.
+Quick navigation for operations, structure and configuration.
 
-## Start & Betrieb
+## Getting Started
 
-- Projekt-Einstieg: [../README.md](../README.md)
+- Project entry point: [../README.md](../README.md)
 - Local UI: [../local_ui/README.md](../local_ui/README.md)
-- Web Workspace: [../web/README.md](../web/README.md)
+- Web dashboard: [../web/README.md](../web/README.md)
 - Docker: [../docker/DOCKER.md](../docker/DOCKER.md)
-- Betrieb/Runbook: [operations.md](operations.md)
+- Operations / Runbook: [operations.md](operations.md)
 
-## Laufzeitdaten
+## Runtime Data
 
-- Konfigurationen: `config/*.json`
-- Runtime-Daten: `data/`
-- Logs/Tracing: `data/logs/`
-- Log-DB: `data/db/logs.db`
-- Poll-Daten: `data/polls.json`
+- Configuration: `config/*.json`
+- Runtime data: `data/`
+- Logs / tracing: `data/logs/`
+- Log database: `data/db/logs.db`
+- Poll data: `data/polls.json`
 
-## Laufzeitstruktur
+## Runtime Architecture
 
-- Bot-Runtime: `src/mybot/runtime/`
-- Legacy-Import-Wrapper: `src/mybot/lizard.py`, `src/mybot/control_api.py`
+- Bot runtime: `src/mybot/runtime/`
+- Legacy import wrappers: `src/mybot/lizard.py`, `src/mybot/control_api.py`
+- i18n locale files: `data/locales/` (`en.json`, `de.json`)
 
-## Dev-Helfer
+## Dev Helpers
 
-- Debug/Utility Scripts: [../scripts/dev/README.md](../scripts/dev/README.md)
+- Debug / utility scripts: [../scripts/dev/README.md](../scripts/dev/README.md)

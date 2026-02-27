@@ -1,11 +1,13 @@
+"""Dashboard controller mixin — bot status monitoring, language controls and console polling."""
+
 import os
-from datetime import datetime
 from urllib import request as _urllib_request
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 
 class DashboardControllerMixin:
+    """Provides bot status refresh, language guild/language combo management and console polling."""
     def _update_window_icon_from_avatar(self, avatar_url: str):
         try:
             url = str(avatar_url or "").strip()
@@ -154,13 +156,9 @@ class DashboardControllerMixin:
             pass
 
     def _log_language_event(self, message: str):
+        """Write language debug info when UI_DEBUG=1."""
         try:
-            root = getattr(self, "_repo_root", os.getcwd())
-            log_dir = os.path.join(root, "data", "logs")
-            os.makedirs(log_dir, exist_ok=True)
-            path = os.path.join(log_dir, "ui_languages.log")
-            with open(path, "a", encoding="utf-8") as fh:
-                fh.write(f"{datetime.now().isoformat()} {message}\n")
+            self._debug_log(f"[lang] {message}")
         except Exception:
             pass
 
@@ -169,10 +167,11 @@ class DashboardControllerMixin:
     # ==================================================
 
     def request_language_overview(self):
+        """Request the language overview from the bot control API."""
         try:
             try:
                 if hasattr(self, "_set_status"):
-                    self._set_status("Lade Sprachliste...")
+                    self._set_status("Loading languages...")
             except Exception:
                 pass
             self._log_language_event("request_language_overview -> languages_get")
@@ -187,8 +186,9 @@ class DashboardControllerMixin:
         return self._language_overview
 
     def _on_language_overview(self, resp: dict):
+        """Handle the languages_get response — populate combos or schedule retry."""
         self._log_language_event(
-            f"_on_language_overview ok={resp.get('ok')} error={resp.get('error')} guilds={len(resp.get('guild_details') or [])}"
+            f"_on_language_overview ok={resp.get('ok')} guilds={len(resp.get('guild_details') or [])}"
         )
         if not resp.get("ok"):
             QtWidgets.QMessageBox.warning(self, "Languages", f"Failed to load languages: {resp}")
@@ -200,7 +200,7 @@ class DashboardControllerMixin:
             try:
                 self._language_overview_attempts = 0
                 if hasattr(self, "_set_status"):
-                    self._set_status("Sprachen geladen")
+                    self._set_status("Languages loaded")
             except Exception:
                 pass
             return
@@ -212,7 +212,7 @@ class DashboardControllerMixin:
                 QtWidgets.QMessageBox.information(
                     self,
                     "Languages",
-                    "Keine Guild-Daten verfügbar. Stelle sicher, dass der Bot online ist und versuche es erneut.",
+                    "No guild data available. Make sure the bot is online and try again.",
                 )
             except Exception:
                 pass

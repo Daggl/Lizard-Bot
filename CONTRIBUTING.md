@@ -1,32 +1,45 @@
 # Contributing
 
-Kurze Regeln, damit das Repository aufgeräumt bleibt.
+Short rules to keep the repository clean and consistent.
 
-## Struktur
+## Structure
 
-- Produktivcode bleibt in `src/`, `local_ui/`, `web/`.
-- Runtime-Dateien gehören nach `data/` (nicht ins Root).
-- Lokale Debug-Utilities gehören nach `scripts/dev/`.
+- Production code stays in `src/`, `local_ui/`, `web/`.
+- Runtime data goes in `data/` (not the project root).
+- Local debug utilities go in `scripts/dev/`.
 
-## Konfiguration & Daten
+## Configuration & Data
 
-- Persistente Bot-Settings liegen in `config/*.json`.
-- Runtime-Backups (`*.bak.*`) nicht committen.
-- Einheitliche Dateinamen in `data/` nutzen (lowercase, z. B. `polls.json`).
+- Persistent bot settings live in `config/*.json`.
+- Runtime backups (`*.bak.*`) should not be committed.
+- Use consistent file names in `data/` (lowercase, e.g. `polls.json`).
 
 ## Logging
 
-- Laufzeitlogs und Traces liegen unter `data/logs/`.
-- Keine temporären Trace-Dateien im Projekt-Root.
+- Runtime logs and traces live under `data/logs/`.
+- No temporary trace files in the project root.
+- Use `logging` (Python stdlib) instead of `print()` for runtime output.
 
-## Dokumentation
+## Internationalisation (i18n)
 
-- Root-README bleibt Einstiegspunkt.
-- Bereichsdokus liegen bei den Modulen (`local_ui/README.md`, `web/README.md`).
-- Neue Tools/Skripte immer kurz in passender README dokumentieren.
+- All user-facing bot strings should use the `translate` / `translate_for_ctx` helpers from `mybot.utils.i18n`.
+- Locale files are in `data/locales/` (`en.json`, `de.json`).
+- Internal log messages and code comments should be in English.
 
-## PR-Hinweise
+## Documentation
 
-- Kleine, thematisch fokussierte Änderungen.
-- Keine Misch-PRs aus Feature + Refactor + Formatierung.
-- Vor Übergabe mindestens Syntax/Start-Check für geänderte Komponenten.
+- Root README is the entry point.
+- Module-specific docs sit next to their code (`local_ui/README.md`, `web/README.md`).
+- New tools or scripts should always be briefly documented in the relevant README.
+
+## Code Style
+
+- Use `datetime.now(timezone.utc)` instead of the deprecated `datetime.utcnow()`.
+- Prefer `with` context managers for SQLite connections.
+- Add module and class docstrings to all new files.
+
+## PR Guidelines
+
+- Small, focused changes per PR.
+- No mixed PRs combining features + refactoring + formatting.
+- Run at least a syntax/startup check for changed components before submitting.

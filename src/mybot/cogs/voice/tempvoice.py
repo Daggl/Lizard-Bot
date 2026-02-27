@@ -1,5 +1,7 @@
+"""Temporary voice channel cog — join-to-create, lock, hide, rename, transfer and auto-cleanup."""
+
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import discord
@@ -427,7 +429,7 @@ class TempVoice(commands.Cog):
                 int(channel_id),
                 int(channel_id),
                 int(channel_id),
-                datetime.utcnow().isoformat(),
+                datetime.now(timezone.utc).isoformat(),
             ),
         )
         self.db.commit()
@@ -897,7 +899,7 @@ class TempVoice(commands.Cog):
                 hint=hub_hint,
             ),
             color=discord.Color.blurple(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
         view = TempVoicePanelView(self, getattr(ctx.guild, "id", None))
         await ctx.send(embed=embed, view=view)

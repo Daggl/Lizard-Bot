@@ -1,5 +1,7 @@
+"""Member logging cog — tracks member join and leave events."""
+
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
@@ -58,7 +60,7 @@ class MemberLog(commands.Cog):
         embed = discord.Embed(
             title="🟢 Member joined",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         embed.add_field(
@@ -73,7 +75,7 @@ class MemberLog(commands.Cog):
 
         embed.add_field(
             name="🕒 Time",
-            value=f"<t:{int(datetime.utcnow().timestamp())}:F>",
+            value=f"<t:{int(datetime.now(timezone.utc).timestamp())}:F>",
             inline=False,
         )
 
@@ -90,7 +92,7 @@ class MemberLog(commands.Cog):
                 "user_name": str(member),
                 "created_at": member.created_at.isoformat(),
                 "guild": member.guild.id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -104,14 +106,14 @@ class MemberLog(commands.Cog):
         embed = discord.Embed(
             title="📤 Member left",
             color=discord.Color.orange(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         embed.add_field(name="👤 User", value=f"{member} (`{member.id}`)", inline=False)
 
         embed.add_field(
             name="🕒 Time",
-            value=f"<t:{int(datetime.utcnow().timestamp())}:F>",
+            value=f"<t:{int(datetime.now(timezone.utc).timestamp())}:F>",
             inline=False,
         )
 
@@ -127,7 +129,7 @@ class MemberLog(commands.Cog):
                 "user": member.id,
                 "user_name": str(member),
                 "guild": member.guild.id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 

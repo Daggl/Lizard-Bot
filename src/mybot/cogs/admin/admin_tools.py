@@ -1,5 +1,6 @@
-import asyncio
-from datetime import datetime
+"""Admin tools cog — leveling manipulation, test commands and diagnostic utilities."""
+
+from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
@@ -12,6 +13,8 @@ except Exception:  # pragma: no cover - fallback for relative imports during pac
 
 
 class AdminTools(commands.Cog):
+    """Administrative commands for leveling, achievements and bot testing."""
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -38,12 +41,13 @@ class AdminTools(commands.Cog):
 
     @staticmethod
     def _xp_for_level(level: int) -> int:
+        """Calculate the XP needed for a given level."""
         try:
             from mybot.cogs.leveling.utils.level_config import (
                 get_level_base_xp,
                 get_level_xp_step,
             )
-        except Exception:
+        except ImportError:
             from src.mybot.cogs.leveling.utils.level_config import (
                 get_level_base_xp,
                 get_level_xp_step,
@@ -110,37 +114,6 @@ class AdminTools(commands.Cog):
                 default="⭐ Level of {member} set to {level}.",
                 member=member.mention,
                 level=level,
-            )
-        )
-
-    # ACHIEVEMENT TEST
-    @commands.hybrid_command(description="Testachievement command.")
-    @app_commands.default_permissions(administrator=True)
-    @commands.has_permissions(administrator=True)
-    async def testachievement(self, ctx, member: discord.Member, *, name: str):
-
-        user = self._get_user_data(member)
-
-        if name in user["achievements"]:
-            await ctx.send(
-                translate_for_ctx(
-                    ctx,
-                    "admin.error.achievement_exists",
-                    default="❌ Achievement already exists.",
-                )
-            )
-            return
-
-        user["achievements"].append(name)
-        self.bot.db.save()
-
-        await ctx.send(
-            translate_for_ctx(
-                ctx,
-                "admin.msg.achievement_given",
-                default="🏆 Achievement '{name}' was given to {member}.",
-                name=name,
-                member=member.mention,
             )
         )
 
@@ -253,7 +226,14 @@ class AdminTools(commands.Cog):
     async def testpoll(self, ctx, duration: int = 45, *, question: str = "System test poll"):
         poll_cmd = self._cmd("poll")
         if poll_cmd is None:
-            await ctx.send("❌ Command not available: `poll`")
+            await ctx.send(
+                translate_for_ctx(
+                    ctx,
+                    "admin.error.command_unavailable",
+                    default="❌ Command not available: `{command}`",
+                    command="poll",
+                )
+            )
             return
         if getattr(ctx, "is_ui_event_test", False):
             await ctx.send(
@@ -374,7 +354,7 @@ class AdminTools(commands.Cog):
                     "user_id": getattr(ctx.author, "id", None),
                     "channel_id": getattr(ctx.channel, "id", None),
                     "message": message,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             )
             await ctx.send(

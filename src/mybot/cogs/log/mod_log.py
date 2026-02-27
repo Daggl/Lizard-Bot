@@ -1,3 +1,5 @@
+"""Moderation logging cog — tracks bans, unbans and audit-log actions."""
+
 import os
 from datetime import datetime, timezone
 
@@ -72,7 +74,7 @@ class ModLog(commands.Cog):
         embed = discord.Embed(
             title="🔨 Member banned",
             color=discord.Color.dark_red(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         embed.add_field(name="User", value=f"{user} ({user.id})", inline=False)
@@ -96,7 +98,7 @@ class ModLog(commands.Cog):
                 "by_name": str(executor) if executor else None,
                 "reason": reason,
                 "guild": guild.id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -124,7 +126,7 @@ class ModLog(commands.Cog):
                 embed = discord.Embed(
                     title="👢 Member kicked",
                     color=discord.Color.red(),
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(timezone.utc),
                 )
 
                 embed.add_field(
@@ -145,7 +147,7 @@ class ModLog(commands.Cog):
                         "by": entry.user.id,
                         "by_name": str(entry.user),
                         "guild": guild.id,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -177,7 +179,7 @@ class ModLog(commands.Cog):
             embed = discord.Embed(
                 title="⏱ Member timeout",
                 color=discord.Color.orange(),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
             )
 
             embed.add_field(name="User", value=f"{after} ({after.id})", inline=False)
@@ -195,7 +197,7 @@ class ModLog(commands.Cog):
             embed = discord.Embed(
                 title="✅ Timeout removed",
                 color=discord.Color.green(),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
             )
 
             embed.add_field(name="User", value=f"{after} ({after.id})", inline=False)
@@ -216,7 +218,7 @@ class ModLog(commands.Cog):
                 "by": executor.id if executor else None,
                 "by_name": str(executor) if executor else None,
                 "guild": after.guild.id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 

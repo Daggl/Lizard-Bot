@@ -1,5 +1,7 @@
+"""Chat logging cog — tracks message edits, deletes and bulk-deletes."""
+
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
@@ -61,7 +63,7 @@ class ChatLog(commands.Cog):
         embed = discord.Embed(
             title="Message Sent",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         embed.add_field(name="User", value=msg.author.mention)
@@ -83,7 +85,7 @@ class ChatLog(commands.Cog):
                 "message_id": msg.id,
                 "attachments": [a.url for a in msg.attachments],
                 "guild": msg.guild.id if msg.guild else None,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -111,7 +113,7 @@ class ChatLog(commands.Cog):
         embed = discord.Embed(
             title="Message Deleted",
             color=discord.Color.red(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         embed.add_field(name="User", value=msg.author.mention)
@@ -134,7 +136,7 @@ class ChatLog(commands.Cog):
                 "deleted_by": deleter.id if deleter else None,
                 "deleted_by_name": str(deleter) if deleter else None,
                 "guild": msg.guild.id if msg.guild else None,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -154,7 +156,7 @@ class ChatLog(commands.Cog):
         embed = discord.Embed(
             title="Message Edited",
             color=discord.Color.orange(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         embed.add_field(name="Before", value=before.content)
@@ -174,7 +176,7 @@ class ChatLog(commands.Cog):
                 "before": before.content,
                 "after": after.content,
                 "guild": before.guild.id if before.guild else None,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 

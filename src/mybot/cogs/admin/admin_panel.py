@@ -1,3 +1,5 @@
+"""Admin status panel cog — live overview of bot health, leveling and rewards."""
+
 import time
 
 import discord
@@ -8,7 +10,21 @@ from ..leveling.utils.level_config import (get_achievement_channel_id,
                                            get_achievements, get_level_rewards)
 
 
+def _format_uptime(seconds: int) -> str:
+    """Return a human-readable uptime string that handles >24 h correctly."""
+    days, remainder = divmod(seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, secs = divmod(remainder, 60)
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    parts.append(f"{hours}h {minutes}m {secs}s")
+    return " ".join(parts)
+
+
 class AdminPanelView(discord.ui.View):
+    """Persistent view attached to the admin panel embed."""
+
     def __init__(self, cog):
         super().__init__(timeout=120)
         self.cog = cog
@@ -22,38 +38,36 @@ class AdminPanelView(discord.ui.View):
 
 
 class AdminPanel(commands.Cog):
+    """Provides a live admin status panel showing bot health, leveling stats and reward checks."""
 
     def __init__(self, bot):
         self.bot = bot
         self.start_time = time.time()
 
-    # -------------------------------------------------
-    # EMBED ERSTELLEN
-    # -------------------------------------------------
-    async def create_panel_embed(self, guild):
-
-        db = self.bot.db.data
+    async def create_panel_embed(self, guild) -> discord.Embed:
+        """Build the admin panel embed with current stats."""
+        db = getattr(getattr(self.bot, "db", None), "data", None) or {}
 
         total_users = len(db)
         highest_level = 0
         total_achievements_given = 0
 
         for user in db.values():
-            if user["level"] > highest_level:
-                highest_level = user["level"]
-            total_achievements_given += len(user["achievements"])
+            highest_level = max(highest_level, user.get("level", 0))
+            total_achievements_given += len(user.get("achievements", []))
 
         uptime_seconds = int(time.time() - self.start_time)
-        uptime = time.strftime("%Hh %Mm %Ss", time.gmtime(uptime_seconds))
+        uptime = _format_uptime(uptime_seconds)
 
-        # Rollen Check
-        reward_status = ""
+        # Check reward roles
+        reward_lines: list[str] = []
         for lvl, role_name in get_level_rewards().items():
             role = discord.utils.get(guild.roles, name=role_name)
             if role:
-                reward_status += f"Level {lvl} → {role_name} ✅\n"
+                reward_lines.append(f"Level {lvl} → {role_name} ✅")
             else:
-                reward_status += f"Level {lvl} → {role_name} ❌ (Missing!)\n"
+                reward_lines.append(f"Level {lvl} → {role_name} ❌ (Missing!)")
+        reward_status = "\n".join(reward_lines)
 
         embed = discord.Embed(title="🛠 Admin Status Panel", color=discord.Color.red())
 
@@ -101,11 +115,11 @@ class AdminPanel(commands.Cog):
     # -------------------------------------------------
     # COMMAND
     # -------------------------------------------------
-    @commands.hybrid_command(name="adminpanel", description="Adminpanel command.")
+    @commands.hybrid_command(name="adminpanel", description="Show live admin status panel.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def adminpanel(self, ctx):
-
+        """Display the admin panel embed with a refresh button."""
         embed = await self.create_panel_embed(ctx.guild)
         view = AdminPanelView(self)
 

@@ -1,5 +1,7 @@
+"""Server-event logging cog — tracks channel and role create/delete/update."""
+
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
@@ -59,7 +61,7 @@ class ServerLog(commands.Cog):
         embed = discord.Embed(
             title="📁 Channel created",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         embed.add_field(name="📁 Channel", value=channel.mention)
@@ -71,7 +73,7 @@ class ServerLog(commands.Cog):
                 "channel": channel.id,
                 "channel_name": channel.name,
                 "guild": channel.guild.id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -85,7 +87,7 @@ class ServerLog(commands.Cog):
         embed = discord.Embed(
             title="🗑 Channel deleted",
             color=discord.Color.red(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         embed.add_field(name="📁 Name", value=channel.name)
@@ -97,7 +99,7 @@ class ServerLog(commands.Cog):
                 "channel": channel.id,
                 "channel_name": channel.name,
                 "guild": channel.guild.id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -110,7 +112,7 @@ class ServerLog(commands.Cog):
         embed = discord.Embed(
             title="✏️ Channel updated",
             color=discord.Color.orange(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         embed.add_field(name="Before", value=before.name, inline=True)
@@ -124,7 +126,7 @@ class ServerLog(commands.Cog):
                 "channel_before": before.name,
                 "channel_after": after.name,
                 "guild": after.guild.id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -134,7 +136,7 @@ class ServerLog(commands.Cog):
         embed = discord.Embed(
             title="🛡 Role created",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
         embed.add_field(name="Role", value=role.mention if hasattr(role, "mention") else role.name)
 
@@ -145,7 +147,7 @@ class ServerLog(commands.Cog):
                 "role_id": role.id,
                 "role_name": role.name,
                 "guild": role.guild.id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -155,7 +157,7 @@ class ServerLog(commands.Cog):
         embed = discord.Embed(
             title="🗑 Role deleted",
             color=discord.Color.red(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
         embed.add_field(name="Role", value=role.name)
 
@@ -166,7 +168,7 @@ class ServerLog(commands.Cog):
                 "role_id": role.id,
                 "role_name": role.name,
                 "guild": role.guild.id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -179,7 +181,7 @@ class ServerLog(commands.Cog):
         embed = discord.Embed(
             title="✏️ Role updated",
             color=discord.Color.orange(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
         embed.add_field(name="Before", value=before.name, inline=True)
         embed.add_field(name="After", value=after.name, inline=True)
@@ -192,7 +194,7 @@ class ServerLog(commands.Cog):
                 "role_before": before.name,
                 "role_after": after.name,
                 "guild": after.guild.id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 

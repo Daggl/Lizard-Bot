@@ -1,3 +1,5 @@
+"""Admin help / tutorial cog — interactive button-based admin command reference."""
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -6,11 +8,14 @@ from discord.ext import commands
 # ADMIN VIEW (ADMINS ONLY)
 # ==========================================================
 
+ADMIN_HELP_TIMEOUT = 300
+
 
 class AdminHelpView(discord.ui.View):
+    """Interactive view with buttons for admin help sections."""
 
     def __init__(self, author):
-        super().__init__(timeout=300)
+        super().__init__(timeout=ADMIN_HELP_TIMEOUT)
         self.author = author
 
     async def interaction_check(self, interaction: discord.Interaction):

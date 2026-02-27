@@ -278,9 +278,9 @@ async def save_preview(
     # save to uploads
     gdir = UPLOAD_DIR / str(guild_id)
     gdir.mkdir(parents=True, exist_ok=True)
-    from datetime import datetime
+    from datetime import datetime, timezone
 
-    name = f"preview-{int(datetime.utcnow().timestamp())}.png"
+    name = f"preview-{int(datetime.now(timezone.utc).timestamp())}.png"
     dest = gdir / name
     im.save(dest, format="PNG")
     return {"ok": True, "path": str(dest.relative_to(ROOT))}

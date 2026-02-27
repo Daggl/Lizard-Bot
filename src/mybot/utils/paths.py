@@ -1,16 +1,20 @@
+"""Repository path resolution and runtime directory/database bootstrapping."""
+
 import os
 import shutil
 import sqlite3
 
 
-def repo_root_candidates(path):
+def repo_root_candidates(path: str):
+    """Yield parent directories from *path* up to the filesystem root."""
     p = os.path.abspath(path)
     parts = p.split(os.sep)
     for i in range(len(parts), 0, -1):
         yield os.sep.join(parts[:i])
 
 
-def find_repo_root():
+def find_repo_root() -> str:
+    """Locate the project root by searching for ``data/config.example.json``."""
     env_root = os.environ.get("DC_BOT_REPO_ROOT")
     if env_root:
         try:
@@ -45,10 +49,12 @@ LOGS_DIR = os.path.join(DATA_DIR, "logs")
 
 
 def repo_path(*parts: str) -> str:
+    """Join *parts* relative to the repository root."""
     return os.path.join(REPO_ROOT, *parts)
 
 
-def ensure_dirs():
+def ensure_dirs() -> None:
+    """Create all required runtime directories."""
     os.makedirs(DB_DIR, exist_ok=True)
     os.makedirs(TICKETS_DIR, exist_ok=True)
     os.makedirs(TICKET_TRANSCRIPTS, exist_ok=True)
@@ -56,11 +62,13 @@ def ensure_dirs():
 
 
 def get_db_path(name: str) -> str:
+    """Return the path to ``data/db/<name>.db``, ensuring the directory exists."""
     ensure_dirs()
     return os.path.join(DB_DIR, f"{name}.db")
 
 
 def ensure_runtime_storage() -> None:
+    """Create directories and empty database files for logs, tickets and autorole."""
     ensure_dirs()
     for db_name in ("logs", "tickets", "autorole"):
         db_path = get_db_path(db_name)
@@ -74,11 +82,13 @@ def ensure_runtime_storage() -> None:
 
 
 def get_ticket_transcript_path(channel_id: int) -> str:
+    """Return the file path for a ticket transcript by channel ID."""
     ensure_dirs()
     return os.path.join(TICKET_TRANSCRIPTS, f"{channel_id}.txt")
 
 
-def migrate_old_paths():
+def migrate_old_paths() -> None:
+    """Move legacy database files from old locations to the current layout."""
     ensure_dirs()
     old_logs = os.path.join(REPO_ROOT, "data", "logs", "logs.db")
     new_logs = get_db_path("logs")

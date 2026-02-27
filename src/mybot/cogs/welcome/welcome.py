@@ -7,7 +7,7 @@ import io
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import aiohttp
@@ -17,6 +17,7 @@ from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
 from mybot.utils.config import clear_cog_config_cache, load_cog_config
+from mybot.utils.paths import REPO_ROOT
 
 
 def safe_print(*args, **kwargs):
@@ -167,15 +168,7 @@ class Welcome(commands.Cog):
                 avatar_bytes = await resp.read()
 
         safe_print("[DEBUG] Loading banner image...")
-        repo_root = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.dirname(os.path.abspath(__file__))
-                    )
-                )
-            )
-        )
+        repo_root = REPO_ROOT
         default_banner_abs = os.path.abspath(os.path.join(repo_root, "assets", "welcome.png"))
         requested_banner_abs = os.path.abspath(
             banner_path if os.path.isabs(str(banner_path or "")) else os.path.join(repo_root, str(banner_path or ""))
@@ -274,14 +267,14 @@ class Welcome(commands.Cog):
         role_id = cfg.get("ROLE_ID", 0)
         welcome_message: Optional[str] = cfg.get("WELCOME_MESSAGE")
 
-        safe_print(f"[DEBUG] Join erkannt: {member}")
+        safe_print(f"[DEBUG] Member join detected: {member}")
         guild = member.guild
         welcome_channel = guild.get_channel(welcome_channel_id)
         if welcome_channel is None:
-            safe_print("[ERROR] Welcome Channel ist None!")
+            safe_print("[ERROR] Welcome channel is None!")
             return
 
-        safe_print(f"[DEBUG] Welcome Channel gefunden: {welcome_channel.name}")
+        safe_print(f"[DEBUG] Welcome channel found: {welcome_channel.name}")
 
         rules_channel = guild.get_channel(rules_channel_id)
         aboutme_channel = guild.get_channel(aboutme_channel_id)
@@ -292,7 +285,7 @@ class Welcome(commands.Cog):
             safe_print("[DEBUG] Role assigned")
 
         banner = await self.create_banner(member)
-        safe_print("[DEBUG] Banner erstellt")
+        safe_print("[DEBUG] Banner created")
 
         if not welcome_message:
             safe_print("[WARN] No WELCOME_MESSAGE configured; sending banner only.")
@@ -315,7 +308,7 @@ class Welcome(commands.Cog):
             await welcome_channel.send(file=banner)
             return
 
-        embed = discord.Embed(description=description, color=discord.Color.from_rgb(140, 110, 255), timestamp=datetime.utcnow())
+        embed = discord.Embed(description=description, color=discord.Color.from_rgb(140, 110, 255), timestamp=datetime.now(timezone.utc))
         embed.set_image(url="attachment://welcome.png")
         safe_print("[DEBUG] Sending message...")
         await welcome_channel.send(file=banner, embed=embed)
@@ -325,7 +318,7 @@ class Welcome(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testwelcome(self, ctx: commands.Context):
-        safe_print("[DEBUG] Test Command benutzt")
+        safe_print("[DEBUG] Test command used")
         await self.on_member_join(ctx.author)
 
 

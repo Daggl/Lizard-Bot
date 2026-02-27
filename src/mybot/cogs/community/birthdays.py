@@ -1,5 +1,8 @@
+"""Birthday tracking cog — stores birthdays and posts daily announcements."""
+
 import datetime
 import os
+import re
 
 import discord
 from discord.ext import commands, tasks
@@ -7,6 +10,8 @@ from discord.ext import commands, tasks
 from mybot.utils.config import load_cog_config
 from mybot.utils.i18n import resolve_localized_value, translate
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
+
+_BIRTHDAY_RE = re.compile(r"^\d{1,2}\.\d{1,2}$")
 
 DATA_FOLDER = "data"
 BIRTHDAY_FILE = os.path.join(DATA_FOLDER, "birthdays.json")
@@ -103,16 +108,36 @@ class Birthdays(commands.Cog):
     def cog_unload(self):
         self.check_birthdays.cancel()
 
-    @commands.hybrid_command(name="birthday", description="Birthday command.")
+    @commands.hybrid_command(name="birthday", description="Set your birthday (DD.MM).")
     async def birthday(self, ctx: commands.Context, date: str):
+        """Save the user's birthday after validating the DD.MM format."""
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+
+        # Validate format: DD.MM
+        if not _BIRTHDAY_RE.match(date):
+            await ctx.send(translate(
+                "birthdays.error.invalid_format",
+                guild_id=guild_id,
+                default="❌ Invalid date format. Please use DD.MM (e.g. 25.12).",
+            ))
+            return
+
+        # Validate the actual date values
+        try:
+            day, month = date.split(".")
+            datetime.date(2000, int(month), int(day))  # leap year to allow 29.02
+        except (ValueError, IndexError):
+            await ctx.send(translate(
+                "birthdays.error.invalid_date",
+                guild_id=guild_id,
+                default="❌ Invalid date. Day or month out of range.",
+            ))
+            return
 
         birthdays = load_birthdays()
-
         birthdays[str(ctx.author.id)] = date
-
         save_birthdays(birthdays)
 
-        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
         await ctx.send(translate("birthdays.msg.saved", guild_id=guild_id, date=date))
 
     @tasks.loop(hours=24)
@@ -171,8 +196,8 @@ class Birthdays(commands.Cog):
                         await channel.send(embed=embed)
                         sent_today_set.add(str(user_id))
 
-                except Exception:
-                    pass
+                except Exception as exc:
+                    print(f"[Birthdays] Error checking birthday for user {user_id}: {exc}")
 
         sent[today_key] = sorted(list(sent_today_set))
         save_sent_birthdays(sent)

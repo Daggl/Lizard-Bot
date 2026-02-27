@@ -1,7 +1,7 @@
 import json
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 
 from mybot.utils.paths import ensure_dirs, get_db_path, migrate_old_paths
 
@@ -95,7 +95,7 @@ def save_log(category, data):
     channel_name = _pick_str(data, "channel_name", "to_name", "from_name")
     log_type = _pick_str(data, "type") or "event"
     message = _pick_str(data, "message", "content", "before", "after", "reason")
-    timestamp = _pick_str(data, "timestamp", "created_at") or datetime.utcnow().isoformat()
+    timestamp = _pick_str(data, "timestamp", "created_at") or datetime.now(timezone.utc).isoformat()
 
     try:
         extra = json.dumps(data, ensure_ascii=False, sort_keys=True)

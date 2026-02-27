@@ -1,7 +1,10 @@
+"""Ticket system cog — support ticket creation, claiming, transcripts and lifecycle."""
+
 import asyncio
+import logging
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
@@ -17,6 +20,8 @@ except Exception:  # pragma: no cover - fallback for relative imports during pac
 from mybot.utils.config import load_cog_config
 from mybot.utils.paths import (ensure_dirs, get_db_path,
                                get_ticket_transcript_path, migrate_old_paths)
+
+log = logging.getLogger(__name__)
 
 
 def _cfg() -> dict:
@@ -282,7 +287,7 @@ class TicketCog(commands.Cog):
         user: discord.Member,
         origin_channel: Optional[discord.TextChannel],
     ) -> discord.TextChannel:
-        now = datetime.utcnow().strftime("%y%m%d-%H%M")
+        now = datetime.now(timezone.utc).strftime("%y%m%d-%H%M")
         short = uuid4().hex[:6]
         name = f"ticket-{user.display_name.lower().replace(' ', '-')}-{short}"
         category = await self._ticket_category(guild)
@@ -330,7 +335,7 @@ class TicketCog(commands.Cog):
                 mention=user.mention,
             ),
             color=discord.Color.green(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         view = TicketControls(self, getattr(guild, "id", None))
@@ -353,12 +358,12 @@ class TicketCog(commands.Cog):
                     channel.id,
                     user.id,
                     channel.name,
-                    datetime.utcnow().isoformat(),
+                    datetime.now(timezone.utc).isoformat(),
                     "open",
                 ),
             )
         except Exception as exc:
-            print("[TICKET][DB] Failed to insert ticket:", exc)
+            log.warning("Failed to insert ticket: %s", exc)
 
         return channel
 
@@ -387,7 +392,7 @@ class TicketCog(commands.Cog):
                 )
                 await self._db_execute(update_sql, (path, channel.id))
             except Exception as exc:
-                print("[TICKET][DB] Failed to update transcript_path:", exc)
+                log.warning("Failed to update transcript_path: %s", exc)
             return path
         except Exception:
             return None
@@ -407,10 +412,10 @@ class TicketCog(commands.Cog):
             )
             await self._db_execute(
                 close_sql,
-                (datetime.utcnow().isoformat(), by.id, "closed", channel.id),
+                (datetime.now(timezone.utc).isoformat(), by.id, "closed", channel.id),
             )
         except Exception as exc:
-            print("[TICKET][DB] Failed to update closed state:", exc)
+            log.warning("Failed to update closed state: %s", exc)
         try:
             await channel.delete(reason=f"Ticket closed by {by}")
         except Exception:
@@ -435,7 +440,7 @@ class TicketCog(commands.Cog):
                         (new_name, channel.id),
                     )
                 except Exception as exc:
-                    print("[TICKET][DB] Failed to update channel_name on claim:", exc)
+                    log.warning("Failed to update channel_name on claim: %s", exc)
         except Exception:
             pass
 
@@ -454,7 +459,7 @@ class TicketCog(commands.Cog):
                 (by.id, channel.id),
             )
         except Exception as exc:
-            print("[TICKET][DB] Failed to update claimed_by:", exc)
+            log.warning("Failed to update claimed_by: %s", exc)
 
     async def _log_action(self, guild: discord.Guild, text: str) -> None:
         try:
@@ -466,7 +471,7 @@ class TicketCog(commands.Cog):
                     "type": "ticket_action",
                     "message": text,
                     "guild": guild.id if guild else None,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             )
         except Exception:
@@ -478,7 +483,7 @@ class TicketCog(commands.Cog):
             if ch:
                 await ch.send(text)
                 return
-        print(f"[TICKET] {text}")
+        log.info("%s", text)
 
     @commands.hybrid_command(name="ticketpanel", description="Ticket panel command.")
     @app_commands.default_permissions(administrator=True)

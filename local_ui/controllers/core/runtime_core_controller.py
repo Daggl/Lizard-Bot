@@ -1,6 +1,11 @@
+"""Core runtime controller mixin — async command dispatch and resource cleanup.
+
+Provides ``send_cmd_async`` which bridges background TCP calls to the Qt main
+thread via the ``_async_done`` signal defined on ``MainWindow``.
+"""
+
 import os
 import threading
-from datetime import datetime
 
 from PySide6 import QtCore
 
@@ -8,23 +13,17 @@ from services.control_api_client import send_cmd
 
 
 class RuntimeCoreControllerMixin:
-    def _log_async_event(self, message: str):
-        try:
-            repo_root = getattr(self, "_repo_root", os.getcwd())
-            log_dir = os.path.join(repo_root, "data", "logs")
-            os.makedirs(log_dir, exist_ok=True)
-            path = os.path.join(log_dir, "ui_runtime.log")
-            with open(path, "a", encoding="utf-8") as fh:
-                fh.write(f"{datetime.now().isoformat()} {message}\n")
-        except Exception:
-            pass
+    """Mixin that adds async command dispatch and runtime resource management."""
+
     def _debug_log(self, message: str):
+        """Write a debug message to ``data/logs/ui_debug.log`` when ``UI_DEBUG=1``."""
         try:
             if os.environ.get("UI_DEBUG") != "1":
                 return
             log_dir = os.path.join(self._repo_root, "data", "logs")
             os.makedirs(log_dir, exist_ok=True)
             with open(os.path.join(log_dir, "ui_debug.log"), "a", encoding="utf-8", errors="ignore") as fh:
+                from datetime import datetime
                 fh.write(f"{datetime.now().isoformat()} {message}\n")
         except Exception:
             pass
@@ -51,6 +50,7 @@ class RuntimeCoreControllerMixin:
                 pass
 
     def _cleanup_runtime_resources(self):
+        """Stop all timers and close open file handles / DB connections."""
         for timer_name in ("status_timer", "log_timer", "_alive_timer", "_dash_console_timer"):
             self._safe_stop_timer(timer_name)
         try:
@@ -69,35 +69,30 @@ class RuntimeCoreControllerMixin:
         self._safe_close_attr("_db_conn")
 
     def send_cmd_async(self, cmd: dict, timeout: float = 1.0, cb=None):
+        """Send a control API command in a background thread.
+
+        When the response arrives, the ``_async_done`` signal is emitted so
+        the callback *cb* runs safely on the Qt main thread.
+        """
         def _worker():
             try:
                 res = send_cmd(cmd, timeout=timeout)
             except Exception as e:
                 res = {"ok": False, "error": str(e)}
-            try:
-                action = cmd.get("action")
-            except Exception:
-                action = None
-            self._log_async_event(
-                f"worker done action={action} ok={res.get('ok')}"
-            )
-            # Signal emit IS thread-safe and queues the slot in the main thread
+            # Signal emission is thread-safe in Qt and queues the slot
+            # in the receiver's (main) thread.
             try:
                 self._async_done.emit((cb, res))
-                self._log_async_event("signal emitted")
-            except Exception as exc:
-                self._log_async_event(f"signal emit FAILED: {exc}")
+            except Exception:
+                pass
 
         threading.Thread(target=_worker, daemon=True).start()
 
     def _process_async_result(self, payload):
+        """Slot connected to ``_async_done`` — invokes the callback on the main thread."""
         try:
             cb, res = payload
-            self._log_async_event(
-                f"_process_async_result ok={res.get('ok')} cb={bool(cb)}"
-            )
             if cb:
                 cb(res)
-                self._log_async_event("callback finished")
         except Exception as exc:
-            self._log_async_event(f"_process_async_result error: {exc}")
+            self._debug_log(f"_process_async_result error: {exc}")

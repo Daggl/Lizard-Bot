@@ -1,3 +1,5 @@
+"""Counting game cog — tracks sequential counting in a dedicated channel."""
+
 import os
 
 import discord

@@ -1,30 +1,30 @@
 # Operations
 
-Laufende Betriebsnotizen für lokale Runtime-Dateien.
+Runtime operations notes for managing local runtime files.
 
 ## Logs
 
-- UI schreibt Laufzeit-Tracking nach `data/logs/tracked.log`.
-- `tracked.log` rotiert automatisch bei ca. 2 MB.
-- Es werden maximal die letzten 5 Rotationsdateien (`tracked.log.bak.*`) behalten.
+- UI writes runtime tracking to `data/logs/tracked.log`.
+- `tracked.log` auto-rotates at ~2 MB.
+- Only the last 5 rotation files (`tracked.log.bak.*`) are kept.
 
 ## Welcome Config Backups
 
-- Beim Speichern von `config/welcome.json` wird eine Backup-Datei erzeugt.
-- Es werden automatisch nur die letzten 5 Backups (`welcome.json.bak.*`) behalten.
+- Saving `config/welcome.json` creates a backup file.
+- Only the last 5 backups (`welcome.json.bak.*`) are retained automatically.
 
-## Runtime-Artefakte
+## Runtime Artefacts
 
-- Temporäre Traces und Debug-Logs gehören nach `data/logs/`.
-- SQLite-Logdatenbank liegt unter `data/db/logs.db`.
-- Debug-/Maintenance-Skripte liegen unter `scripts/dev/`.
+- Temporary traces and debug logs go into `data/logs/`.
+- SQLite log database is at `data/db/logs.db`.
+- Debug / maintenance scripts are in `scripts/dev/`.
 
-## Runtime-Module
+## Runtime Modules
 
-- Der Bot-Laufzeitcode liegt unter `src/mybot/runtime/` (`lizard.py`, `control_api.py`).
-- Top-Level-Module in `src/mybot/` bleiben als Kompatibilitäts-Wrapper erhalten.
+- Bot runtime code lives under `src/mybot/runtime/` (`lizard.py`, `control_api.py`).
+- Top-level modules in `src/mybot/` are compatibility wrappers (re-exports).
 
 ## UI Event Tests
 
-- Standardmäßig wird für Event-Tests der Nutzername `leutnantbrause` bevorzugt.
-- Mit `UI_TEST_MEMBER_NAME` kann ein anderer bevorzugter Testnutzer gesetzt werden.
+- By default, the username `leutnantbrause` is preferred for event tests.
+- Set `UI_TEST_MEMBER_NAME` to override the preferred test user.

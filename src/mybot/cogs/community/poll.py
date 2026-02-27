@@ -1,3 +1,5 @@
+"""Poll cog — interactive polls with voting buttons and auto-close timer."""
+
 import asyncio
 import os
 import uuid
@@ -205,6 +207,14 @@ class Poll(commands.Cog):
         try:
             time_msg = await self.bot.wait_for("message", timeout=60, check=check)
             duration = int(time_msg.content)
+        except asyncio.TimeoutError:
+            return await ctx.send(
+                translate_for_ctx(
+                    ctx,
+                    "poll.error.timeout",
+                    default="❌ Time's up.",
+                )
+            )
         except ValueError:
             return await ctx.send(
                 translate_for_ctx(

@@ -1,8 +1,6 @@
-# mybot utils package
+"""mybot.utils — shared utilities for configuration, paths, i18n and data storage."""
 
 __all__ = [
-    "config",
-    "paths",
     "ensure_configs_from_example",
     "sync_cog_configs_from_example",
     "load_cog_config",
@@ -13,7 +11,6 @@ __all__ = [
     "migrate_old_paths",
 ]
 
-# mybot utils package
 from .config import (ensure_configs_from_example, load_cog_config,
                      sync_cog_configs_from_example)
 from .paths import (ensure_dirs, ensure_runtime_storage, get_db_path,

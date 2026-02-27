@@ -1,3 +1,5 @@
+"""Achievement checking cog — awards achievements when user stats meet requirements."""
+
 import os
 
 import discord
@@ -32,6 +34,7 @@ class Achievements(commands.Cog):
             for key, value in req.items():
                 if user[key] < value:
                     valid = False
+                    break
 
             if valid:
                 user["achievements"].append(name)

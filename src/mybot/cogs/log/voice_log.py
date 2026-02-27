@@ -1,5 +1,7 @@
+"""Voice-state logging cog — records join, leave and switch events."""
+
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
@@ -55,7 +57,7 @@ class VoiceLog(commands.Cog):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
 
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
 
         # ======================================================
         # JOIN
@@ -159,7 +161,7 @@ class VoiceLog(commands.Cog):
                 name="👤 User", value=f"{member.mention} (`{member.id}`)", inline=False
             )
 
-            embed.add_field(name="📤 Von", value=before.channel.mention, inline=True)
+            embed.add_field(name="📤 From", value=before.channel.mention, inline=True)
 
             embed.add_field(name="📥 To", value=after.channel.mention, inline=True)
 
