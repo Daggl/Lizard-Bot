@@ -1,4 +1,4 @@
-from .runtime.lizard import *  # noqa: F401,F403# ==========================================================
+# ==========================================================
 # IMPORTS
 # ==========================================================
 
@@ -141,16 +141,19 @@ async def on_message(message):
 
 
 def _import_control_api_module():
-    try:
-        from mybot import control_api as control_api_module
-        return control_api_module
-    except Exception:
+    for module_name in (
+        "mybot.runtime.control_api",
+        "src.mybot.runtime.control_api",
+        "mybot.control_api",
+        "src.mybot.control_api",
+    ):
         try:
-            from src.mybot import control_api as control_api_module
-            return control_api_module
-        except Exception as e:
-            print("Failed to import local UI control API:", e)
-            return None
+            return importlib.import_module(module_name)
+        except Exception:
+            continue
+
+    print("Failed to import local UI control API")
+    return None
 
 
 def _start_control_api_task(bot_instance: commands.Bot) -> Optional[asyncio.Task]:

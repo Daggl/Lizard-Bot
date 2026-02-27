@@ -1,4 +1,4 @@
-from .runtime.control_api import *  # noqa: F401,F403"""Minimal JSON-over-TCP control API for local UI.
+"""Minimal JSON-over-TCP control API for local UI.
 
 Protocol: each request is a single JSON object followed by a newline.
 Responses are single-line JSON objects.
@@ -473,9 +473,15 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             extensions = None
             try:
                 try:
-                    import mybot.lizard as lizard
+                    import mybot.runtime.lizard as lizard
                 except Exception:
-                    import src.mybot.lizard as lizard
+                    try:
+                        import src.mybot.runtime.lizard as lizard
+                    except Exception:
+                        try:
+                            import mybot.lizard as lizard
+                        except Exception:
+                            import src.mybot.lizard as lizard
                 extensions = getattr(lizard, "extensions", None)
                 loaded_exts_map = getattr(lizard, "loaded_extensions", {})
             except Exception:

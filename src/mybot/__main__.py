@@ -40,14 +40,14 @@ try:
     import traceback
 
     try:
-        from .lizard import main as pkg_main
+        from .runtime.lizard import main as pkg_main
     except Exception as e_rel:
-        print("Failed relative import of .lizard:", repr(e_rel))
+        print("Failed relative import of .runtime.lizard:", repr(e_rel))
         traceback.print_exc()
         try:
-            from src.mybot.lizard import main as pkg_main
+            from src.mybot.runtime.lizard import main as pkg_main
         except Exception as e_abs:
-            print("Failed absolute import of src.mybot.lizard:", repr(e_abs))
+            print("Failed absolute import of src.mybot.runtime.lizard:", repr(e_abs))
             traceback.print_exc()
             raise
 
@@ -70,7 +70,7 @@ if main is None:
 if main is None:
     raise ImportError(
         "Could not locate a callable named 'main' "
-        "in src.mybot.lizard or top-level 'bot' module"
+        "in src.mybot.runtime.lizard or top-level 'bot' module"
     )
 
 if __name__ == "__main__":
