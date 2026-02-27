@@ -27,8 +27,8 @@ except Exception:
     from mybot.utils.env_store import save_env_merged as _save_env_merged
 
 
-def config_json_path(repo_root: str, filename: str) -> str:
-    return _config_json_path(repo_root, filename)
+def config_json_path(repo_root: str, filename: str, guild_id: str | int | None = None) -> str:
+    return _config_json_path(repo_root, filename, guild_id=guild_id)
 
 
 def load_json_dict(path: str) -> dict:

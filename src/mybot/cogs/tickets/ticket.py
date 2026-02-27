@@ -24,16 +24,16 @@ from mybot.utils.paths import (ensure_dirs, get_db_path,
 log = logging.getLogger(__name__)
 
 
-def _cfg() -> dict:
+def _cfg(guild_id: int | str | None = None) -> dict:
     try:
-        return load_cog_config("tickets") or {}
+        return load_cog_config("tickets", guild_id=guild_id) or {}
     except Exception:
         return {}
 
 
-def _cfg_opt_int(name: str) -> Optional[int]:
+def _cfg_opt_int(name: str, guild_id: int | str | None = None) -> Optional[int]:
     try:
-        raw = _cfg().get(name, None)
+        raw = _cfg(guild_id).get(name, None)
         if raw is None:
             return None
         return int(raw)

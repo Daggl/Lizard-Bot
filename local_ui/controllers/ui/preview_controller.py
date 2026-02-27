@@ -52,7 +52,11 @@ class PreviewControllerMixin:
             pass
 
     def _rank_config_paths(self):
-        return config_json_path(self._repo_root, "rank.json")
+        return config_json_path(self._repo_root, "rank.json", guild_id=getattr(self, '_active_guild_id', None))
+
+    def _welcome_config_path(self):
+        """Return the welcome config path, guild-scoped when a guild is selected."""
+        return config_json_path(self._repo_root, "welcome.json", guild_id=getattr(self, '_active_guild_id', None))
 
     def _ui_settings_path(self):
         return config_json_path(self._repo_root, "local_ui.json")
@@ -373,7 +377,7 @@ class PreviewControllerMixin:
             except Exception:
                 pass
             repo_root = self._repo_root
-            cfg_path = os.path.join(repo_root, "config", "welcome.json")
+            cfg_path = self._welcome_config_path()
             try:
                 with open(cfg_path, "r", encoding="utf-8") as fh:
                     cfg = json.load(fh)
@@ -538,7 +542,7 @@ class PreviewControllerMixin:
     def update_preview(self):
         try:
             repo_root = self._repo_root
-            cfg_path = os.path.join(repo_root, "config", "welcome.json")
+            cfg_path = self._welcome_config_path()
             if not os.path.exists(cfg_path):
                 try:
                     self.status_label.setText("No welcome config found")
@@ -647,7 +651,7 @@ class PreviewControllerMixin:
     def _load_welcome_message_from_file(self):
         try:
             repo_root = self._repo_root
-            cfg_path = os.path.join(repo_root, "config", "welcome.json")
+            cfg_path = self._welcome_config_path()
             if not os.path.exists(cfg_path):
                 return
             with open(cfg_path, "r", encoding="utf-8") as fh:

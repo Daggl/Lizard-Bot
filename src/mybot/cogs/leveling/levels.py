@@ -44,8 +44,8 @@ class Levels(commands.Cog):
         bot.db = self.db
 
     async def _resolve_levelup_channel(self, member: discord.Member):
-        channel_id = get_achievement_channel_id()
         guild = getattr(member, "guild", None)
+        channel_id = get_achievement_channel_id(guild_id=getattr(guild, 'id', None))
 
         channel = None
         if channel_id > 0:

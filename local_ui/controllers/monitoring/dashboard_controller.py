@@ -294,7 +294,11 @@ class DashboardControllerMixin:
             lang_combo.setCurrentIndex(idx)
 
     def on_language_guild_changed(self, *_args):
+        guild_id = self._selected_language_guild_id()
+        self._active_guild_id = guild_id
         self._populate_language_combo()
+        if hasattr(self, "_reload_guild_configs"):
+            self._reload_guild_configs()
 
     def on_language_selection_changed(self, *_args):
         lang_combo = getattr(self, "language_combo", None)

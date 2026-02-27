@@ -47,6 +47,8 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
         self.setMinimumSize(1160, 740)
         # Repo root path for data/logs tracking
         self._repo_root = get_repo_root()
+        # Active guild ID for per-guild config loading/saving (None = global)
+        self._active_guild_id = None
 
         # central tabs
         tabs = QtWidgets.QTabWidget()
@@ -260,15 +262,47 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
             self.request_language_overview()
         except Exception:
             pass
-        # helper to update status label and force UI repaint
+        self._init_status_helper()
+        self._init_startup_marker()
+        self._init_timers()
+
+    def _reload_guild_configs(self):
+        """Reload all guild-scoped configs and previews for the active guild."""
+        try:
+            self._load_rank_config()
+        except Exception:
+            pass
+        try:
+            self._load_leveling_config()
+        except Exception:
+            pass
+        try:
+            self._load_birthdays_config()
+        except Exception:
+            pass
+        try:
+            self._preview_dirty = False
+            self._preview_banner_data_url = None
+            self.update_preview()
+        except Exception:
+            pass
+        try:
+            self._set_status(f"Loaded configs for guild {self._active_guild_id or 'global'}")
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------
+    # Init helpers (called once during __init__, not per guild switch)
+    # ------------------------------------------------------------------
+
+    def _init_status_helper(self):
+        """Create the ``_set_status`` convenience method."""
         def _set_status(msg: str):
             try:
-                # update dashboard label
                 try:
                     self.status_label.setText(msg)
                 except Exception:
                     pass
-                # also show in the main window status bar for stronger feedback
                 try:
                     self.statusBar().showMessage(msg, 5000)
                 except Exception:
@@ -276,32 +310,30 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
                 QtWidgets.QApplication.processEvents()
             except Exception:
                 pass
-        # attach helper to instance for use in handlers
         self._set_status = _set_status
-        # write a startup marker so the user can confirm the UI launched
+
+    def _init_startup_marker(self):
+        """Write a startup marker so the user can confirm the UI launched."""
         try:
-            try:
-                start_dir = os.path.join(self._repo_root, "data", "logs")
-                os.makedirs(start_dir, exist_ok=True)
-                with open(os.path.join(start_dir, "ui_start.log"), "a", encoding="utf-8") as fh:
-                    fh.write(f"UI started at {datetime.now().isoformat()}\n")
-            except Exception:
-                pass
+            start_dir = os.path.join(self._repo_root, "data", "logs")
+            os.makedirs(start_dir, exist_ok=True)
+            with open(os.path.join(start_dir, "ui_start.log"), "a", encoding="utf-8") as fh:
+                fh.write(f"UI started at {datetime.now().isoformat()}\n")
         except Exception:
             pass
 
-        # heartbeat timer to show the UI is alive every 2s
-        # NOTE: use the status bar only for the periodic "Alive" message so
-        # it doesn't overwrite the dashboard `status_label` which is updated
-        # by refresh/status actions.
+    def _init_timers(self):
+        """Start heartbeat and console-poller timers."""
         try:
             self._alive_timer = QtCore.QTimer(self)
-            self._alive_timer.timeout.connect(lambda: self.statusBar().showMessage(f"Alive {datetime.now().strftime('%H:%M:%S')}", 2000))
+            self._alive_timer.timeout.connect(
+                lambda: self.statusBar().showMessage(
+                    f"Alive {datetime.now().strftime('%H:%M:%S')}", 2000
+                )
+            )
             self._alive_timer.start(2000)
         except Exception:
             pass
-
-        # dashboard live console poller (reads start_all supervisor output)
         try:
             self._dash_console_timer = QtCore.QTimer(self)
             self._dash_console_timer.timeout.connect(self._poll_dashboard_console)

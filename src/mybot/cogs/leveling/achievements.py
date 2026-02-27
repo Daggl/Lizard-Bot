@@ -22,7 +22,7 @@ class Achievements(commands.Cog):
         db = self.bot.db
         user = db.get_user(member.id)
 
-        for name, entry in get_achievement_entries().items():
+        for name, entry in get_achievement_entries(guild_id=getattr(getattr(member, 'guild', None), 'id', None)).items():
             req = dict((entry or {}).get("requirements") or {})
             image_value = str((entry or {}).get("image", "") or "").strip()
 
@@ -39,7 +39,7 @@ class Achievements(commands.Cog):
             if valid:
                 user["achievements"].append(name)
 
-                channel = self.bot.get_channel(get_achievement_channel_id())
+                channel = self.bot.get_channel(get_achievement_channel_id(guild_id=getattr(getattr(member, 'guild', None), 'id', None)))
                 if channel:
                     try:
                         guild_id = getattr(getattr(member, "guild", None), "id", None)

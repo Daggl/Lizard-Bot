@@ -114,7 +114,7 @@ class Tracking(commands.Cog):
 
             elapsed = now - self.cooldowns[user_id]
 
-            if elapsed < get_message_cooldown():
+            if elapsed < get_message_cooldown(guild_id=getattr(getattr(message, 'guild', None), 'id', None)):
                 return
 
         self.cooldowns[user_id] = now
@@ -127,7 +127,7 @@ class Tracking(commands.Cog):
         levels = self.bot.get_cog("Levels")
 
         if levels:
-            await levels.add_xp(message.author, get_xp_per_message())
+            await levels.add_xp(message.author, get_xp_per_message(guild_id=getattr(getattr(message, 'guild', None), 'id', None)))
 
         achievements = self.bot.get_cog("Achievements")
 

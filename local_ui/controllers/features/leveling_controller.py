@@ -35,7 +35,7 @@ class _SortableTableItem(QtWidgets.QTableWidgetItem):
 
 class LevelingControllerMixin:
     def _leveling_config_paths(self):
-        return config_json_path(self._repo_root, "leveling.json")
+        return config_json_path(self._repo_root, "leveling.json", guild_id=getattr(self, '_active_guild_id', None))
 
     def _load_leveling_config(self):
         cfg_path = self._leveling_config_paths()

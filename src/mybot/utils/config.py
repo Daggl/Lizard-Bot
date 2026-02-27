@@ -18,23 +18,44 @@ def _file_mtime(path: str) -> float:
         return -1.0
 
 
-def load_cog_config(name: str) -> dict:
-    """Load and cache `config/{name}.json` from the repository root.
+def load_cog_config(name: str, guild_id: str | int | None = None) -> dict:
+    """Load and cache a cog config JSON file.
 
-    Returns an empty dict if the file is missing or cannot be parsed.
+    When *guild_id* is provided the guild-specific override at
+    ``config/guilds/{guild_id}/{name}.json`` is tried first; if that file is
+    missing the global ``config/{name}.json`` is used as fallback so that
+    guilds without their own overrides still operate normally.
+
+    Returns an empty dict if no file is found or cannot be parsed.
     """
 
     repo_root = REPO_ROOT
+    cache_key = f"{guild_id}:{name}" if guild_id is not None else name
+
+    # --- guild-specific path (if requested) ---
+    if guild_id is not None:
+        guild_path = config_json_path(repo_root, f"{name}.json", guild_id=guild_id)
+        guild_mtime = _file_mtime(guild_path)
+        if guild_mtime >= 0:
+            # Guild file exists — use it.
+            if cache_key in _CACHE and _CACHE_MTIME.get(cache_key, -2.0) == guild_mtime:
+                return copy.deepcopy(_CACHE[cache_key])
+            data = load_json_dict(guild_path)
+            _CACHE[cache_key] = data
+            _CACHE_MTIME[cache_key] = guild_mtime
+            return copy.deepcopy(data)
+
+    # --- global path (default) ---
     cfg_path = config_json_path(repo_root, f"{name}.json")
     current_mtime = _file_mtime(cfg_path)
 
-    if name in _CACHE and _CACHE_MTIME.get(name, -2.0) == current_mtime:
-        return copy.deepcopy(_CACHE[name])
+    if cache_key in _CACHE and _CACHE_MTIME.get(cache_key, -2.0) == current_mtime:
+        return copy.deepcopy(_CACHE[cache_key])
 
     data = load_json_dict(cfg_path)
 
-    _CACHE[name] = data
-    _CACHE_MTIME[name] = current_mtime
+    _CACHE[cache_key] = data
+    _CACHE_MTIME[cache_key] = current_mtime
     return copy.deepcopy(data)
 
 
@@ -163,19 +184,23 @@ def sync_cog_configs_from_example() -> dict:
     return result
 
 
-def write_cog_config(name: str, data: dict) -> bool:
-    """Write `data` to `config/{name}.json` and update the cache.
+def write_cog_config(name: str, data: dict, guild_id: str | int | None = None) -> bool:
+    """Write *data* to a cog config JSON file and update the cache.
+
+    When *guild_id* is provided the data is written to the guild-specific
+    override at ``config/guilds/{guild_id}/{name}.json``.
 
     Returns True on success, False on failure.
     """
     repo_root = REPO_ROOT
-    cfg_path = config_json_path(repo_root, f"{name}.json")
+    cfg_path = config_json_path(repo_root, f"{name}.json", guild_id=guild_id)
+    cache_key = f"{guild_id}:{name}" if guild_id is not None else name
     try:
         existing = save_json_merged(cfg_path, data or {})
 
         # update cache
-        _CACHE[name] = existing
-        _CACHE_MTIME[name] = _file_mtime(cfg_path)
+        _CACHE[cache_key] = existing
+        _CACHE_MTIME[cache_key] = _file_mtime(cfg_path)
         return True
     except Exception:
         return False

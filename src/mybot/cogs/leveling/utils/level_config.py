@@ -2,9 +2,9 @@ from mybot.utils.config import load_cog_config
 from mybot.utils.i18n import resolve_localized_value
 
 
-def _cfg() -> dict:
+def _cfg(guild_id: int | str | None = None) -> dict:
     try:
-        return load_cog_config("leveling") or {}
+        return load_cog_config("leveling", guild_id=guild_id) or {}
     except Exception:
         return {}
 
@@ -23,7 +23,7 @@ def _normalize_emoji_input(raw_value, fallback_name: str) -> str:
 
 
 def get_message_templates(guild_id: int | None = None):
-    cfg = _cfg()
+    cfg = _cfg(guild_id)
     level_up_tpl = resolve_localized_value(cfg.get("LEVEL_UP_MESSAGE_TEMPLATE", ""), guild_id=guild_id)
     achievement_tpl = resolve_localized_value(cfg.get("ACHIEVEMENT_MESSAGE_TEMPLATE", ""), guild_id=guild_id)
     win_emoji = _normalize_emoji_input(cfg.get("EMOJI_WIN", ""), "win")
@@ -31,49 +31,49 @@ def get_message_templates(guild_id: int | None = None):
     return str(level_up_tpl), str(achievement_tpl), win_emoji, heart_emoji
 
 
-def get_achievement_channel_id() -> int:
+def get_achievement_channel_id(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg().get("ACHIEVEMENT_CHANNEL_ID", 0) or 0)
+        return int(_cfg(guild_id).get("ACHIEVEMENT_CHANNEL_ID", 0) or 0)
     except Exception:
         return 0
 
 
-def get_xp_per_message() -> int:
+def get_xp_per_message(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg().get("XP_PER_MESSAGE") or 0)
+        return int(_cfg(guild_id).get("XP_PER_MESSAGE") or 0)
     except Exception:
         return 0
 
 
-def get_voice_xp_per_minute() -> int:
+def get_voice_xp_per_minute(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg().get("VOICE_XP_PER_MINUTE") or 0)
+        return int(_cfg(guild_id).get("VOICE_XP_PER_MINUTE") or 0)
     except Exception:
         return 0
 
 
-def get_message_cooldown() -> int:
+def get_message_cooldown(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg().get("MESSAGE_COOLDOWN") or 0)
+        return int(_cfg(guild_id).get("MESSAGE_COOLDOWN") or 0)
     except Exception:
         return 0
 
 
-def get_level_base_xp() -> int:
+def get_level_base_xp(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg().get("LEVEL_BASE_XP") or 0)
+        return int(_cfg(guild_id).get("LEVEL_BASE_XP") or 0)
     except Exception:
         return 0
 
 
-def get_level_xp_step() -> int:
+def get_level_xp_step(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg().get("LEVEL_XP_STEP") or 0)
+        return int(_cfg(guild_id).get("LEVEL_XP_STEP") or 0)
     except Exception:
         return 0
 
-def get_level_rewards() -> dict:
-    cfg = _cfg()
+def get_level_rewards(guild_id: int | str | None = None) -> dict:
+    cfg = _cfg(guild_id)
     raw = cfg.get("LEVEL_REWARDS")
     if not isinstance(raw, dict):
         return {}
@@ -90,13 +90,13 @@ def get_level_rewards() -> dict:
     return out
 
 
-def get_achievements() -> dict:
-    entries = get_achievement_entries()
+def get_achievements(guild_id: int | str | None = None) -> dict:
+    entries = get_achievement_entries(guild_id)
     return {name: data.get("requirements", {}) for name, data in entries.items()}
 
 
-def get_achievement_entries() -> dict:
-    cfg = _cfg()
+def get_achievement_entries(guild_id: int | str | None = None) -> dict:
+    cfg = _cfg(guild_id)
     raw = cfg.get("ACHIEVEMENTS")
     if not isinstance(raw, dict):
         return {}

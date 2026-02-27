@@ -8,6 +8,7 @@ from discord import app_commands
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
+from mybot.utils.config_store import config_json_path, load_json_dict
 from mybot.utils.i18n import translate
 from mybot.utils.paths import REPO_ROOT
 
@@ -48,8 +49,13 @@ def _parse_hex_color(value, fallback):
         return fallback
 
 
-def _load_rank_cfg() -> dict:
+def _load_rank_cfg(guild_id: int | str | None = None) -> dict:
+    """Load rank config, trying guild-specific override first."""
     try:
+        if guild_id is not None:
+            guild_path = config_json_path(REPO_ROOT, "rank.json", guild_id=guild_id)
+            if os.path.exists(guild_path):
+                return load_json_dict(guild_path) or {}
         cfg_path = os.path.join(REPO_ROOT, "config", "rank.json")
         if os.path.exists(cfg_path):
             with open(cfg_path, "r", encoding="utf-8") as fh:
@@ -190,7 +196,7 @@ class Rank(commands.Cog):
         voice_minutes = user["voice_time"] // 60
         achievements = len(user["achievements"])
 
-        cfg = _load_rank_cfg()
+        cfg = _load_rank_cfg(guild_id=getattr(getattr(member, 'guild', None), 'id', None))
         resolved_bg_path = bg_path or cfg.get("BG_PATH") or "assets/rankcard.png"
         resolved_bg_mode = bg_mode or cfg.get("BG_MODE", "cover")
         resolved_bg_zoom = bg_zoom if bg_zoom is not None else cfg.get("BG_ZOOM", 100)

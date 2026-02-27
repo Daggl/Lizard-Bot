@@ -6,9 +6,17 @@ import tempfile
 from typing import Any
 
 
-def config_json_path(repo_root: str, filename: str) -> str:
-    """Return the full path to a config JSON file, creating the directory if needed."""
-    cfg_dir = os.path.join(repo_root, "config")
+def config_json_path(repo_root: str, filename: str, guild_id: str | int | None = None) -> str:
+    """Return the full path to a config JSON file, creating the directory if needed.
+
+    When *guild_id* is provided the path points to a guild-specific override
+    file: ``config/guilds/{guild_id}/{filename}``.  Otherwise the global
+    ``config/{filename}`` is returned.
+    """
+    if guild_id is not None:
+        cfg_dir = os.path.join(repo_root, "config", "guilds", str(guild_id))
+    else:
+        cfg_dir = os.path.join(repo_root, "config")
     os.makedirs(cfg_dir, exist_ok=True)
     return os.path.join(cfg_dir, filename)
 

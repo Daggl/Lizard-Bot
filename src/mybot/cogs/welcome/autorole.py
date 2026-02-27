@@ -13,24 +13,24 @@ from mybot.utils.paths import get_db_path
 log = logging.getLogger(__name__)
 
 
-def _cfg() -> dict:
+def _cfg(guild_id: int | str | None = None) -> dict:
     try:
-        return load_cog_config("autorole") or {}
+        return load_cog_config("autorole", guild_id=guild_id) or {}
     except Exception:
         return {}
 
 
-def _cfg_int(name: str, default: int = 0) -> int:
+def _cfg_int(name: str, default: int = 0, guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg().get(name, default) or default)
+        return int(_cfg(guild_id).get(name, default) or default)
     except Exception:
         return int(default)
 
 
-def _cfg_list_int(name: str) -> list[int]:
+def _cfg_list_int(name: str, guild_id: int | str | None = None) -> list[int]:
     out = []
     try:
-        values = _cfg().get(name, []) or []
+        values = _cfg(guild_id).get(name, []) or []
         for value in values:
             try:
                 out.append(int(value))
@@ -41,9 +41,9 @@ def _cfg_list_int(name: str) -> list[int]:
     return out
 
 
-def _cfg_str(name: str, default: str = "") -> str:
+def _cfg_str(name: str, default: str = "", guild_id: int | str | None = None) -> str:
     try:
-        return str(_cfg().get(name, default) or default)
+        return str(_cfg(guild_id).get(name, default) or default)
     except Exception:
         return default
 

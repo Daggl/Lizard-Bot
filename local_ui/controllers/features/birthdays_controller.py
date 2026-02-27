@@ -4,7 +4,7 @@ from PySide6 import QtGui, QtWidgets
 
 class BirthdaysControllerMixin:
     def _birthdays_config_path(self):
-        return config_json_path(self._repo_root, "birthdays.json")
+        return config_json_path(self._repo_root, "birthdays.json", guild_id=getattr(self, '_active_guild_id', None))
 
     def _load_birthdays_config(self):
         cfg = load_json_dict(self._birthdays_config_path())

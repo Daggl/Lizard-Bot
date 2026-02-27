@@ -9,9 +9,9 @@ from discord.ext import commands
 from mybot.utils.config import load_cog_config
 
 
-def _cfg() -> dict:
+def _cfg(guild_id: int | str | None = None) -> dict:
     try:
-        return load_cog_config("log_mod") or {}
+        return load_cog_config("log_mod", guild_id=guild_id) or {}
     except Exception:
         return {}
 

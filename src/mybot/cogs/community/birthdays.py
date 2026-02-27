@@ -34,23 +34,23 @@ def save_sent_birthdays(data):
     safe_save_json(SENT_FILE, data)
 
 
-def _cfg() -> dict:
+def _cfg(guild_id: int | str | None = None) -> dict:
     try:
-        return load_cog_config("birthdays") or {}
+        return load_cog_config("birthdays", guild_id=guild_id) or {}
     except Exception:
         return {}
 
 
-def _channel_id() -> int:
+def _channel_id(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg().get("CHANNEL_ID", 0) or 0)
+        return int(_cfg(guild_id).get("CHANNEL_ID", 0) or 0)
     except Exception:
         return 0
 
 
 def _embed_title(guild_id: int | None = None) -> str:
     try:
-        raw = _cfg().get("EMBED_TITLE", "")
+        raw = _cfg(guild_id).get("EMBED_TITLE", "")
         return str(resolve_localized_value(raw, guild_id=guild_id) or "")
     except Exception:
         return ""
@@ -58,7 +58,7 @@ def _embed_title(guild_id: int | None = None) -> str:
 
 def _embed_description(guild_id: int | None = None) -> str:
     try:
-        raw = _cfg().get("EMBED_DESCRIPTION", "")
+        raw = _cfg(guild_id).get("EMBED_DESCRIPTION", "")
         return str(resolve_localized_value(raw, guild_id=guild_id) or "")
     except Exception:
         return ""
@@ -66,16 +66,16 @@ def _embed_description(guild_id: int | None = None) -> str:
 
 def _embed_footer(guild_id: int | None = None) -> str:
     try:
-        raw = _cfg().get("EMBED_FOOTER", "")
+        raw = _cfg(guild_id).get("EMBED_FOOTER", "")
         return str(resolve_localized_value(raw, guild_id=guild_id) or "")
     except Exception:
         return ""
 
 
-def _embed_color() -> discord.Color:
+def _embed_color(guild_id: int | str | None = None) -> discord.Color:
     raw = ""
     try:
-        raw = str(_cfg().get("EMBED_COLOR", "") or "").strip()
+        raw = str(_cfg(guild_id).get("EMBED_COLOR", "") or "").strip()
     except Exception:
         pass
     try:

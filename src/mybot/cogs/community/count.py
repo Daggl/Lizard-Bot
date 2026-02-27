@@ -11,30 +11,30 @@ from mybot.utils.i18n import translate
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
 
 
-def _cfg() -> dict:
+def _cfg(guild_id: int | str | None = None) -> dict:
     try:
-        return load_cog_config("count") or {}
+        return load_cog_config("count", guild_id=guild_id) or {}
     except Exception:
         return {}
 
 
-def _count_channel_id():
+def _count_channel_id(guild_id: int | str | None = None):
     try:
-        raw = _cfg().get("COUNT_CHANNEL_ID", None)
+        raw = _cfg(guild_id).get("COUNT_CHANNEL_ID", None)
         return int(raw) if raw is not None else None
     except Exception:
         return None
 
 
-def _min_count_for_record() -> int:
+def _min_count_for_record(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg().get("MIN_COUNT_FOR_RECORD", 150) or 150)
+        return int(_cfg(guild_id).get("MIN_COUNT_FOR_RECORD", 150) or 150)
     except Exception:
         return 150
 
 
-def _data_paths() -> tuple[str, str]:
-    cfg = _cfg()
+def _data_paths(guild_id: int | str | None = None) -> tuple[str, str]:
+    cfg = _cfg(guild_id)
     folder = str(cfg.get("DATA_FOLDER", "data") or "data")
     file_name = str(cfg.get("DATA_FILE", "count.json") or "count.json")
     return folder, os.path.join(folder, file_name)

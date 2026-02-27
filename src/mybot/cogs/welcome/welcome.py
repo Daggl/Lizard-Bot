@@ -33,13 +33,13 @@ def safe_print(*args, **kwargs):
     print(*safe_args, **kwargs)
 
 
-def _load_welcome_cfg() -> dict:
+def _load_welcome_cfg(guild_id: int | str | None = None) -> dict:
     try:
         clear_cog_config_cache("welcome")
     except Exception:
         pass
     try:
-        return load_cog_config("welcome") or {}
+        return load_cog_config("welcome", guild_id=guild_id) or {}
     except Exception:
         return {}
 
@@ -135,7 +135,8 @@ class Welcome(commands.Cog):
 
     async def create_banner(self, member: discord.Member, overrides: Optional[dict] = None) -> discord.File:
         """Generate the welcome banner image."""
-        cfg = _load_welcome_cfg()
+        guild_id = getattr(getattr(member, 'guild', None), 'id', None)
+        cfg = _load_welcome_cfg(guild_id=guild_id)
         if isinstance(overrides, dict):
             cfg = {**cfg, **overrides}
 
@@ -259,7 +260,8 @@ class Welcome(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        cfg = _load_welcome_cfg()
+        guild_id = getattr(getattr(member, 'guild', None), 'id', None)
+        cfg = _load_welcome_cfg(guild_id=guild_id)
         verify_channel_id = cfg.get("VERIFY_CHANNEL_ID", 0)
         welcome_channel_id = cfg.get("WELCOME_CHANNEL_ID", 0)
         rules_channel_id = cfg.get("RULES_CHANNEL_ID", 0)

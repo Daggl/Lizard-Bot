@@ -13,7 +13,7 @@ class Rewards(commands.Cog):
 
         user = self.bot.db.get_user(member.id)
         level = user["level"]
-        level_rewards = get_level_rewards()
+        level_rewards = get_level_rewards(guild_id=getattr(getattr(member, 'guild', None), 'id', None))
 
         if level in level_rewards:
             role_name = level_rewards[level]
