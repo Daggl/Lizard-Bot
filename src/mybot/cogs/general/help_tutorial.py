@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 
@@ -10,8 +11,7 @@ class HelpTutorial(commands.Cog):
 
         bot.remove_command("help")
 
-    @commands.hybrid_command(name="help", aliases=["tutorial", "hilfe"], description="H command.")
-    async def h(self, ctx):
+    def _build_help_embed(self) -> discord.Embed:
 
         embed = discord.Embed(
             title="🤖 Bot Help & Tutorials",
@@ -149,7 +149,36 @@ class HelpTutorial(commands.Cog):
 
         embed.set_footer(text="More features coming later 👀")
 
-        await ctx.send(embed=embed)
+        return embed
+
+    async def _respond_with_help_embed(self, interaction: discord.Interaction) -> None:
+
+        embed = self._build_help_embed()
+
+        if interaction.response.is_done():
+            await interaction.followup.send(embed=embed)
+        else:
+            await interaction.response.send_message(embed=embed)
+
+    @commands.command(name="help", aliases=["tutorial", "hilfe"], help="Show the help & tutorial menu.")
+    async def help_prefix(self, ctx: commands.Context):
+
+        await ctx.send(embed=self._build_help_embed())
+
+    @app_commands.command(name="help", description="Show the help & tutorial menu.")
+    async def help_slash(self, interaction: discord.Interaction):
+
+        await self._respond_with_help_embed(interaction)
+
+    @app_commands.command(name="tutorial", description="Alias for /help.")
+    async def tutorial_slash(self, interaction: discord.Interaction):
+
+        await self._respond_with_help_embed(interaction)
+
+    @app_commands.command(name="hilfe", description="Alias for /help.")
+    async def hilfe_slash(self, interaction: discord.Interaction):
+
+        await self._respond_with_help_embed(interaction)
 
 
 async def setup(bot):
