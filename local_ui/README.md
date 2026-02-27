@@ -31,6 +31,7 @@ $env:CONTROL_API_TOKEN='your-token'
 - Welcome banner preview and save flow
 - Rank preview and config save
 - Live log tailing (file + sqlite mode)
+- Birthday message editing and save flow
 
 ## Modules
 
@@ -45,6 +46,7 @@ $env:CONTROL_API_TOKEN='your-token'
 
 - `CONTROL_API_TOKEN` must match between bot and UI.
 - `UI_TEST_MEMBER_NAME` can be set to control which user is preferred for UI event tests (default: `leutnantbrause`).
+- Voice event tests (`testmusic`) require voice dependencies in the bot environment (notably `PyNaCl`).
 - Runtime trace/log output is written to [../data/logs](../data/logs).
 - Dev helper scripts are in [../scripts/dev](../scripts/dev).
 
