@@ -17,16 +17,16 @@ from repo_paths import get_repo_root
 from runtime import run_main_window
 from startup_trace import write_startup_trace
 from ui_tabs import build_configs_tab, build_dashboard_tab, build_logs_tab, build_welcome_and_rank_tabs
-from controllers.admin_controller import AdminControllerMixin
-from controllers.birthdays_controller import BirthdaysControllerMixin
-from controllers.dashboard_controller import DashboardControllerMixin
-from controllers.emoji_controller import EmojiControllerMixin
-from controllers.lifecycle_controller import LifecycleControllerMixin
-from controllers.leveling_controller import LevelingControllerMixin
-from controllers.logs_controller import LogsControllerMixin
-from controllers.preview_api_controller import PreviewApiControllerMixin
-from controllers.preview_controller import PreviewControllerMixin
-from controllers.runtime_core_controller import RuntimeCoreControllerMixin
+from controllers.ui.admin_controller import AdminControllerMixin
+from controllers.features.birthdays_controller import BirthdaysControllerMixin
+from controllers.monitoring.dashboard_controller import DashboardControllerMixin
+from controllers.ui.emoji_controller import EmojiControllerMixin
+from controllers.core.lifecycle_controller import LifecycleControllerMixin
+from controllers.features.leveling_controller import LevelingControllerMixin
+from controllers.monitoring.logs_controller import LogsControllerMixin
+from controllers.ui.preview_api_controller import PreviewApiControllerMixin
+from controllers.ui.preview_controller import PreviewControllerMixin
+from controllers.core.runtime_core_controller import RuntimeCoreControllerMixin
 
 write_startup_trace()
 
