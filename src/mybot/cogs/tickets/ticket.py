@@ -401,7 +401,7 @@ class TicketCog(commands.Cog):
                 return
         print(f"[TICKET] {text}")
 
-    @commands.hybrid_command(name="ticketpanel")
+    @commands.hybrid_command(name="ticketpanel", description="Ticket panel command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def ticket_panel(self, ctx: commands.Context) -> None:
@@ -415,7 +415,7 @@ class TicketCog(commands.Cog):
         msg = await ctx.send(embed=embed, view=view)
         self.panel_message_id = msg.id
 
-    @commands.hybrid_command(name="ticket")
+    @commands.hybrid_command(name="ticket", description="Ticket command command.")
     async def ticket_command(self, ctx: commands.Context) -> None:
         try:
             if getattr(ctx, "message", None) is not None:
@@ -425,7 +425,7 @@ class TicketCog(commands.Cog):
         await self._create_ticket_for_user(ctx.guild, ctx.author, ctx.channel)
         await ctx.author.send("Your ticket was created.")
 
-    @commands.hybrid_command(name="transcript")
+    @commands.hybrid_command(name="transcript", description="Transcript cmd command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def transcript_cmd(
@@ -437,7 +437,7 @@ class TicketCog(commands.Cog):
         else:
             await ctx.send("Failed to save transcript.")
 
-    @commands.hybrid_command(name="close_ticket")
+    @commands.hybrid_command(name="close_ticket", description="Close ticket cmd command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def close_ticket_cmd(

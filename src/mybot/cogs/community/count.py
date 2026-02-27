@@ -144,7 +144,7 @@ class Count(commands.Cog):
 
         save(data)
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Countstats command.")
     async def countstats(self, ctx):
 
         data = load()
@@ -159,7 +159,7 @@ class Count(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Counttop command.")
     async def counttop(self, ctx):
 
         data = load()
@@ -184,7 +184,7 @@ class Count(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Countreset command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def countreset(self, ctx):

@@ -99,7 +99,7 @@ class Birthdays(commands.Cog):
     def cog_unload(self):
         self.check_birthdays.cancel()
 
-    @commands.hybrid_command(name="birthday")
+    @commands.hybrid_command(name="birthday", description="Birthday command.")
     async def birthday(self, ctx: commands.Context, date: str):
 
         birthdays = load_birthdays()

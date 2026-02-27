@@ -321,7 +321,7 @@ class Welcome(commands.Cog):
         await welcome_channel.send(file=banner, embed=embed)
         safe_print("[DEBUG] Message sent")
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testwelcome command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testwelcome(self, ctx: commands.Context):

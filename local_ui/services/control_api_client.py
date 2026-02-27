@@ -21,7 +21,7 @@ def _current_control_api_token() -> str:
     return str(os.environ.get("CONTROL_API_TOKEN", "") or "").strip()
 
 
-def send_cmd(cmd: dict, timeout: float = 1.0):
+def send_cmd(cmd: dict, timeout: float = 10.0):
     try:
         token = _current_control_api_token()
         payload = dict(cmd)

@@ -101,7 +101,7 @@ class AdminPanel(commands.Cog):
     # -------------------------------------------------
     # COMMAND
     # -------------------------------------------------
-    @commands.hybrid_command(name="adminpanel")
+    @commands.hybrid_command(name="adminpanel", description="Adminpanel command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def adminpanel(self, ctx):

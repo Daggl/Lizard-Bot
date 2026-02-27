@@ -120,7 +120,7 @@ class Poll(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.hybrid_command(name="poll")
+    @commands.hybrid_command(name="poll", description="Poll command.")
     async def poll(self, ctx):
 
         def check(m):
@@ -181,7 +181,7 @@ class Poll(commands.Cog):
             save_polls(polls)
             await view.update_message(message)
 
-    @commands.hybrid_command(name="delete_poll")
+    @commands.hybrid_command(name="delete_poll", description="Delete poll command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def delete_poll(self, ctx, poll_id: str):

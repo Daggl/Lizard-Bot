@@ -307,7 +307,7 @@ class AdminHelp(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.hybrid_command(name="admin_help", aliases=["adminhelp", "ahelp"])
+    @commands.hybrid_command(name="admin_help", aliases=["adminhelp", "ahelp"], description="Admin help command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def admin_help(self, ctx):

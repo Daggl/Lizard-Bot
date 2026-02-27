@@ -112,7 +112,7 @@ class Rank(commands.Cog):
     # USER COMMAND
     # ======================================================
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Rank command.")
     async def rank(self, ctx, member: discord.Member = None):
         """User rank card."""
 
@@ -126,7 +126,7 @@ class Rank(commands.Cog):
     # ADMIN COMMAND - rankuser
     # ======================================================
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Rankuser command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def rankuser(self, ctx, member: discord.Member):
@@ -297,7 +297,7 @@ class Rank(commands.Cog):
     # ADMIN COMMANDS
     # ======================================================
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Addxp command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def addxp(self, ctx, member: discord.Member, amount: int):
@@ -314,7 +314,7 @@ class Rank(commands.Cog):
 
         await ctx.send(f"✅ {amount} XP added to {member.mention}")
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Removexp command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def removexp(self, ctx, member: discord.Member, amount: int):
@@ -327,7 +327,7 @@ class Rank(commands.Cog):
 
         await ctx.send(f"🗑 {amount} XP removed from {member.mention}")
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Reset command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def reset(self, ctx, member: discord.Member):

@@ -527,7 +527,7 @@ class TempVoice(commands.Cog):
             new_owner = remaining[0]
             await self._transfer_owner(before_channel, new_owner, member)
 
-    @commands.hybrid_command(name="tempvoicepanel")
+    @commands.hybrid_command(name="tempvoicepanel", description="Tempvoice panel command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def tempvoice_panel(self, ctx: commands.Context):

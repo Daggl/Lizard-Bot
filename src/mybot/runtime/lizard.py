@@ -109,9 +109,21 @@ async def on_ready():
                 guild_obj = discord.Object(id=int(guild_id_raw))
                 synced = await bot.tree.sync(guild=guild_obj)
                 print(f"Synced {len(synced)} slash commands for guild {guild_id_raw}.")
+                synced_global = await bot.tree.sync()
+                print(f"Synced {len(synced_global)} global slash commands.")
             else:
-                synced = await bot.tree.sync()
-                print(f"Synced {len(synced)} global slash commands.")
+                guild_sync_total = 0
+                for guild in getattr(bot, "guilds", []):
+                    try:
+                        synced_guild = await bot.tree.sync(guild=guild)
+                        guild_sync_total += len(synced_guild)
+                        print(f"Synced {len(synced_guild)} slash commands for guild ID {guild.id}.")
+                    except Exception as guild_sync_error:
+                        print(f"Failed guild slash sync for guild ID {guild.id}: {guild_sync_error}")
+
+                synced_global = await bot.tree.sync()
+                print(f"Synced {len(synced_global)} global slash commands.")
+                print(f"Guild slash sync total: {guild_sync_total}.")
             _slash_synced = True
         except Exception as e:
             print("Failed to sync slash commands:", e)
@@ -122,7 +134,7 @@ async def on_ready():
 # ==========================================================
 
 
-@bot.hybrid_command()
+@bot.hybrid_command(description="Ping command.")
 async def ping(ctx):
 
     # simple test command to check if bot responds

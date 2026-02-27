@@ -25,7 +25,7 @@ class AdminTools(commands.Cog):
         return self.bot.db.get_user(member.id)
 
     # XP GEBEN
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Givexp command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def givexp(self, ctx, member: discord.Member, amount: int):
@@ -37,7 +37,7 @@ class AdminTools(commands.Cog):
         await ctx.send(f"✅ {member.mention} got {amount} XP.")
 
     # XP SETZEN
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Setxp command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def setxp(self, ctx, member: discord.Member, amount: int):
@@ -49,7 +49,7 @@ class AdminTools(commands.Cog):
         await ctx.send(f"🛠 XP of {member.mention} set to {amount}.")
 
     # LEVEL SETZEN
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Setlevel command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def setlevel(self, ctx, member: discord.Member, level: int):
@@ -61,7 +61,7 @@ class AdminTools(commands.Cog):
         await ctx.send(f"⭐ Level of {member.mention} set to {level}.")
 
     # ACHIEVEMENT TEST
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testachievement command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testachievement(self, ctx, member: discord.Member, *, name: str):
@@ -77,7 +77,7 @@ class AdminTools(commands.Cog):
 
         await ctx.send(f"🏆 Achievement '{name}' was given to {member.mention}.")
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Giveachievement command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def giveachievement(self, ctx, member: discord.Member, *, name: str):
@@ -92,7 +92,7 @@ class AdminTools(commands.Cog):
 
         await ctx.send(f"🏆 Achievement '{name}' was given to {member.mention}.")
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Removeachievement command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def removeachievement(self, ctx, member: discord.Member, *, name: str):
@@ -107,14 +107,14 @@ class AdminTools(commands.Cog):
 
         await ctx.send(f"🗑 Achievement '{name}' was removed from {member.mention}.")
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testping command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testping(self, ctx):
         latency_ms = round(getattr(self.bot, "latency", 0) * 1000)
         await ctx.send(f"🏓 Test OK — latency: **{latency_ms} ms**")
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testrank command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testrank(self, ctx, member: discord.Member = None):
@@ -123,7 +123,7 @@ class AdminTools(commands.Cog):
             return
         await self._invoke_or_error(ctx, "rankuser", member=member)
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testcount command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testcount(self, ctx):
@@ -132,14 +132,14 @@ class AdminTools(commands.Cog):
         if ok_stats and ok_top:
             await ctx.send("✅ Count test complete.")
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testbirthday command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testbirthday(self, ctx, date: str = None):
         target_date = date or datetime.now().strftime("%d.%m")
         await self._invoke_or_error(ctx, "birthday", date=target_date)
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testpoll command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testpoll(self, ctx, duration: int = 45, *, question: str = "System test poll"):
@@ -160,13 +160,13 @@ class AdminTools(commands.Cog):
         )
         await ctx.invoke(poll_cmd)
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testticketpanel command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testticketpanel(self, ctx):
         await self._invoke_or_error(ctx, "ticketpanel")
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testmusic command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testmusic(
@@ -186,13 +186,13 @@ class AdminTools(commands.Cog):
         if ok_play:
             await ctx.send(f"✅ Music test started: {url}")
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testsay command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testsay(self, ctx, *, text: str = "✅ Test message from testsay"):
         await self._invoke_or_error(ctx, "say", text=text)
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testlevel command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testlevel(self, ctx, member: discord.Member, xp: int = 50):
@@ -200,7 +200,7 @@ class AdminTools(commands.Cog):
         if ok_add:
             await self._invoke_or_error(ctx, "rankuser", member=member)
 
-    @commands.hybrid_command()
+    @commands.hybrid_command(description="Testlog command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testlog(self, ctx, category: str = "system", *, message: str = "Manual log test"):

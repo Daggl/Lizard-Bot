@@ -10,7 +10,7 @@ class HelpTutorial(commands.Cog):
 
         bot.remove_command("help")
 
-    @commands.hybrid_command(name="help", aliases=["tutorial", "hilfe"])
+    @commands.hybrid_command(name="help", aliases=["tutorial", "hilfe"], description="H command.")
     async def h(self, ctx):
 
         embed = discord.Embed(

@@ -299,7 +299,7 @@ class Music(commands.Cog, name="music"):
         if vc:
             await ctx.send(f"Connected to {vc.channel.mention}")
 
-    @commands.hybrid_command(name="mjoin")
+    @commands.hybrid_command(name="mjoin", description="Mjoin command.")
     async def mjoin(self, ctx: commands.Context):
         """Alias for join to test prefix command dispatch."""
         await self.join(ctx)
