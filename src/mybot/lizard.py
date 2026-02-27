@@ -49,6 +49,7 @@ DEFAULT_EXTENSIONS = [
     "mybot.cogs.log.voice_log",
     "mybot.cogs.log.server_log",
     "mybot.cogs.welcome.autorole",
+    "mybot.cogs.tempvoice",
     "mybot.cogs.say",
     "mybot.cogs.tickets.ticket",
     "mybot.cogs.music",
