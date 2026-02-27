@@ -3,9 +3,11 @@ import time
 import discord
 from discord.ext import commands
 
-from mybot.cogs.leveling.utils.level_config import (get_achievement_channel_id,
-                                                    get_achievements,
-                                                    get_level_rewards)
+from ..leveling.utils.level_config import (
+    get_achievement_channel_id,
+    get_achievements,
+    get_level_rewards,
+)
 
 
 class AdminPanelView(discord.ui.View):

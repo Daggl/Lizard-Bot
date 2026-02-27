@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
-from mybot.cogs.leveling.levels import xp_for_level
+from .levels import xp_for_level
 from mybot.utils.paths import REPO_ROOT
 
 CARD_WIDTH = 1000

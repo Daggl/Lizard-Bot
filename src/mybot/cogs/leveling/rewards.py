@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from mybot.cogs.leveling.utils.level_config import get_level_rewards
+from .utils.level_config import get_level_rewards
 
 
 class Rewards(commands.Cog):
