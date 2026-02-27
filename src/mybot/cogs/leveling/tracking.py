@@ -2,11 +2,8 @@ import time
 
 from discord.ext import commands, tasks
 
-from .utils.level_config import (
-    get_message_cooldown,
-    get_voice_xp_per_minute,
-    get_xp_per_message,
-)
+from .utils.level_config import (get_message_cooldown, get_voice_xp_per_minute,
+                                 get_xp_per_message)
 
 
 class Tracking(commands.Cog):

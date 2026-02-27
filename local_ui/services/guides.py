@@ -1,6 +1,5 @@
 from PySide6 import QtWidgets
 
-
 BOT_TUTORIAL_MD = """
 # Lizard Bot — Beginner Guide
 

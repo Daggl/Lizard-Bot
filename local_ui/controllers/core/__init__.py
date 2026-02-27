@@ -1,2 +1,2 @@
-from .runtime_core_controller import RuntimeCoreControllerMixin
 from .lifecycle_controller import LifecycleControllerMixin
+from .runtime_core_controller import RuntimeCoreControllerMixin

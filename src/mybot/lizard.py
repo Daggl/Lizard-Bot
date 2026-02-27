@@ -13,8 +13,8 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from mybot.utils.paths import REPO_ROOT, ensure_runtime_storage
 from mybot.utils.env_store import ensure_env_file
+from mybot.utils.paths import REPO_ROOT, ensure_runtime_storage
 
 # ensure project root's `src` is importable (when running as module)
 _src = os.path.join(REPO_ROOT, "src")
@@ -27,7 +27,6 @@ os.environ.setdefault("DC_BOT_REPO_ROOT", REPO_ROOT)
 from data.logs import database  # noqa: E402
 # ensure per-cog config files exist before loading cogs
 from mybot.utils import sync_cog_configs_from_example  # noqa: E402
-
 
 DEFAULT_EXTENSIONS = [
     "mybot.cogs.birthdays",

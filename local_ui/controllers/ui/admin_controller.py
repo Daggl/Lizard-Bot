@@ -1,6 +1,5 @@
-from PySide6 import QtWidgets
-
 from config.config_editor import ConfigEditor
+from PySide6 import QtWidgets
 from services.guides import open_bot_tutorial, open_commands_guide
 from ui.setup_wizard import SetupWizardDialog
 

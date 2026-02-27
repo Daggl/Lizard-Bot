@@ -6,27 +6,30 @@ JSON response. This is a minimal example to get started.
 
 
 
-import sys
 import os
+import sys
 from datetime import datetime
-# HTML embed removed; no html module required
-from PySide6 import QtWidgets, QtCore
+
 from config.config_editor import ConfigEditor
+from controllers.core.lifecycle_controller import LifecycleControllerMixin
+from controllers.core.runtime_core_controller import RuntimeCoreControllerMixin
+from controllers.features.birthdays_controller import BirthdaysControllerMixin
+from controllers.features.leveling_controller import LevelingControllerMixin
+from controllers.monitoring.dashboard_controller import \
+    DashboardControllerMixin
+from controllers.monitoring.logs_controller import LogsControllerMixin
+from controllers.ui.admin_controller import AdminControllerMixin
+from controllers.ui.emoji_controller import EmojiControllerMixin
+from controllers.ui.preview_api_controller import PreviewApiControllerMixin
+from controllers.ui.preview_controller import PreviewControllerMixin
 from core.exception_handler import install_exception_hook
 from core.repo_paths import get_repo_root
 from core.runtime import run_main_window
 from core.startup_trace import write_startup_trace
-from ui.ui_tabs import build_configs_tab, build_dashboard_tab, build_logs_tab, build_welcome_and_rank_tabs
-from controllers.ui.admin_controller import AdminControllerMixin
-from controllers.features.birthdays_controller import BirthdaysControllerMixin
-from controllers.monitoring.dashboard_controller import DashboardControllerMixin
-from controllers.ui.emoji_controller import EmojiControllerMixin
-from controllers.core.lifecycle_controller import LifecycleControllerMixin
-from controllers.features.leveling_controller import LevelingControllerMixin
-from controllers.monitoring.logs_controller import LogsControllerMixin
-from controllers.ui.preview_api_controller import PreviewApiControllerMixin
-from controllers.ui.preview_controller import PreviewControllerMixin
-from controllers.core.runtime_core_controller import RuntimeCoreControllerMixin
+# HTML embed removed; no html module required
+from PySide6 import QtCore, QtWidgets
+from ui.ui_tabs import (build_configs_tab, build_dashboard_tab, build_logs_tab,
+                        build_welcome_and_rank_tabs)
 
 write_startup_trace()
 

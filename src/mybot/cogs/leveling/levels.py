@@ -2,12 +2,8 @@ import discord
 from discord.ext import commands
 
 from .utils.database import Database
-from .utils.level_config import (
-    get_achievement_channel_id,
-    get_level_base_xp,
-    get_level_xp_step,
-    get_message_templates,
-)
+from .utils.level_config import (get_achievement_channel_id, get_level_base_xp,
+                                 get_level_xp_step, get_message_templates)
 
 # ======================================================
 # XP FORMULA

@@ -7,8 +7,9 @@ import discord
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
-from .levels import xp_for_level
 from mybot.utils.paths import REPO_ROOT
+
+from .levels import xp_for_level
 
 CARD_WIDTH = 1000
 CARD_HEIGHT = 300

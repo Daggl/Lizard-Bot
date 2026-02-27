@@ -1,6 +1,6 @@
+import copy
 import json
 import os
-import copy
 from typing import Dict, List
 
 from .config_store import (config_json_path, load_json_dict, save_json,

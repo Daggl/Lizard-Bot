@@ -3,7 +3,6 @@ import os
 import sqlite3
 
 from PySide6 import QtCore, QtWidgets
-
 from services.log_format import format_db_row
 from services.log_poller import LogPoller
 

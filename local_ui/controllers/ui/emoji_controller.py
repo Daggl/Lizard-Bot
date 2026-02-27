@@ -1,5 +1,4 @@
 from PySide6 import QtWidgets
-
 from ui.dialogs.emoji_picker import GuildEmojiPickerDialog
 
 

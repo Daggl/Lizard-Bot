@@ -1,4 +1,4 @@
-from PySide6 import QtWidgets, QtCore, QtGui, QtNetwork
+from PySide6 import QtCore, QtGui, QtNetwork, QtWidgets
 
 
 class GuildEmojiPickerDialog(QtWidgets.QDialog):

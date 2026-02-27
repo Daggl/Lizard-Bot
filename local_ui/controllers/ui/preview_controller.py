@@ -1,10 +1,10 @@
 import json
 import os
 
-from PySide6 import QtWidgets, QtCore, QtGui
-
 from config.config_io import config_json_path, load_json_dict, save_json_merged
-from services.file_ops import open_tracked_writer, prune_backups, rotate_log_file
+from PySide6 import QtCore, QtGui, QtWidgets
+from services.file_ops import (open_tracked_writer, prune_backups,
+                               rotate_log_file)
 
 
 class PreviewControllerMixin:
@@ -465,7 +465,8 @@ class PreviewControllerMixin:
             os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
             try:
                 if os.path.exists(cfg_path):
-                    import shutil, time
+                    import shutil
+                    import time
 
                     bak = cfg_path + ".bak." + str(int(time.time()))
                     shutil.copy2(cfg_path, bak)

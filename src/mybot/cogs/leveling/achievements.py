@@ -3,12 +3,11 @@ import os
 import discord
 from discord.ext import commands
 
-from .utils.level_config import (
-    get_achievement_channel_id,
-    get_achievement_entries,
-    get_message_templates,
-)
 from mybot.utils.paths import REPO_ROOT
+
+from .utils.level_config import (get_achievement_channel_id,
+                                 get_achievement_entries,
+                                 get_message_templates)
 
 
 class Achievements(commands.Cog):

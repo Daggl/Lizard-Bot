@@ -1,4 +1,4 @@
-from PySide6 import QtWidgets, QtGui
+from PySide6 import QtGui, QtWidgets
 
 
 def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):

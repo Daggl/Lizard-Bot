@@ -5,7 +5,6 @@ import socket
 from config.config_io import ensure_env_file, load_env_dict
 from core.repo_paths import get_repo_root
 
-
 API_ADDR = ("127.0.0.1", 8765)
 
 

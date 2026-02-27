@@ -1,7 +1,6 @@
 import os
 import tempfile
 
-
 DEFAULT_ENV_VALUES = {
     "DISCORD_TOKEN": "",
     "CONTROL_API_TOKEN": "",

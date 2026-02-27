@@ -1,4 +1,4 @@
 from .admin_controller import AdminControllerMixin
 from .emoji_controller import EmojiControllerMixin
-from .preview_controller import PreviewControllerMixin
 from .preview_api_controller import PreviewApiControllerMixin
+from .preview_controller import PreviewControllerMixin

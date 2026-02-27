@@ -1,11 +1,12 @@
 import os
-import sqlite3
 import shutil
+import sqlite3
 
 from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
 from mybot.utils.paths import get_db_path
+
 
 def _cfg() -> dict:
     try:

@@ -8,14 +8,15 @@ and the API will listen on 127.0.0.1:8765 by default.
 """
 
 import asyncio
+import importlib
+import inspect
 import json
 import os
-import importlib
 import sys
 import time
 from types import SimpleNamespace
 from typing import Dict
-import inspect
+
 from discord.ext import commands as _commands
 
 try:

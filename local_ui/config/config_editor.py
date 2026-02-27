@@ -1,11 +1,10 @@
 import json
 import os
 
+from core.repo_paths import get_repo_root
 from PySide6 import QtCore, QtWidgets
 
 from .config_io import ensure_env_file, load_env_dict, save_env_dict
-from core.repo_paths import get_repo_root
-
 
 _HIDDEN_ENV_KEYS = {"LOCAL_UI_ENABLE"}
 

@@ -3,12 +3,12 @@
 If `WELCOME_MESSAGE` is missing from the config the cog sends the banner only.
 """
 
-from typing import Optional
-
 import io
 import os
 import re
+import sys
 from datetime import datetime
+from typing import Optional
 
 import aiohttp
 import discord
@@ -16,7 +16,6 @@ from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
 from mybot.utils.config import clear_cog_config_cache, load_cog_config
-import sys
 
 
 def safe_print(*args, **kwargs):
