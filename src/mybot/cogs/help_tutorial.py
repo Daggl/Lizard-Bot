@@ -119,6 +119,7 @@ class HelpTutorial(commands.Cog):
                 "- The bot creates your own channel and moves you there\n"
                 "- Channel is deleted automatically when everyone leaves\n"
                 "- Management is done via TempVoice panel buttons posted by admins"
+                " (lock/unlock, hide/unhide, rename, limit, transfer, claim, delete)"
             ),
             inline=False,
         )

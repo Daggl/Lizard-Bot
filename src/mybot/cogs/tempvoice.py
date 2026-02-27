@@ -132,10 +132,6 @@ class TempVoicePanelView(discord.ui.View):
         super().__init__(timeout=None)
         self.cog = cog
 
-    @discord.ui.button(label="Create", style=discord.ButtonStyle.green, emoji="➕", custom_id="tempvoice:create")
-    async def create_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
-        await self.cog._handle_create(interaction)
-
     @discord.ui.button(label="Lock", style=discord.ButtonStyle.secondary, emoji="🔒", custom_id="tempvoice:lock")
     async def lock_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.cog._handle_lock(interaction, True)
@@ -533,12 +529,22 @@ class TempVoice(commands.Cog):
     @commands.command(name="tempvoicepanel")
     @commands.has_permissions(administrator=True)
     async def tempvoice_panel(self, ctx: commands.Context):
+        hub_channel = self._create_channel_hub(ctx.guild) if ctx.guild else None
+        if hub_channel is not None:
+            hub_hint = f"Join {hub_channel.mention} to auto-create your temp channel."
+        else:
+            configured_id = _cfg_int("CREATE_CHANNEL_ID", 0)
+            if configured_id:
+                hub_hint = f"Join your configured create channel (ID: {configured_id}) to auto-create your temp channel."
+            else:
+                hub_hint = "Set CREATE_CHANNEL_ID in tempvoice config to enable join-to-create."
+
         embed = discord.Embed(
             title="🎙️ Temp Voice",
             description=(
-                "Create and manage your temporary voice channel with buttons below.\n\n"
-                "Features: create, lock/unlock, hide/unhide, rename, user limit, transfer, claim, delete.\n"
-                "If CREATE_CHANNEL_ID is configured, joining that channel auto-creates your temp channel."
+                "Manage your temporary voice channel with buttons below.\n\n"
+                "Features: lock/unlock, hide/unhide, rename, user limit, transfer, claim, delete.\n"
+                f"{hub_hint}"
             ),
             color=discord.Color.blurple(),
             timestamp=datetime.utcnow(),
