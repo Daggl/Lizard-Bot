@@ -122,7 +122,7 @@ If you are unsure which key is required, compare with `data/config.example.json`
 3. Configure Welcome and test preview.
 4. Configure Rank visuals and messages.
 5. Save + Reload.
-6. Validate in Discord with a test user/event.
+6. Validate in Discord with a test user/event (UI Event Tester prefers `UI_TEST_MEMBER_NAME`, default `leutnantbrause`).
 7. Use Logs tab for any issue.
 
 ## 10) Feature test commands (admin QA)
@@ -137,7 +137,7 @@ Use this as a practical checklist to verify the bot after config changes.
 - Birthdays: `testbirthday 21.08` (stores a birthday date and confirms persistence)
 - Polls: `testpoll 45 Quick system check` (starts guided interactive poll wizard; test buttons/votes manually)
 - Tickets: `testticketpanel`, then `ticket` (posts panel and validates ticket creation path)
-- Music: `testmusic` (voice smoke test: join your voice channel, then leave)
+- Music: `testmusic` (voice smoke test: join your voice channel, then leave; requires voice dependencies such as `PyNaCl`)
 - Admin messaging: `testsay Hello world` (sends admin-formatted embed message)
 - Logs: `testlog system Test entry` (writes DB test log; also trigger real events for chat/voice/mod logs)
 
@@ -169,7 +169,7 @@ Use these commands as the fastest per-feature smoke test:
 - Birthdays: `testbirthday 21.08` — validates birthday save format and storage.
 - Polls: `testpoll 45 Quick check` — starts normal poll wizard to test interaction flow.
 - Tickets: `testticketpanel`, `ticket` — validates panel posting and ticket creation path.
-- Music: `testmusic` — validates voice connect/disconnect basics (requires you in voice).
+- Music: `testmusic` — validates voice connect/disconnect basics (requires you in voice and voice dependencies such as `PyNaCl`).
 - Utility/Admin: `testsay Hello world`, `adminpanel` — validates admin embed send + status panel rendering.
 - Logs: `testlog system Quick check` + real events — validates DB log write plus channel log pipelines.
 
@@ -412,6 +412,7 @@ Use these commands as the fastest per-feature smoke test:
 ### `testmusic`
 - **What it does:** Performs a minimal voice pipeline test by joining your current channel and leaving shortly after.
 - **Usage:** `testmusic`
+- **Requirements:** You must be in a voice channel and voice dependencies (notably `PyNaCl`) must be installed.
 - **Permission:** Administrator
 
 ### `testsay [text]`
