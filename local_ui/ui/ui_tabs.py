@@ -49,7 +49,7 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.refresh_btn = QtWidgets.QPushButton("Refresh Status")
     window.reload_btn = QtWidgets.QPushButton("Reload Cogs")
     window.shutdown_btn = QtWidgets.QPushButton("Shutdown Bot")
-    window.restart_btn = QtWidgets.QPushButton("Restart Bot & UI")
+    window.restart_btn = QtWidgets.QPushButton("Restart Bot + UI")
     window.setup_wizard_btn = QtWidgets.QPushButton("Setup Wizard")
 
     for w in (window.refresh_btn, window.reload_btn, window.shutdown_btn):
@@ -74,6 +74,7 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.event_test_combo.addItem("Music (testmusic)", "testmusic")
     window.event_test_combo.addItem("Say (testsay)", "testsay")
     window.event_test_combo.addItem("Level (testlevel)", "testlevel")
+    window.event_test_combo.addItem("Level Up (testlevelup)", "testlevelup")
     window.event_test_combo.addItem("Achievement (testachievement)", "testachievement")
     window.event_test_combo.addItem("Log (testlog)", "testlog")
     window.event_test_channel_id = QtWidgets.QLineEdit()
@@ -626,23 +627,6 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     window.lv_levelup_msg.setPlaceholderText(
         "Use {member_mention}, {member_name}, {member_display_name}, {member_id}, {guild_name}, {level}"
     )
-    window.lv_emoji_win = QtWidgets.QLineEdit()
-    window.lv_emoji_win.setPlaceholderText("Leading emoji ID or <:name:id>")
-    window.lv_emoji_win_picker_btn = QtWidgets.QPushButton("Pick...")
-    window.lv_emoji_win_picker_btn.setFixedWidth(72)
-    lv_leading_row = QtWidgets.QHBoxLayout()
-    lv_leading_row.addWidget(window.lv_emoji_win, 1)
-    lv_leading_row.addWidget(window.lv_emoji_win_picker_btn, 0)
-    lv_form.addRow("Leading emoji ID/tag:", lv_leading_row)
-
-    window.lv_emoji_heart = QtWidgets.QLineEdit()
-    window.lv_emoji_heart.setPlaceholderText("Trailing emoji ID or <:name:id>")
-    window.lv_emoji_heart_picker_btn = QtWidgets.QPushButton("Pick...")
-    window.lv_emoji_heart_picker_btn.setFixedWidth(72)
-    lv_trailing_row = QtWidgets.QHBoxLayout()
-    lv_trailing_row.addWidget(window.lv_emoji_heart, 1)
-    lv_trailing_row.addWidget(window.lv_emoji_heart_picker_btn, 0)
-    lv_form.addRow("Trailing emoji ID/tag:", lv_trailing_row)
     lv_form.addRow("Level-up message:", window.lv_levelup_msg)
 
     window.lv_levelup_emoji_picker_btn = QtWidgets.QPushButton("Insert server emoji into level-up message...")
@@ -654,8 +638,6 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     window.lv_ph_member_id = QtWidgets.QPushButton("{member_id}")
     window.lv_ph_guild_name = QtWidgets.QPushButton("{guild_name}")
     window.lv_ph_level = QtWidgets.QPushButton("{level}")
-    window.lv_ph_leading_emoji = QtWidgets.QPushButton("{leading_emoji}")
-    window.lv_ph_trailing_emoji = QtWidgets.QPushButton("{trailing_emoji}")
 
     lv_ph_widget = QtWidgets.QWidget()
     lv_ph_grid = QtWidgets.QGridLayout(lv_ph_widget)
@@ -668,8 +650,6 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     lv_ph_grid.addWidget(window.lv_ph_member_id, 1, 0)
     lv_ph_grid.addWidget(window.lv_ph_guild_name, 1, 1)
     lv_ph_grid.addWidget(window.lv_ph_level, 1, 2)
-    lv_ph_grid.addWidget(window.lv_ph_leading_emoji, 2, 0)
-    lv_ph_grid.addWidget(window.lv_ph_trailing_emoji, 2, 1)
     lv_form.addRow("Level placeholders:", lv_ph_widget)
 
     window.lv_achievement_msg = QtWidgets.QPlainTextEdit()
@@ -696,8 +676,6 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
         window.lv_ph_member_id,
         window.lv_ph_guild_name,
         window.lv_ph_level,
-        window.lv_ph_leading_emoji,
-        window.lv_ph_trailing_emoji,
         window.av_ph_member_mention,
         window.av_ph_member_name,
         window.av_ph_display_name,
@@ -891,8 +869,6 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     window.lv_ph_member_id.clicked.connect(lambda: window._insert_placeholder_into(window.lv_levelup_msg, '{member_id}'))
     window.lv_ph_guild_name.clicked.connect(lambda: window._insert_placeholder_into(window.lv_levelup_msg, '{guild_name}'))
     window.lv_ph_level.clicked.connect(lambda: window._insert_placeholder_into(window.lv_levelup_msg, '{level}'))
-    window.lv_ph_leading_emoji.clicked.connect(lambda: window._insert_placeholder_into(window.lv_levelup_msg, '{leading_emoji}'))
-    window.lv_ph_trailing_emoji.clicked.connect(lambda: window._insert_placeholder_into(window.lv_levelup_msg, '{trailing_emoji}'))
     window.av_ph_member_mention.clicked.connect(lambda: window._insert_placeholder_into(window.lv_achievement_msg, '{member_mention}'))
     window.av_ph_member_name.clicked.connect(lambda: window._insert_placeholder_into(window.lv_achievement_msg, '{member_name}'))
     window.av_ph_display_name.clicked.connect(lambda: window._insert_placeholder_into(window.lv_achievement_msg, '{member_display_name}'))
@@ -904,8 +880,6 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     window.lv_achievements_add_btn.clicked.connect(window.on_leveling_add_achievement_row)
     window.lv_achievements_remove_btn.clicked.connect(window.on_leveling_remove_achievement_row)
     window.lv_achievements_choose_image_btn.clicked.connect(window.on_leveling_choose_achievement_image)
-    window.lv_emoji_win_picker_btn.clicked.connect(window.on_open_leveling_leading_emoji_picker)
-    window.lv_emoji_heart_picker_btn.clicked.connect(window.on_open_leveling_trailing_emoji_picker)
     window.lv_levelup_emoji_picker_btn.clicked.connect(window.on_open_leveling_levelup_emoji_picker)
     window.lv_achievement_emoji_picker_btn.clicked.connect(window.on_open_leveling_achievement_emoji_picker)
     window.lv_save.clicked.connect(lambda: window._save_leveling_settings(reload_after=False))

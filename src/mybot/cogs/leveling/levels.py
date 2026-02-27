@@ -37,6 +37,40 @@ class Levels(commands.Cog):
         # global access
         bot.db = self.db
 
+    async def _resolve_levelup_channel(self, member: discord.Member):
+        channel_id = get_achievement_channel_id()
+        guild = getattr(member, "guild", None)
+
+        channel = None
+        if channel_id > 0:
+            channel = self.bot.get_channel(channel_id)
+            if channel is None and guild is not None:
+                channel = guild.get_channel(channel_id)
+            if channel is None:
+                try:
+                    channel = await self.bot.fetch_channel(channel_id)
+                except Exception:
+                    channel = None
+
+        if channel is not None and guild is not None and getattr(channel, "guild", None) != guild:
+            channel = None
+
+        if channel is None and guild is not None:
+            if guild.system_channel is not None:
+                channel = guild.system_channel
+            else:
+                me = getattr(guild, "me", None)
+                for text_channel in getattr(guild, "text_channels", []):
+                    try:
+                        perms = text_channel.permissions_for(me) if me else None
+                        if perms and perms.send_messages:
+                            channel = text_channel
+                            break
+                    except Exception:
+                        continue
+
+        return channel
+
     # ==================================================
 
     async def add_xp(self, member, amount: int):
@@ -62,7 +96,7 @@ class Levels(commands.Cog):
             leveled = True
 
             # LEVEL UP MESSAGE
-            channel = self.bot.get_channel(get_achievement_channel_id())
+            channel = await self._resolve_levelup_channel(member)
 
             if channel:
                 try:
@@ -99,8 +133,10 @@ class Levels(commands.Cog):
                 )
 
                 embed.set_thumbnail(url=member.display_avatar.url)
-
-                await channel.send(embed=embed)
+                try:
+                    await channel.send(embed=embed)
+                except Exception as send_exc:
+                    print(f"[LEVELS] Failed to send level-up message in channel {getattr(channel, 'id', 'unknown')}: {send_exc}")
 
         # ==================================================
         # REWARDS

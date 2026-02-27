@@ -77,8 +77,6 @@ class LevelingControllerMixin:
                 "🏆 {member_mention} got Achievement **{achievement_name}**",
             )
         )
-        win_emoji = str(cfg.get("EMOJI_WIN", "") or "")
-        heart_emoji = str(cfg.get("EMOJI_HEART", "") or "")
         xp_per_message = int(cfg.get("XP_PER_MESSAGE", 15) or 15)
         voice_xp_per_minute = int(cfg.get("VOICE_XP_PER_MINUTE", 10) or 10)
         message_cooldown = int(cfg.get("MESSAGE_COOLDOWN", 30) or 30)
@@ -94,10 +92,6 @@ class LevelingControllerMixin:
                 self.lv_levelup_msg.setPlainText(levelup_tpl)
             if not self.lv_achievement_msg.hasFocus():
                 self.lv_achievement_msg.setPlainText(achievement_tpl)
-            if not self.lv_emoji_win.hasFocus():
-                self.lv_emoji_win.setText(win_emoji)
-            if not self.lv_emoji_heart.hasFocus():
-                self.lv_emoji_heart.setText(heart_emoji)
             self.lv_xp_per_message.setValue(max(1, xp_per_message))
             self.lv_voice_xp_per_minute.setValue(max(1, voice_xp_per_minute))
             self.lv_message_cooldown.setValue(max(0, message_cooldown))
@@ -347,8 +341,6 @@ class LevelingControllerMixin:
                 "MESSAGE_COOLDOWN": int(self.lv_message_cooldown.value()),
                 "LEVEL_UP_MESSAGE_TEMPLATE": self.lv_levelup_msg.toPlainText().strip() or "{member_mention}\\nyou just reached level {level}!\\nkeep it up, cutie!",
                 "ACHIEVEMENT_MESSAGE_TEMPLATE": self.lv_achievement_msg.toPlainText().strip() or "🏆 {member_mention} got Achievement **{achievement_name}**",
-                "EMOJI_WIN": (self.lv_emoji_win.text() or "").strip(),
-                "EMOJI_HEART": (self.lv_emoji_heart.text() or "").strip(),
                 "LEVEL_REWARDS": rewards_obj,
                 "ACHIEVEMENTS": achievements_obj,
             }

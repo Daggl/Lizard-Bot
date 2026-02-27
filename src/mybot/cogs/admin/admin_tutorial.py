@@ -280,6 +280,12 @@ class AdminHelpView(discord.ui.View):
         )
 
         embed.add_field(
+            name="/testlevelup @user [bonus_xp]",
+            value="Forces at least one level-up and verifies level-up announcement output.",
+            inline=False,
+        )
+
+        embed.add_field(
             name="/testachievement @user name",
             value="Tests manual achievement assignment.",
             inline=False,

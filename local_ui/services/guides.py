@@ -61,9 +61,8 @@ Use this tab to control rank card styling and leveling announcements.
 - **Messages**:
     - **Level-up message** (embed description)
     - **Achievement message**
-    - **Leading emoji ID/tag** and **Trailing emoji ID/tag**
 - Placeholder examples:
-    - Level-up: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{level}`, `{leading_emoji}`, `{trailing_emoji}`
+    - Level-up: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{level}`
     - Achievement: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{achievement_name}`
 
 Saved to:
@@ -135,7 +134,7 @@ Use this as a practical checklist to verify the bot after config changes.
 - Core health: `/testping` (checks bot responsiveness and returns latency in ms)
 - Welcome: `/testwelcome` (runs the real welcome flow using your own user as target)
 - Rank card: `/testrank` or `/testrank @User` (renders rank image and verifies card generation)
-- Leveling admin flow: `/testlevel @User 50`, `/testachievement @User Veteran` (writes XP/achievement data and verifies output)
+- Leveling admin flow: `/testlevel @User 50`, `/testlevelup @User [bonus_xp]`, `/testachievement @User Veteran` (writes XP/achievement data, forces level-up output, and verifies achievement flow)
 - Counting: `/testcount` (executes `/countstats` and `/counttop` to verify stats + leaderboard reads)
 - Birthdays: `/testbirthday 21.08` (stores a birthday date and confirms persistence)
 - Polls: `/testpoll 45 Quick system check` (starts guided interactive poll wizard; test buttons/votes manually)
@@ -147,7 +146,7 @@ Use this as a practical checklist to verify the bot after config changes.
 ## 11) Quick placeholder reference
 
 - Welcome: `{mention}`, `{rules_channel}`, `{verify_channel}`, `{aboutme_channel}`
-- Leveling: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{level}`, `{achievement_name}`, `{leading_emoji}`, `{trailing_emoji}`
+- Leveling: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{level}`, `{achievement_name}`
 """
 
 
@@ -167,7 +166,7 @@ Use these commands as the fastest per-feature smoke test:
 
 - Core: `/testping` — confirms command dispatch + bot heartbeat and returns latency.
 - Welcome: `/testwelcome` — executes full welcome message/banner path for the command caller.
-- Leveling/Rank: `/testrank @User`, `/testlevel @User 50`, `/testachievement @User Demo` — validates XP write, rank render, achievement write.
+- Leveling/Rank: `/testrank @User`, `/testlevel @User 50`, `/testlevelup @User [bonus_xp]`, `/testachievement @User Demo` — validates XP write, forced level-up output, rank render, and achievement write.
 - Counting: `/testcount` — validates read path of counting statistics and top users.
 - Birthdays: `/testbirthday 21.08` — validates birthday save format and storage.
 - Polls: `/testpoll 45 Quick check` — starts normal poll wizard to test interaction flow.

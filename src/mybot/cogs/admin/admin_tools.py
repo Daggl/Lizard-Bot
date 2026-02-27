@@ -24,6 +24,23 @@ class AdminTools(commands.Cog):
     def _get_user_data(self, member: discord.Member):
         return self.bot.db.get_user(member.id)
 
+    @staticmethod
+    def _xp_for_level(level: int) -> int:
+        try:
+            from mybot.cogs.leveling.utils.level_config import (
+                get_level_base_xp,
+                get_level_xp_step,
+            )
+        except Exception:
+            from src.mybot.cogs.leveling.utils.level_config import (
+                get_level_base_xp,
+                get_level_xp_step,
+            )
+
+        base = max(0, int(get_level_base_xp()))
+        step = max(0, int(get_level_xp_step()))
+        return base + (int(level) * step)
+
     # XP GEBEN
     @commands.hybrid_command(description="Givexp command.")
     @app_commands.default_permissions(administrator=True)
@@ -198,6 +215,22 @@ class AdminTools(commands.Cog):
     async def testlevel(self, ctx, member: discord.Member, xp: int = 50):
         ok_add = await self._invoke_or_error(ctx, "addxp", member=member, amount=xp)
         if ok_add:
+            await self._invoke_or_error(ctx, "rankuser", member=member)
+
+    @commands.hybrid_command(description="Force one level-up and verify level-up message.")
+    @app_commands.default_permissions(administrator=True)
+    @commands.has_permissions(administrator=True)
+    async def testlevelup(self, ctx, member: discord.Member, bonus_xp: int = 0):
+        user = self.bot.db.get_user(member.id)
+        needed = max(1, self._xp_for_level(int(user.get("level", 1))) - int(user.get("xp", 0)))
+        amount = needed + max(0, int(bonus_xp))
+
+        ok_add = await self._invoke_or_error(ctx, "addxp", member=member, amount=amount)
+        if ok_add:
+            await ctx.send(
+                f"✅ Forced level-up for {member.mention} with {amount} XP "
+                f"(needed: {needed}, bonus: {max(0, int(bonus_xp))})."
+            )
             await self._invoke_or_error(ctx, "rankuser", member=member)
 
     @commands.hybrid_command(description="Testlog command.")

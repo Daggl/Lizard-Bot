@@ -55,6 +55,7 @@ ADMIN_TEST_COMMANDS = {
     "testmusic",
     "testsay",
     "testlevel",
+    "testlevelup",
     "testachievement",
     "testlog",
 }
@@ -308,6 +309,8 @@ def _test_command_kwargs(command_name: str, member):
         return {"text": "✅ Test message from UI Event Tester"}
     if command_name == "testlevel":
         return {"member": member, "xp": 50}
+    if command_name == "testlevelup":
+        return {"member": member, "bonus_xp": 0}
     if command_name == "testlog":
         return {"category": "system", "message": "Manual log test from UI Event Tester"}
     return {}
