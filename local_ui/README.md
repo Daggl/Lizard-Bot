@@ -34,22 +34,17 @@ $env:CONTROL_API_TOKEN='your-token'
 
 ## Modules
 
-- [app.py](app.py) — MainWindow UI composition and event handlers
-- [ui_tabs.py](ui_tabs.py) — builder functions for Dashboard/Logs/Configs/Welcome/Rank tabs
-- [runtime.py](runtime.py) — app bootstrap, single-instance lock, optional event tracing
-- [control_api_client.py](control_api_client.py) — control API request helper (`send_cmd`)
-- [log_poller.py](log_poller.py) — background polling thread for file/sqlite logs
-- [log_format.py](log_format.py) — sqlite row formatter for readable log output
-- [guides.py](guides.py) — tutorial and commands dialogs/content
-- [config_editor.py](config_editor.py) — JSON config editor dialog
-- [config_io.py](config_io.py) — shared config JSON path/load/save helpers
-- [file_ops.py](file_ops.py) — backup pruning, log rotation, tracked writer helpers
-- [exception_handler.py](exception_handler.py) — global UI exception hook
-- [startup_trace.py](startup_trace.py) — startup trace marker writer
+- [app.py](app.py) — MainWindow wiring and startup orchestration
+- [ui](ui) — tab builders, setup wizard, dialogs
+- [controllers](controllers) — feature/controller mixins for UI actions
+- [services](services) — control API client, log poller/formatting, helpers
+- [config](config) — config I/O and editor helpers
+- [core](core) — runtime bootstrap, repo paths, exception/startup hooks
 
 ## Notes
 
 - `CONTROL_API_TOKEN` must match between bot and UI.
+- `UI_TEST_MEMBER_NAME` can be set to control which user is preferred for UI event tests (default: `leutnantbrause`).
 - Runtime trace/log output is written to [../data/logs](../data/logs).
 - Dev helper scripts are in [../scripts/dev](../scripts/dev).
 

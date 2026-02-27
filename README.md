@@ -69,16 +69,28 @@ $env:CONTROL_API_TOKEN='your-token'
 .\.venv\Scripts\python local_ui\app.py
 ```
 
+Optional for event-test targeting:
+
+```powershell
+$env:UI_TEST_MEMBER_NAME='leutnantbrause'
+```
+
 See detailed UI notes in [local_ui/README.md](local_ui/README.md).
 
 ## Project Structure
 
-- [src/mybot](src/mybot): bot package, cogs, control API
+- [src/mybot](src/mybot): bot package, cogs, runtime entrypoints
+- [src/mybot/runtime](src/mybot/runtime): bot runtime loop + local control API
 - [local_ui](local_ui): PySide6 desktop UI
 - [web](web): dashboard backend + frontend (see [web/README.md](web/README.md))
 - [config](config): per-cog runtime configuration
 - [data](data): runtime data, logs, uploads
 - [scripts](scripts): maintenance and dev helper scripts
+
+## Notes
+
+- `CONTROL_API_TOKEN` should match between bot and UI when Local UI is enabled.
+- Voice tests (`testmusic`) require voice support dependencies (notably `PyNaCl`) in the bot environment.
 
 ## Related Docs
 

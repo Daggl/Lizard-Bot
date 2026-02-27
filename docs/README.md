@@ -15,7 +15,13 @@ Kurze Navigationshilfe für Betrieb, Struktur und Konfiguration.
 - Konfigurationen: `config/*.json`
 - Runtime-Daten: `data/`
 - Logs/Tracing: `data/logs/`
+- Log-DB: `data/db/logs.db`
 - Poll-Daten: `data/polls.json`
+
+## Laufzeitstruktur
+
+- Bot-Runtime: `src/mybot/runtime/`
+- Legacy-Import-Wrapper: `src/mybot/lizard.py`, `src/mybot/control_api.py`
 
 ## Dev-Helfer
 

@@ -16,4 +16,15 @@ Laufende Betriebsnotizen für lokale Runtime-Dateien.
 ## Runtime-Artefakte
 
 - Temporäre Traces und Debug-Logs gehören nach `data/logs/`.
+- SQLite-Logdatenbank liegt unter `data/db/logs.db`.
 - Debug-/Maintenance-Skripte liegen unter `scripts/dev/`.
+
+## Runtime-Module
+
+- Der Bot-Laufzeitcode liegt unter `src/mybot/runtime/` (`lizard.py`, `control_api.py`).
+- Top-Level-Module in `src/mybot/` bleiben als Kompatibilitäts-Wrapper erhalten.
+
+## UI Event Tests
+
+- Standardmäßig wird für Event-Tests der Nutzername `leutnantbrause` bevorzugt.
+- Mit `UI_TEST_MEMBER_NAME` kann ein anderer bevorzugter Testnutzer gesetzt werden.
