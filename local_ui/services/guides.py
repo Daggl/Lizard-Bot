@@ -32,6 +32,9 @@ If a config file is missing, run startup once (`start_all.py`) so the project ca
     - Reloads bot modules so changed config values are used immediately.
 - **Bot Tutorial**
     - Opens this guide dialog.
+- **Help commands in Discord**
+    - `*help` (aliases: `*tutorial`, `*hilfe`) for general help.
+    - `*admin_help` (aliases: `*adminhelp`, `*ahelp`) for admin controls.
 - **Shutdown Bot**
     - Sends shutdown to bot and closes UI.
 - **Restart Bot & UI**

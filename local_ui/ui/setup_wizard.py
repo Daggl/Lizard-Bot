@@ -457,7 +457,10 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 "- DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET: Discord OAuth2 App\n"
                 "- OAUTH_REDIRECT_URI: OAuth Callback URL deines Web-Backends\n"
                 "- APP_ORIGIN / APP_ENV: Frontend-URL und Umgebung (z. B. production)\n\n"
-                "Hinweis: Ohne DISCORD_TOKEN bleibt der Bot offline.",
+                "Hinweis: Ohne DISCORD_TOKEN bleibt der Bot offline.\n\n"
+                "Discord-Hilfe-Kommandos:\n"
+                "- *help (Aliases: *tutorial, *hilfe)\n"
+                "- *admin_help (Aliases: *adminhelp, *ahelp)",
             )
 
         if page_index == 1:
