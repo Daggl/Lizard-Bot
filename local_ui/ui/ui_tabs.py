@@ -108,6 +108,8 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     help_layout = QtWidgets.QHBoxLayout(help_box)
     window.tutorial_btn = QtWidgets.QPushButton("Bot Tutorial")
     window.commands_btn = QtWidgets.QPushButton("Commands")
+    window.tutorial_btn.setToolTip("Discord help: *help (aliases: *tutorial, *hilfe)")
+    window.commands_btn.setToolTip("Admin help: *admin_help (aliases: *adminhelp, *ahelp)")
     help_layout.addWidget(window.setup_wizard_btn)
     help_layout.addWidget(window.tutorial_btn)
     help_layout.addWidget(window.commands_btn)
