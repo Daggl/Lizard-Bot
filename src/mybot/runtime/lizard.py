@@ -84,6 +84,7 @@ intents = discord.Intents.all()
 
 # create bot instance with prefix *
 bot = commands.Bot(command_prefix="*", intents=intents)
+_slash_synced = False
 
 
 # ==========================================================
@@ -93,6 +94,7 @@ bot = commands.Bot(command_prefix="*", intents=intents)
 
 @bot.event
 async def on_ready():
+    global _slash_synced
 
     # initialize database
     database.setup()
@@ -100,13 +102,27 @@ async def on_ready():
     # show that bot is online
     print(f"{bot.user.name} is online!")
 
+    if not _slash_synced:
+        try:
+            guild_id_raw = str(os.getenv("DISCORD_GUILD_ID", "") or "").strip()
+            if guild_id_raw:
+                guild_obj = discord.Object(id=int(guild_id_raw))
+                synced = await bot.tree.sync(guild=guild_obj)
+                print(f"Synced {len(synced)} slash commands for guild {guild_id_raw}.")
+            else:
+                synced = await bot.tree.sync()
+                print(f"Synced {len(synced)} global slash commands.")
+            _slash_synced = True
+        except Exception as e:
+            print("Failed to sync slash commands:", e)
+
 
 # ==========================================================
 # TEST COMMAND
 # ==========================================================
 
 
-@bot.command()
+@bot.hybrid_command()
 async def ping(ctx):
 
     # simple test command to check if bot responds

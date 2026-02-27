@@ -4,6 +4,7 @@ import os
 
 import aiohttp
 import discord
+from discord import app_commands
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
@@ -111,7 +112,7 @@ class Rank(commands.Cog):
     # USER COMMAND
     # ======================================================
 
-    @commands.command()
+    @commands.hybrid_command()
     async def rank(self, ctx, member: discord.Member = None):
         """User rank card."""
 
@@ -125,7 +126,8 @@ class Rank(commands.Cog):
     # ADMIN COMMAND - rankuser
     # ======================================================
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def rankuser(self, ctx, member: discord.Member):
         """Admin rank card command."""
@@ -295,7 +297,8 @@ class Rank(commands.Cog):
     # ADMIN COMMANDS
     # ======================================================
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def addxp(self, ctx, member: discord.Member, amount: int):
         """Add XP using level system."""
@@ -311,7 +314,8 @@ class Rank(commands.Cog):
 
         await ctx.send(f"✅ {amount} XP added to {member.mention}")
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def removexp(self, ctx, member: discord.Member, amount: int):
 
@@ -323,7 +327,8 @@ class Rank(commands.Cog):
 
         await ctx.send(f"🗑 {amount} XP removed from {member.mention}")
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def reset(self, ctx, member: discord.Member):
 

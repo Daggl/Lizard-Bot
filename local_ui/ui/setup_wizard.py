@@ -459,8 +459,8 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 "- APP_ORIGIN / APP_ENV: Frontend-URL und Umgebung (z. B. production)\n\n"
                 "Hinweis: Ohne DISCORD_TOKEN bleibt der Bot offline.\n\n"
                 "Discord-Hilfe-Kommandos:\n"
-                "- *help (Aliases: *tutorial, *hilfe)\n"
-                "- *admin_help (Aliases: *adminhelp, *ahelp)",
+                "- /help (Aliases: /tutorial, /hilfe)\n"
+                "- /admin_help (Aliases: /adminhelp, /ahelp)",
             )
 
         if page_index == 1:
@@ -473,7 +473,7 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 "- Nur Zahlen eintragen (keine #, keine Namen)\n\n"
                 "TempVoice Hinweise:\n"
                 "- CREATE_CHANNEL_ID: Join-to-create Hub Voicechannel\n"
-                "- CONTROL_CHANNEL_ID: Textchannel für *tempvoicepanel\n"
+                "- CONTROL_CHANNEL_ID: Textchannel für /tempvoicepanel\n"
                 "- CATEGORY_ID: Kategorie für neue TempVoice-Channels\n\n"
                 "Tipp: Über 'Guild Snapshot Picker' kannst du viele IDs automatisch übernehmen.",
             )

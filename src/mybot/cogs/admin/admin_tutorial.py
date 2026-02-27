@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 # ==========================================================
@@ -42,8 +43,8 @@ class AdminHelpView(discord.ui.View):
                 "This menu gives you a complete overview\n"
                 "of all admin features of the bot.\n\n"
                 "Use the buttons to open detailed explanations.\n\n"
-                "Open command: `*admin_help`\n"
-                "Aliases: `*adminhelp`, `*ahelp`"
+                "Open command: `/admin_help`\n"
+                "Aliases: `/adminhelp`, `/ahelp`"
             ),
             color=discord.Color.blue(),
         )
@@ -82,11 +83,11 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="🧰 Messaging & Panels",
             value=(
-                "`*say <text> [|image_url]`\n"
+                "`/say <text> [|image_url]`\n"
                 "↳ Send a bot embed message (optional image with `|url`)\n\n"
-                "`*adminpanel`\n"
+                "`/adminpanel`\n"
                 "↳ Open live admin status panel\n\n"
-                "`*tempvoicepanel`\n"
+                "`/tempvoicepanel`\n"
                 "↳ Post TempVoice control panel (admin-only)"
             ),
             inline=False,
@@ -95,13 +96,13 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="🏆 Leveling & XP",
             value=(
-                "`*rankuser @user` ↳ Show rank card for target user\n"
-                "`*addxp @user <amount>` ↳ Add XP + trigger normal checks\n"
-                "`*removexp @user <amount>` ↳ Remove XP (not below 0)\n"
-                "`*givexp @user <amount>` ↳ Direct admin XP utility\n"
-                "`*setxp @user <amount>` ↳ Set exact XP value\n"
-                "`*setlevel @user <level>` ↳ Set exact level\n"
-                "`*reset @user` ↳ Reset leveling stats completely"
+                "`/rankuser @user` ↳ Show rank card for target user\n"
+                "`/addxp @user <amount>` ↳ Add XP + trigger normal checks\n"
+                "`/removexp @user <amount>` ↳ Remove XP (not below 0)\n"
+                "`/givexp @user <amount>` ↳ Direct admin XP utility\n"
+                "`/setxp @user <amount>` ↳ Set exact XP value\n"
+                "`/setlevel @user <level>` ↳ Set exact level\n"
+                "`/reset @user` ↳ Reset leveling stats completely"
             ),
             inline=False,
         )
@@ -109,9 +110,9 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="🏅 Achievements",
             value=(
-                "`*giveachievement @user <name>` ↳ Add achievement manually\n"
-                "`*removeachievement @user <name>` ↳ Remove achievement manually\n"
-                "`*testachievement @user <name>` ↳ Test helper for achievement grant"
+                "`/giveachievement @user <name>` ↳ Add achievement manually\n"
+                "`/removeachievement @user <name>` ↳ Remove achievement manually\n"
+                "`/testachievement @user <name>` ↳ Test helper for achievement grant"
             ),
             inline=False,
         )
@@ -119,10 +120,10 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="🎫 Tickets & Polls",
             value=(
-                "`*ticketpanel` ↳ Post ticket panel\n"
-                "`*transcript <#channel>` ↳ Export transcript file\n"
-                "`*close_ticket <#channel>` ↳ Force close ticket\n"
-                "`*delete_poll <poll_id>` ↳ Delete poll from database"
+                "`/ticketpanel` ↳ Post ticket panel\n"
+                "`/transcript <#channel>` ↳ Export transcript file\n"
+                "`/close_ticket <#channel>` ↳ Force close ticket\n"
+                "`/delete_poll <poll_id>` ↳ Delete poll from database"
             ),
             inline=False,
         )
@@ -130,7 +131,7 @@ class AdminHelpView(discord.ui.View):
         embed.add_field(
             name="🔢 Counting",
             value=(
-                "`*countreset` ↳ Reset counting stats/data"
+                "`/countreset` ↳ Reset counting stats/data"
             ),
             inline=False,
         )
@@ -219,73 +220,73 @@ class AdminHelpView(discord.ui.View):
         )
 
         embed.add_field(
-            name="*testping",
+            name="/testping",
             value="Checks bot responsiveness and shows current latency.",
             inline=False,
         )
 
         embed.add_field(
-            name="*testwelcome",
+            name="/testwelcome",
             value="Tests the welcome flow with your own account.",
             inline=False,
         )
 
         embed.add_field(
-            name="*testrank [@user]",
+            name="/testrank [@user]",
             value="Tests rank card rendering for yourself or a target user.",
             inline=False,
         )
 
         embed.add_field(
-            name="*testcount",
+            name="/testcount",
             value="Runs counting feature checks (stats + leaderboard).",
             inline=False,
         )
 
         embed.add_field(
-            name="*testbirthday [DD.MM]",
+            name="/testbirthday [DD.MM]",
             value="Tests birthday save flow (uses today if no date is provided).",
             inline=False,
         )
 
         embed.add_field(
-            name="*testpoll [seconds] [question]",
+            name="/testpoll [seconds] [question]",
             value="Starts a guided poll smoke test via the normal poll wizard.",
             inline=False,
         )
 
         embed.add_field(
-            name="*testticketpanel",
+            name="/testticketpanel",
             value="Posts the ticket panel to validate ticket entry flow.",
             inline=False,
         )
 
         embed.add_field(
-            name="*testmusic",
+            name="/testmusic",
             value="Smoke-tests music voice pipeline (join + leave).",
             inline=False,
         )
 
         embed.add_field(
-            name="*testsay [text]",
+            name="/testsay [text]",
             value="Tests admin message/embed output.",
             inline=False,
         )
 
         embed.add_field(
-            name="*testlevel @user [xp]",
+            name="/testlevel @user [xp]",
             value="Tests leveling write + rank output in one command.",
             inline=False,
         )
 
         embed.add_field(
-            name="*testachievement @user name",
+            name="/testachievement @user name",
             value="Tests manual achievement assignment.",
             inline=False,
         )
 
         embed.add_field(
-            name="*testlog [category] [message]",
+            name="/testlog [category] [message]",
             value=(
                 "Writes a manual test entry into the log database.\n"
                 "Use event-based checks additionally for chat/voice/mod/server/member logs."
@@ -306,7 +307,8 @@ class AdminHelp(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="admin_help", aliases=["adminhelp", "ahelp"])
+    @commands.hybrid_command(name="admin_help", aliases=["adminhelp", "ahelp"])
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def admin_help(self, ctx):
 
@@ -315,8 +317,8 @@ class AdminHelp(commands.Cog):
             description=(
                 "This menu is for administrators only.\n\n"
                 "Here you get a full system overview.\n\n"
-                "Command: `*admin_help`\n"
-                "Aliases: `*adminhelp`, `*ahelp`"
+                "Command: `/admin_help`\n"
+                "Aliases: `/adminhelp`, `/ahelp`"
             ),
             color=discord.Color.blue(),
         )

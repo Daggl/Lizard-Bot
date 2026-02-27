@@ -33,8 +33,8 @@ If a config file is missing, run startup once (`start_all.py`) so the project ca
 - **Bot Tutorial**
     - Opens this guide dialog.
 - **Help commands in Discord**
-    - `*help` (aliases: `*tutorial`, `*hilfe`) for general help.
-    - `*admin_help` (aliases: `*adminhelp`, `*ahelp`) for admin controls.
+    - `/help` (aliases: `/tutorial`, `/hilfe`) for general help.
+    - `/admin_help` (aliases: `/adminhelp`, `/ahelp`) for admin controls.
 - **Shutdown Bot**
     - Sends shutdown to bot and closes UI.
 - **Restart Bot & UI**
@@ -132,17 +132,17 @@ If you are unsure which key is required, compare with `data/config.example.json`
 
 Use this as a practical checklist to verify the bot after config changes.
 
-- Core health: `testping` (checks bot responsiveness and returns latency in ms)
-- Welcome: `testwelcome` (runs the real welcome flow using your own user as target)
-- Rank card: `testrank` or `testrank @User` (renders rank image and verifies card generation)
-- Leveling admin flow: `testlevel @User 50`, `testachievement @User Veteran` (writes XP/achievement data and verifies output)
-- Counting: `testcount` (executes `countstats` and `counttop` to verify stats + leaderboard reads)
-- Birthdays: `testbirthday 21.08` (stores a birthday date and confirms persistence)
-- Polls: `testpoll 45 Quick system check` (starts guided interactive poll wizard; test buttons/votes manually)
-- Tickets: `testticketpanel`, then `ticket` (posts panel and validates ticket creation path)
-- Music: `testmusic` (voice smoke test: join your voice channel, then leave; requires voice dependencies such as `PyNaCl`)
-- Admin messaging: `testsay Hello world` (sends admin-formatted embed message)
-- Logs: `testlog system Test entry` (writes DB test log; also trigger real events for chat/voice/mod logs)
+- Core health: `/testping` (checks bot responsiveness and returns latency in ms)
+- Welcome: `/testwelcome` (runs the real welcome flow using your own user as target)
+- Rank card: `/testrank` or `/testrank @User` (renders rank image and verifies card generation)
+- Leveling admin flow: `/testlevel @User 50`, `/testachievement @User Veteran` (writes XP/achievement data and verifies output)
+- Counting: `/testcount` (executes `/countstats` and `/counttop` to verify stats + leaderboard reads)
+- Birthdays: `/testbirthday 21.08` (stores a birthday date and confirms persistence)
+- Polls: `/testpoll 45 Quick system check` (starts guided interactive poll wizard; test buttons/votes manually)
+- Tickets: `/testticketpanel`, then `/ticket` (posts panel and validates ticket creation path)
+- Music: `/testmusic` (voice smoke test: join your voice channel, then leave; requires voice dependencies such as `PyNaCl`)
+- Admin messaging: `/testsay Hello world` (sends admin-formatted embed message)
+- Logs: `/testlog system Test entry` (writes DB test log; also trigger real events for chat/voice/mod logs)
 
 ## 11) Quick placeholder reference
 
@@ -165,272 +165,272 @@ Hybrid commands can also be available as slash commands depending on sync/setup.
 
 Use these commands as the fastest per-feature smoke test:
 
-- Core: `testping` — confirms command dispatch + bot heartbeat and returns latency.
-- Welcome: `testwelcome` — executes full welcome message/banner path for the command caller.
-- Leveling/Rank: `testrank @User`, `testlevel @User 50`, `testachievement @User Demo` — validates XP write, rank render, achievement write.
-- Counting: `testcount` — validates read path of counting statistics and top users.
-- Birthdays: `testbirthday 21.08` — validates birthday save format and storage.
-- Polls: `testpoll 45 Quick check` — starts normal poll wizard to test interaction flow.
-- Tickets: `testticketpanel`, `ticket` — validates panel posting and ticket creation path.
-- Music: `testmusic` — validates voice connect/disconnect basics (requires you in voice and voice dependencies such as `PyNaCl`).
-- Utility/Admin: `testsay Hello world`, `adminpanel` — validates admin embed send + status panel rendering.
-- Logs: `testlog system Quick check` + real events — validates DB log write plus channel log pipelines.
+- Core: `/testping` — confirms command dispatch + bot heartbeat and returns latency.
+- Welcome: `/testwelcome` — executes full welcome message/banner path for the command caller.
+- Leveling/Rank: `/testrank @User`, `/testlevel @User 50`, `/testachievement @User Demo` — validates XP write, rank render, achievement write.
+- Counting: `/testcount` — validates read path of counting statistics and top users.
+- Birthdays: `/testbirthday 21.08` — validates birthday save format and storage.
+- Polls: `/testpoll 45 Quick check` — starts normal poll wizard to test interaction flow.
+- Tickets: `/testticketpanel`, `/ticket` — validates panel posting and ticket creation path.
+- Music: `/testmusic` — validates voice connect/disconnect basics (requires you in voice and voice dependencies such as `PyNaCl`).
+- Utility/Admin: `/testsay Hello world`, `/adminpanel` — validates admin embed send + status panel rendering.
+- Logs: `/testlog system Quick check` + real events — validates DB log write plus channel log pipelines.
 
 ---
 
 ## Core
 
-### `ping`
+### `/ping`
 - **What it does:** Checks if the bot responds.
-- **Usage:** `ping`
+- **Usage:** `/ping`
 - **Permission:** Everyone
 
 ---
 
 ## Help
 
-### `*help` (aliases: `*tutorial`, `*hilfe`)
+### `/help` (aliases: `/tutorial`, `/hilfe`)
 - **What it does:** Opens the bot help/tutorial embed in Discord.
-- **Usage:** `*help`
+- **Usage:** `/help`
 - **Permission:** Everyone
 
-### `*admin_help` (aliases: `*adminhelp`, `*ahelp`)
+### `/admin_help` (aliases: `/adminhelp`, `/ahelp`)
 - **What it does:** Opens administrator control/help UI.
-- **Usage:** `*admin_help`
+- **Usage:** `/admin_help`
 - **Permission:** Administrator
 
 ---
 
 ## Welcome
 
-### `testwelcome`
+### `/testwelcome`
 - **What it does:** Sends the welcome flow for the command caller (admin test).
-- **Usage:** `testwelcome`
+- **Usage:** `/testwelcome`
 - **Permission:** Administrator
 
 ---
 
 ## Leveling / Rank
 
-### `rank [member]`
+### `/rank [member]`
 - **What it does:** Shows rank card for you or the specified member.
-- **Usage:** `rank` or `rank @User`
+- **Usage:** `/rank` or `/rank @User`
 - **Permission:** Everyone
 
-### `rankuser <member>`
+### `/rankuser <member>`
 - **What it does:** Admin rank card command for a target member.
-- **Usage:** `rankuser @User`
+- **Usage:** `/rankuser @User`
 - **Permission:** Administrator
 
-### `addxp <member> <amount>`
+### `/addxp <member> <amount>`
 - **What it does:** Adds XP to a member and re-checks achievements.
-- **Usage:** `addxp @User 250`
+- **Usage:** `/addxp @User 250`
 - **Permission:** Administrator
 
-### `removexp <member> <amount>`
+### `/removexp <member> <amount>`
 - **What it does:** Removes XP from a member (not below 0).
-- **Usage:** `removexp @User 100`
+- **Usage:** `/removexp @User 100`
 - **Permission:** Administrator
 
-### `reset <member>`
+### `/reset <member>`
 - **What it does:** Resets one user’s leveling stats (XP/level/messages/voice/achievements).
-- **Usage:** `reset @User`
+- **Usage:** `/reset @User`
 - **Permission:** Administrator
 
-### `givexp <member> <amount>`
+### `/givexp <member> <amount>`
 - **What it does:** Directly adds XP to a member (admin utility).
-- **Usage:** `givexp @User 150`
+- **Usage:** `/givexp @User 150`
 - **Permission:** Administrator
 
-### `setxp <member> <amount>`
+### `/setxp <member> <amount>`
 - **What it does:** Sets a member’s XP to an exact value.
-- **Usage:** `setxp @User 500`
+- **Usage:** `/setxp @User 500`
 - **Permission:** Administrator
 
-### `setlevel <member> <level>`
+### `/setlevel <member> <level>`
 - **What it does:** Sets a member’s level directly.
-- **Usage:** `setlevel @User 10`
+- **Usage:** `/setlevel @User 10`
 - **Permission:** Administrator
 
-### `testachievement <member> <name>`
+### `/testachievement <member> <name>`
 - **What it does:** Grants a custom achievement label for testing.
-- **Usage:** `testachievement @User Veteran`
+- **Usage:** `/testachievement @User Veteran`
 - **Permission:** Administrator
 
 ---
 
 ## Counting
 
-### `countstats`
+### `/countstats`
 - **What it does:** Shows current counter stats.
-- **Usage:** `countstats`
+- **Usage:** `/countstats`
 - **Permission:** Everyone
 
-### `counttop`
+### `/counttop`
 - **What it does:** Shows top counting contributors.
-- **Usage:** `counttop`
+- **Usage:** `/counttop`
 - **Permission:** Everyone
 
-### `countreset`
+### `/countreset`
 - **What it does:** Resets counting data.
-- **Usage:** `countreset`
+- **Usage:** `/countreset`
 - **Permission:** Administrator
 
 ---
 
 ## Birthdays
 
-### `birthday <DD.MM>`
+### `/birthday <DD.MM>`
 - **What it does:** Saves your birthday for reminders.
-- **Usage:** `birthday 21.08`
+- **Usage:** `/birthday 21.08`
 - **Permission:** Everyone
 
 ---
 
 ## Polls
 
-### `poll`
+### `/poll`
 - **What it does:** Starts an interactive poll setup (question, duration, options).
-- **Usage:** `poll`
+- **Usage:** `/poll`
 - **Permission:** Everyone
 
-### `delete_poll <poll_id>`
+### `/delete_poll <poll_id>`
 - **What it does:** Deletes a saved poll by ID.
-- **Usage:** `delete_poll <id>`
+- **Usage:** `/delete_poll <id>`
 - **Permission:** Administrator
 
 ---
 
 ## Tickets
 
-### `ticketpanel`
+### `/ticketpanel`
 - **What it does:** Posts the ticket panel with open-ticket button.
-- **Usage:** `ticketpanel`
+- **Usage:** `/ticketpanel`
 - **Permission:** Administrator
 
-### `ticket`
+### `/ticket`
 - **What it does:** Creates a support ticket for the caller.
-- **Usage:** `ticket`
+- **Usage:** `/ticket`
 - **Permission:** Everyone
 
-### `transcript <#channel>`
+### `/transcript <#channel>`
 - **What it does:** Exports a transcript file for a ticket channel.
-- **Usage:** `transcript #ticket-channel`
+- **Usage:** `/transcript #ticket-channel`
 - **Permission:** Administrator
 
-### `close_ticket <#channel>`
+### `/close_ticket <#channel>`
 - **What it does:** Closes a ticket channel.
-- **Usage:** `close_ticket #ticket-channel`
+- **Usage:** `/close_ticket #ticket-channel`
 - **Permission:** Administrator
 
 ---
 
 ## Music (hybrid where noted)
 
-### `join` (hybrid)
+### `/join` (hybrid)
 - **What it does:** Bot joins your current voice channel.
-- **Usage:** `join`
+- **Usage:** `/join`
 
-### `mjoin`
+### `/mjoin`
 - **What it does:** Prefix alias for join.
-- **Usage:** `mjoin`
+- **Usage:** `/mjoin`
 
-### `leave` (hybrid)
+### `/leave` (hybrid)
 - **What it does:** Leaves voice and clears queue.
-- **Usage:** `leave`
+- **Usage:** `/leave`
 
-### `play <query|url>` (hybrid)
+### `/play <query|url>` (hybrid)
 - **What it does:** Queues/plays from YouTube URL or search query.
-- **Usage:** `play never gonna give you up`
+- **Usage:** `/play never gonna give you up`
 
-### `spotify <url> [max_tracks]` (hybrid)
+### `/spotify <url> [max_tracks]` (hybrid)
 - **What it does:** Imports Spotify track/playlist into queue.
-- **Usage:** `spotify <spotify_url> 25`
+- **Usage:** `/spotify <spotify_url> 25`
 - **Note:** Requires Spotify client credentials in environment.
 
-### `skip` (hybrid)
+### `/skip` (hybrid)
 - **What it does:** Skips the current track.
-- **Usage:** `skip`
+- **Usage:** `/skip`
 
-### `queue` (hybrid)
+### `/queue` (hybrid)
 - **What it does:** Shows current queue.
-- **Usage:** `queue`
+- **Usage:** `/queue`
 
-### `now` (hybrid)
+### `/now` (hybrid)
 - **What it does:** Shows current track.
-- **Usage:** `now`
+- **Usage:** `/now`
 
-### `stop` (hybrid)
+### `/stop` (hybrid)
 - **What it does:** Stops playback, disconnects, clears queue.
-- **Usage:** `stop`
+- **Usage:** `/stop`
 
 ---
 
 ## Utility / Messaging
 
-### `say <text> [| image_url]`
+### `/say <text> [| image_url]`
 - **What it does:** Sends a styled embed message as admin tool.
-- **Usage:** `say Hello world` or `say Hello | https://.../image.png`
+- **Usage:** `/say Hello world` or `/say Hello | https://.../image.png`
 - **Permission:** Administrator
 
-### `adminpanel`
+### `/adminpanel`
 - **What it does:** Opens the live admin status panel message.
-- **Usage:** `adminpanel`
+- **Usage:** `/adminpanel`
 - **Permission:** Administrator
 
 ---
 
 ## Admin Test Commands
 
-### `testping`
+### `/testping`
 - **What it does:** Runs a lightweight bot health check and prints measured websocket latency.
-- **Usage:** `testping`
+- **Usage:** `/testping`
 - **Permission:** Administrator
 
-### `testrank [member]`
+### `/testrank [member]`
 - **What it does:** Calls rank rendering for yourself or a target user to validate image generation and rank data read.
-- **Usage:** `testrank` or `testrank @User`
+- **Usage:** `/testrank` or `/testrank @User`
 - **Permission:** Administrator
 
-### `testcount`
+### `/testcount`
 - **What it does:** Executes counting summary and top list commands to verify stored counting data can be read correctly.
-- **Usage:** `testcount`
+- **Usage:** `/testcount`
 - **Permission:** Administrator
 
-### `testbirthday [DD.MM]`
+### `/testbirthday [DD.MM]`
 - **What it does:** Writes a birthday date for the caller (or today if omitted) and confirms persistence command output.
-- **Usage:** `testbirthday 21.08`
+- **Usage:** `/testbirthday 21.08`
 - **Permission:** Administrator
 
-### `testpoll [seconds] [question]`
+### `/testpoll [seconds] [question]`
 - **What it does:** Starts the regular interactive poll flow and provides suggested input so poll UI/buttons can be tested quickly.
-- **Usage:** `testpoll 45 Quick check`
+- **Usage:** `/testpoll 45 Quick check`
 - **Permission:** Administrator
 
-### `testticketpanel`
+### `/testticketpanel`
 - **What it does:** Posts the ticket creation panel so you can validate open-ticket button behavior end-to-end.
-- **Usage:** `testticketpanel`
+- **Usage:** `/testticketpanel`
 - **Permission:** Administrator
 
-### `testmusic`
+### `/testmusic`
 - **What it does:** Performs a minimal voice pipeline test by joining your current channel and leaving shortly after.
-- **Usage:** `testmusic`
+- **Usage:** `/testmusic`
 - **Requirements:** You must be in a voice channel and voice dependencies (notably `PyNaCl`) must be installed.
 - **Permission:** Administrator
 
-### `testsay [text]`
-- **What it does:** Calls the admin `say` flow to verify embed formatting and message dispatch permissions.
-- **Usage:** `testsay Hello world`
+### `/testsay [text]`
+- **What it does:** Calls the admin `/say` flow to verify embed formatting and message dispatch permissions.
+- **Usage:** `/testsay Hello world`
 - **Permission:** Administrator
 
-### `testlevel <member> [xp]`
+### `/testlevel <member> [xp]`
 - **What it does:** Adds XP through the leveling system and then displays rank card for quick before/after validation.
-- **Usage:** `testlevel @User 50`
+- **Usage:** `/testlevel @User 50`
 - **Permission:** Administrator
 
-### `testlog [category] [message]`
+### `/testlog [category] [message]`
 - **What it does:** Writes a manual test entry into the log database so storage/log tooling can be validated independently of live events.
-- **Usage:** `testlog system Quick check`
+- **Usage:** `/testlog system Quick check`
 - **Permission:** Administrator
 
 ---

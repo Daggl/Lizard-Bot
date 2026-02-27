@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
@@ -526,7 +527,8 @@ class TempVoice(commands.Cog):
             new_owner = remaining[0]
             await self._transfer_owner(before_channel, new_owner, member)
 
-    @commands.command(name="tempvoicepanel")
+    @commands.hybrid_command(name="tempvoicepanel")
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def tempvoice_panel(self, ctx: commands.Context):
         hub_channel = self._create_channel_hub(ctx.guild) if ctx.guild else None

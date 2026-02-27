@@ -90,7 +90,7 @@ See detailed UI notes in [local_ui/README.md](local_ui/README.md).
 ## Notes
 
 - `CONTROL_API_TOKEN` should match between bot and UI when Local UI is enabled.
-- Voice tests (`testmusic`) require voice support dependencies (notably `PyNaCl`) in the bot environment.
+- Voice tests (`/testmusic`) require voice support dependencies (notably `PyNaCl`) in the bot environment.
 
 ## Related Docs
 

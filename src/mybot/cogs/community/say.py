@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 
@@ -15,10 +16,15 @@ class Say(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def say(self, ctx, *, text: str):
-        await ctx.message.delete()
+        try:
+            if getattr(ctx, "message", None) is not None:
+                await ctx.message.delete()
+        except Exception:
+            pass
 
         if "|" in text:
             text, image_url = text.split("|", 1)

@@ -3,6 +3,7 @@ import os
 import uuid
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
@@ -119,7 +120,7 @@ class Poll(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="poll")
+    @commands.hybrid_command(name="poll")
     async def poll(self, ctx):
 
         def check(m):
@@ -180,7 +181,8 @@ class Poll(commands.Cog):
             save_polls(polls)
             await view.update_message(message)
 
-    @commands.command(name="delete_poll")
+    @commands.hybrid_command(name="delete_poll")
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def delete_poll(self, ctx, poll_id: str):
         polls = load_polls()

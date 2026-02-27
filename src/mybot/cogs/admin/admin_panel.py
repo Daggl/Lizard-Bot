@@ -1,6 +1,7 @@
 import time
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from ..leveling.utils.level_config import (get_achievement_channel_id,
@@ -100,7 +101,8 @@ class AdminPanel(commands.Cog):
     # -------------------------------------------------
     # COMMAND
     # -------------------------------------------------
-    @commands.command(name="adminpanel")
+    @commands.hybrid_command(name="adminpanel")
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def adminpanel(self, ctx):
 

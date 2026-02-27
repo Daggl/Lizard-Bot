@@ -12,6 +12,7 @@ from typing import Optional
 
 import aiohttp
 import discord
+from discord import app_commands
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
@@ -320,7 +321,8 @@ class Welcome(commands.Cog):
         await welcome_channel.send(file=banner, embed=embed)
         safe_print("[DEBUG] Message sent")
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testwelcome(self, ctx: commands.Context):
         safe_print("[DEBUG] Test Command benutzt")

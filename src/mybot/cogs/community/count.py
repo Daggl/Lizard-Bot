@@ -1,6 +1,7 @@
 import os
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
@@ -143,7 +144,7 @@ class Count(commands.Cog):
 
         save(data)
 
-    @commands.command()
+    @commands.hybrid_command()
     async def countstats(self, ctx):
 
         data = load()
@@ -158,7 +159,7 @@ class Count(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.hybrid_command()
     async def counttop(self, ctx):
 
         data = load()
@@ -183,7 +184,8 @@ class Count(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def countreset(self, ctx):
 

@@ -6,6 +6,7 @@ from typing import Optional
 from uuid import uuid4
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from mybot.utils.config import load_cog_config
@@ -400,7 +401,8 @@ class TicketCog(commands.Cog):
                 return
         print(f"[TICKET] {text}")
 
-    @commands.command(name="ticketpanel")
+    @commands.hybrid_command(name="ticketpanel")
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def ticket_panel(self, ctx: commands.Context) -> None:
         embed = discord.Embed(
@@ -413,13 +415,18 @@ class TicketCog(commands.Cog):
         msg = await ctx.send(embed=embed, view=view)
         self.panel_message_id = msg.id
 
-    @commands.command(name="ticket")
+    @commands.hybrid_command(name="ticket")
     async def ticket_command(self, ctx: commands.Context) -> None:
-        await ctx.message.delete()
+        try:
+            if getattr(ctx, "message", None) is not None:
+                await ctx.message.delete()
+        except Exception:
+            pass
         await self._create_ticket_for_user(ctx.guild, ctx.author, ctx.channel)
         await ctx.author.send("Your ticket was created.")
 
-    @commands.command(name="transcript")
+    @commands.hybrid_command(name="transcript")
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def transcript_cmd(
         self, ctx: commands.Context, channel: discord.TextChannel
@@ -430,7 +437,8 @@ class TicketCog(commands.Cog):
         else:
             await ctx.send("Failed to save transcript.")
 
-    @commands.command(name="close_ticket")
+    @commands.hybrid_command(name="close_ticket")
+    @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def close_ticket_cmd(
         self, ctx: commands.Context, channel: discord.TextChannel
