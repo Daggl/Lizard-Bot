@@ -16,7 +16,7 @@ import time
 import re
 from datetime import datetime
 # HTML embed removed; no html module required
-from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6 import QtWidgets, QtCore, QtGui, QtNetwork
 from config_editor import ConfigEditor
 from config_io import config_json_path, load_json_dict, save_json_merged
 from control_api_client import send_cmd
@@ -61,6 +61,378 @@ class _SortableTableItem(QtWidgets.QTableWidgetItem):
         except Exception:
             pass
         return super().__lt__(other)
+
+
+class GuildEmojiPickerDialog(QtWidgets.QDialog):
+    def __init__(self, snapshot_payload: dict, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Server Emoji Picker")
+        self.resize(860, 680)
+        self._payload = snapshot_payload or {}
+        self._guilds = list(self._payload.get("guilds") or [])
+        self._selected_emoji = None
+        self._emoji_icon_cache = {}
+        self._emoji_items_by_id = {}
+        self._emoji_labels_by_id = {}
+        self._emoji_bytes_cache = {}
+        self._current_load_token = 0
+        self._net = QtNetwork.QNetworkAccessManager(self)
+        self._net.finished.connect(self._on_icon_reply)
+
+        root = QtWidgets.QVBoxLayout(self)
+
+        top = QtWidgets.QHBoxLayout()
+        top.addWidget(QtWidgets.QLabel("Guild:"))
+        self.guild_combo = QtWidgets.QComboBox()
+        for idx, guild in enumerate(self._guilds):
+            gid = guild.get("id")
+            gname = guild.get("name") or str(gid)
+            emojis = list(guild.get("emojis") or [])
+            self.guild_combo.addItem(f"{gname} ({gid}) — {len(emojis)} emojis", idx)
+        top.addWidget(self.guild_combo, 1)
+        root.addLayout(top)
+
+        search_row = QtWidgets.QHBoxLayout()
+        search_row.addWidget(QtWidgets.QLabel("Search:"))
+        self.search_edit = QtWidgets.QLineEdit()
+        self.search_edit.setPlaceholderText("Emoji name contains...")
+        search_row.addWidget(self.search_edit, 1)
+        root.addLayout(search_row)
+
+        self.emoji_list = QtWidgets.QListWidget()
+        self.emoji_list.setViewMode(QtWidgets.QListView.IconMode)
+        self.emoji_list.setFlow(QtWidgets.QListView.LeftToRight)
+        self.emoji_list.setResizeMode(QtWidgets.QListView.Adjust)
+        self.emoji_list.setWrapping(True)
+        self.emoji_list.setUniformItemSizes(True)
+        self.emoji_list.setIconSize(QtCore.QSize(56, 56))
+        self.emoji_list.setGridSize(QtCore.QSize(72, 72))
+        self.emoji_list.setWordWrap(False)
+        self.emoji_list.setSpacing(6)
+        self.emoji_list.setMovement(QtWidgets.QListView.Static)
+        self.emoji_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        root.addWidget(self.emoji_list, 1)
+
+        preview_row = QtWidgets.QHBoxLayout()
+        self.preview_icon = QtWidgets.QLabel()
+        self.preview_icon.setFixedSize(56, 56)
+        self.preview_icon.setAlignment(QtCore.Qt.AlignCenter)
+        self.preview_icon.setStyleSheet("border: 1px solid #334258; border-radius: 6px;")
+        preview_row.addWidget(self.preview_icon, 0)
+        self.preview_label = QtWidgets.QLabel("Selected: —")
+        preview_row.addWidget(self.preview_label, 1)
+        root.addLayout(preview_row)
+
+        buttons = QtWidgets.QHBoxLayout()
+        self.insert_btn = QtWidgets.QPushButton("Insert")
+        self.cancel_btn = QtWidgets.QPushButton("Cancel")
+        buttons.addStretch()
+        buttons.addWidget(self.insert_btn)
+        buttons.addWidget(self.cancel_btn)
+        root.addLayout(buttons)
+
+        self.guild_combo.currentIndexChanged.connect(self._populate_current_guild)
+        self.search_edit.textChanged.connect(self._populate_current_guild)
+        self.emoji_list.itemSelectionChanged.connect(self._on_selection_changed)
+        self.emoji_list.itemDoubleClicked.connect(lambda _item: self._accept_if_valid())
+        self.insert_btn.clicked.connect(self._accept_if_valid)
+        self.cancel_btn.clicked.connect(self.reject)
+
+        self._populate_current_guild()
+
+    def _selected_guild(self) -> dict:
+        idx = int(self.guild_combo.currentData() or 0)
+        if idx < 0 or idx >= len(self._guilds):
+            return {}
+        return self._guilds[idx] or {}
+
+    @staticmethod
+    def _emoji_markup(emoji_entry: dict) -> str:
+        emoji_name = str(emoji_entry.get("name") or "").strip()
+        emoji_id = emoji_entry.get("id")
+        animated = bool(emoji_entry.get("animated", False))
+        prefix = "a" if animated else ""
+        return f"<{prefix}:{emoji_name}:{emoji_id}>" if emoji_name and emoji_id else ""
+
+    @staticmethod
+    def _emoji_url(emoji_entry: dict, ext: str) -> str:
+        emoji_id = emoji_entry.get("id")
+        if not emoji_id:
+            return ""
+        animated = bool(emoji_entry.get("animated", False))
+        if animated:
+            return f"https://cdn.discordapp.com/emojis/{emoji_id}.{ext}?size=64&quality=lossless&animated=true"
+        return f"https://cdn.discordapp.com/emojis/{emoji_id}.{ext}?size=64&quality=lossless"
+
+    @staticmethod
+    def _emoji_url_candidates(emoji_entry: dict) -> list[str]:
+        animated = bool(emoji_entry.get("animated", False))
+        if animated:
+            exts = ("gif", "webp", "png")
+        else:
+            exts = ("png", "webp", "jpg")
+        urls = []
+        for ext in exts:
+            try:
+                u = GuildEmojiPickerDialog._emoji_url(emoji_entry, ext)
+                if u:
+                    urls.append(u)
+            except Exception:
+                pass
+        return urls
+
+    def _emoji_icon(self, emoji_entry: dict) -> QtGui.QIcon:
+        emoji_id = emoji_entry.get("id")
+        if not emoji_id:
+            return QtGui.QIcon()
+        cache_key = int(emoji_id)
+        cached = self._emoji_icon_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        return QtGui.QIcon()
+
+    @staticmethod
+    def _clear_label_media(label: QtWidgets.QLabel):
+        try:
+            movie = getattr(label, "_emoji_movie", None)
+            if movie is not None:
+                movie.stop()
+        except Exception:
+            pass
+        try:
+            label._emoji_movie = None
+            label._emoji_movie_buf = None
+        except Exception:
+            pass
+        try:
+            label.setMovie(None)
+        except Exception:
+            pass
+
+    def _set_label_media(self, label: QtWidgets.QLabel, image_bytes: bytes, animated: bool, size: int):
+        if not image_bytes:
+            return
+        self._clear_label_media(label)
+
+        if animated:
+            try:
+                ba = QtCore.QByteArray(image_bytes)
+                buf = QtCore.QBuffer(label)
+                buf.setData(ba)
+                if buf.open(QtCore.QIODevice.ReadOnly):
+                    movie = QtGui.QMovie(buf, b"", label)
+                    if movie.isValid():
+                        movie.setScaledSize(QtCore.QSize(size, size))
+                        label._emoji_movie = movie
+                        label._emoji_movie_buf = buf
+                        label.setMovie(movie)
+                        movie.start()
+                        return
+            except Exception:
+                pass
+
+        pix = QtGui.QPixmap()
+        if pix.loadFromData(image_bytes):
+            label.setPixmap(pix.scaled(size, size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+
+    def _placeholder_icon(self) -> QtGui.QIcon:
+        pix = QtGui.QPixmap(56, 56)
+        pix.fill(QtGui.QColor("#1B2230"))
+        painter = QtGui.QPainter(pix)
+        try:
+            painter.setPen(QtGui.QColor("#4A76C9"))
+            painter.drawRoundedRect(0, 0, 55, 55, 8, 8)
+        finally:
+            painter.end()
+        return QtGui.QIcon(pix)
+
+    def _queue_icon_load(self, emoji_entry: dict, load_token: int, attempt_index: int = 0):
+        emoji_id = emoji_entry.get("id")
+        if not emoji_id:
+            return
+        try:
+            cache_key = int(emoji_id)
+        except Exception:
+            return
+        if cache_key in self._emoji_icon_cache:
+            return
+        candidates = self._emoji_url_candidates(emoji_entry)
+        if not candidates:
+            return
+        if attempt_index < 0 or attempt_index >= len(candidates):
+            return
+        url = candidates[attempt_index]
+        req = QtNetwork.QNetworkRequest(QtCore.QUrl(url))
+        req.setRawHeader(b"User-Agent", b"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        reply = self._net.get(req)
+        reply.setProperty("emoji_id", cache_key)
+        reply.setProperty("load_token", int(load_token))
+        reply.setProperty("attempt_index", int(attempt_index))
+        reply.setProperty("is_animated", bool(emoji_entry.get("animated", False)))
+
+    def _on_icon_reply(self, reply: QtNetwork.QNetworkReply):
+        try:
+            try:
+                load_token = int(reply.property("load_token") or 0)
+                emoji_id = int(reply.property("emoji_id") or 0)
+                attempt_index = int(reply.property("attempt_index") or 0)
+                is_animated = bool(reply.property("is_animated") or False)
+            except Exception:
+                return
+
+            if load_token != self._current_load_token or emoji_id <= 0:
+                return
+
+            pix = QtGui.QPixmap()
+            loaded_ok = False
+            try:
+                if reply.error() == QtNetwork.QNetworkReply.NoError:
+                    data = reply.readAll()
+                    loaded_ok = pix.loadFromData(bytes(data))
+            except Exception:
+                loaded_ok = False
+
+            if not loaded_ok:
+                fallback_entry = {"id": emoji_id, "animated": is_animated}
+                candidates = self._emoji_url_candidates(fallback_entry)
+                next_attempt = attempt_index + 1
+                if next_attempt < len(candidates):
+                    self._queue_icon_load(fallback_entry, load_token, attempt_index=next_attempt)
+                return
+
+            icon = QtGui.QIcon(pix)
+            self._emoji_icon_cache[emoji_id] = icon
+            self._emoji_bytes_cache[emoji_id] = bytes(data)
+
+            labels = list(self._emoji_labels_by_id.get(emoji_id) or [])
+            for label in labels:
+                try:
+                    self._set_label_media(label, self._emoji_bytes_cache.get(emoji_id) or b"", is_animated, 56)
+                except Exception:
+                    pass
+
+            current = self.emoji_list.currentItem()
+            if current is not None:
+                try:
+                    current_id = int(current.data(QtCore.Qt.UserRole + 2) or 0)
+                except Exception:
+                    current_id = 0
+                if current_id == emoji_id:
+                    self._set_preview_icon(current.data(QtCore.Qt.UserRole + 1) or None)
+        finally:
+            try:
+                reply.deleteLater()
+            except Exception:
+                pass
+
+    def _set_preview_icon(self, emoji_entry: dict | None):
+        try:
+            if not emoji_entry:
+                self._clear_label_media(self.preview_icon)
+                self.preview_icon.clear()
+                return
+
+            try:
+                emoji_id = int(emoji_entry.get("id") or 0)
+            except Exception:
+                emoji_id = 0
+            animated = bool(emoji_entry.get("animated", False))
+
+            raw = self._emoji_bytes_cache.get(emoji_id)
+            if raw:
+                self._set_label_media(self.preview_icon, raw, animated, 48)
+                return
+
+            icon = self._emoji_icon(emoji_entry)
+            pix = icon.pixmap(48, 48)
+            if pix.isNull():
+                self._clear_label_media(self.preview_icon)
+                self.preview_icon.clear()
+                return
+            self._clear_label_media(self.preview_icon)
+            self.preview_icon.setPixmap(pix)
+        except Exception:
+            self._clear_label_media(self.preview_icon)
+            self.preview_icon.clear()
+
+    def _populate_current_guild(self):
+        guild = self._selected_guild()
+        search_text = (self.search_edit.text() or "").strip().lower()
+        emojis = list(guild.get("emojis") or [])
+        self.emoji_list.clear()
+        self._selected_emoji = None
+        self._emoji_items_by_id = {}
+        self._emoji_labels_by_id = {}
+        self._current_load_token += 1
+        current_token = self._current_load_token
+
+        for emoji in emojis:
+            name = str(emoji.get("name") or "")
+            if search_text and search_text not in name.lower():
+                continue
+            markup = self._emoji_markup(emoji)
+            if not markup:
+                continue
+            try:
+                emoji_id = int(emoji.get("id") or 0)
+            except Exception:
+                emoji_id = 0
+            item = QtWidgets.QListWidgetItem("")
+            item.setData(QtCore.Qt.UserRole, markup)
+            item.setData(QtCore.Qt.UserRole + 1, emoji)
+            item.setData(QtCore.Qt.UserRole + 2, emoji_id)
+            item.setToolTip(f":{name}:\n{markup}")
+            item.setSizeHint(QtCore.QSize(60, 60))
+            self.emoji_list.addItem(item)
+
+            tile = QtWidgets.QLabel()
+            tile.setFixedSize(56, 56)
+            tile.setAlignment(QtCore.Qt.AlignCenter)
+            tile.setStyleSheet("border: 1px solid #334258; border-radius: 6px;")
+            tile.setToolTip(f":{name}:\n{markup}")
+            self.emoji_list.setItemWidget(item, tile)
+
+            if emoji_id > 0:
+                self._emoji_items_by_id.setdefault(emoji_id, []).append(item)
+                self._emoji_labels_by_id.setdefault(emoji_id, []).append(tile)
+                raw = self._emoji_bytes_cache.get(emoji_id)
+                if raw:
+                    self._set_label_media(tile, raw, bool(emoji.get("animated", False)), 56)
+                self._queue_icon_load(emoji, current_token)
+
+        if self.emoji_list.count() > 0:
+            self.emoji_list.setCurrentRow(0)
+            self._on_selection_changed()
+        else:
+            self.preview_label.setText("Selected: —")
+            self._set_preview_icon(None)
+
+    def _on_selection_changed(self):
+        item = self.emoji_list.currentItem()
+        if not item:
+            self._selected_emoji = None
+            self.preview_label.setText("Selected: —")
+            self._set_preview_icon(None)
+            return
+        value = str(item.data(QtCore.Qt.UserRole) or "").strip()
+        self._selected_emoji = value or None
+        emoji_entry = item.data(QtCore.Qt.UserRole + 1)
+        self._set_preview_icon(emoji_entry if isinstance(emoji_entry, dict) else None)
+        if isinstance(emoji_entry, dict):
+            label = str(emoji_entry.get("name") or "").strip() or "unknown"
+            animated_txt = " [animated]" if bool(emoji_entry.get("animated", False)) else ""
+            self.preview_label.setText(f"Selected: :{label}:{animated_txt}  {value}" if value else "Selected: —")
+        else:
+            self.preview_label.setText(f"Selected: {value}" if value else "Selected: —")
+
+    def _accept_if_valid(self):
+        if not self._selected_emoji:
+            QtWidgets.QMessageBox.information(self, "Emoji Picker", "Please select an emoji first.")
+            return
+        self.accept()
+
+    def selected_emoji(self) -> str:
+        return str(self._selected_emoji or "").strip()
 
 
 write_startup_trace()
@@ -270,6 +642,10 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
         try:
             self._load_leveling_config()
+        except Exception:
+            pass
+        try:
+            self._load_birthdays_config()
         except Exception:
             pass
         try:
@@ -805,6 +1181,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 except Exception:
                     pass
                 try:
+                    self._load_birthdays_config()
+                except Exception:
+                    pass
+                try:
                     self._load_welcome_message_from_file()
                 except Exception:
                     pass
@@ -818,6 +1198,68 @@ class MainWindow(QtWidgets.QMainWindow):
                     pass
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Setup Wizard", f"Failed to open setup wizard: {e}")
+
+    def on_open_birthday_emoji_picker(self):
+        self._open_server_emoji_picker_for(self.bd_embed_description)
+
+    def on_open_welcome_emoji_picker(self):
+        self._open_server_emoji_picker_for(self.pv_message)
+
+    def on_open_leveling_levelup_emoji_picker(self):
+        self._open_server_emoji_picker_for(self.lv_levelup_msg)
+
+    def on_open_leveling_achievement_emoji_picker(self):
+        self._open_server_emoji_picker_for(self.lv_achievement_msg)
+
+    def on_open_leveling_leading_emoji_picker(self):
+        self._open_server_emoji_picker_for(self.lv_emoji_win, replace_text=True)
+
+    def on_open_leveling_trailing_emoji_picker(self):
+        self._open_server_emoji_picker_for(self.lv_emoji_heart, replace_text=True)
+
+    def _open_server_emoji_picker_for(self, target_widget, replace_text: bool = False):
+        try:
+            self._emoji_picker_target = target_widget
+            self._emoji_picker_replace_text = bool(replace_text)
+            self.send_cmd_async({"action": "guild_snapshot"}, timeout=8.0, cb=self._on_server_emoji_snapshot)
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Emoji Picker", f"Failed to request guild snapshot: {e}")
+
+    def _on_server_emoji_snapshot(self, resp: dict):
+        try:
+            if not isinstance(resp, dict) or not resp.get("ok"):
+                QtWidgets.QMessageBox.warning(self, "Emoji Picker", f"Guild snapshot failed: {resp}")
+                return
+
+            guilds = list(resp.get("guilds") or [])
+            if not guilds:
+                QtWidgets.QMessageBox.information(self, "Emoji Picker", "No guilds found from bot snapshot.")
+                return
+
+            has_emojis = any(bool(list(g.get("emojis") or [])) for g in guilds)
+            if not has_emojis:
+                QtWidgets.QMessageBox.information(self, "Emoji Picker", "No custom server emojis found in connected guilds.")
+                return
+
+            dlg = GuildEmojiPickerDialog(resp, self)
+            if dlg.exec() != QtWidgets.QDialog.Accepted:
+                return
+
+            selected = dlg.selected_emoji()
+            if not selected:
+                return
+
+            target = getattr(self, "_emoji_picker_target", None)
+            if target is None:
+                target = getattr(self, "bd_embed_description", None)
+            if bool(getattr(self, "_emoji_picker_replace_text", False)) and isinstance(target, QtWidgets.QLineEdit):
+                target.setText(selected)
+            else:
+                self._insert_text_into_target(target, selected)
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Emoji Picker", f"Failed to open picker: {e}")
+        finally:
+            self._emoji_picker_replace_text = False
 
     def _is_safe_read_only(self) -> bool:
         try:
@@ -971,6 +1413,24 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.warning(self, "Reload failed", f"{r}")
         except Exception as e:
             self._debug_log(f"reload-after-rank handler failed: {e}")
+
+    def _on_reload_after_save_birthdays(self, r: dict):
+        try:
+            if r.get("ok"):
+                try:
+                    self._load_birthdays_config()
+                except Exception as e:
+                    self._debug_log(f"reload-after-birthdays: load_birthdays_config failed: {e}")
+                reloaded = r.get("reloaded", [])
+                failed = r.get("failed", {})
+                msg = f"Reloaded: {len(reloaded)} modules. Failed: {len(failed)}"
+                if failed:
+                    msg = msg + "\n" + "\n".join(f"{k}: {v}" for k, v in failed.items())
+                QtWidgets.QMessageBox.information(self, "Reload", msg)
+            else:
+                QtWidgets.QMessageBox.warning(self, "Reload failed", f"{r}")
+        except Exception as e:
+            self._debug_log(f"reload-after-birthdays handler failed: {e}")
 
     def _on_reload_after_save_preview(self, r: dict):
         try:
@@ -1374,6 +1834,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def _leveling_config_paths(self):
         return config_json_path(self._repo_root, "leveling.json")
 
+    def _birthdays_config_path(self):
+        return config_json_path(self._repo_root, "birthdays.json")
+
     def _ui_settings_path(self):
         return config_json_path(self._repo_root, "local_ui.json")
 
@@ -1485,6 +1948,34 @@ class MainWindow(QtWidgets.QMainWindow):
     def _save_leveling_config(self, data: dict):
         cfg_path = self._leveling_config_paths()
         save_json_merged(cfg_path, data or {})
+
+    def _load_birthdays_config(self):
+        cfg = load_json_dict(self._birthdays_config_path())
+        if not isinstance(cfg, dict):
+            cfg = {}
+
+        channel_id = str(cfg.get("CHANNEL_ID", "") or "").strip()
+        embed_title = str(cfg.get("EMBED_TITLE", "🎂 Birthday") or "🎂 Birthday")
+        embed_desc = str(cfg.get("EMBED_DESCRIPTION", "🎉 Today is {mention}'s birthday!") or "🎉 Today is {mention}'s birthday!")
+        embed_footer = str(cfg.get("EMBED_FOOTER", "") or "")
+        embed_color = str(cfg.get("EMBED_COLOR", "#F1C40F") or "#F1C40F").strip()
+
+        try:
+            if hasattr(self, "bd_channel_id") and not self.bd_channel_id.hasFocus():
+                self.bd_channel_id.setText(channel_id)
+            if hasattr(self, "bd_embed_title") and not self.bd_embed_title.hasFocus():
+                self.bd_embed_title.setText(embed_title)
+            if hasattr(self, "bd_embed_description") and not self.bd_embed_description.hasFocus():
+                self.bd_embed_description.setPlainText(embed_desc)
+            if hasattr(self, "bd_embed_footer") and not self.bd_embed_footer.hasFocus():
+                self.bd_embed_footer.setText(embed_footer)
+            if hasattr(self, "bd_embed_color") and not self.bd_embed_color.hasFocus():
+                self.bd_embed_color.setText(embed_color)
+        except Exception:
+            pass
+
+    def _save_birthdays_config(self, data: dict):
+        save_json_merged(self._birthdays_config_path(), data or {})
 
     def _populate_level_rewards_table(self, rewards_cfg: dict):
         table = getattr(self, "lv_rewards_table", None)
@@ -1832,14 +2323,67 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save leveling settings: {e}")
 
+    def _save_birthday_settings(self, reload_after: bool = False):
+        try:
+            if self._is_safe_read_only():
+                QtWidgets.QMessageBox.information(self, "Safe Mode", "Nur lesen ist aktiv: Speichern ist deaktiviert.")
+                return
+            if reload_after and self._is_safe_auto_reload_off():
+                reload_after = False
+                QtWidgets.QMessageBox.information(self, "Safe Mode", "Auto reload ist aus: Speichern ohne Reload.")
+
+            channel_raw = (self.bd_channel_id.text() or "").strip()
+            if channel_raw and not channel_raw.isdigit():
+                QtWidgets.QMessageBox.warning(self, "Birthdays", "Channel ID must contain only digits.")
+                return
+
+            color_raw = (self.bd_embed_color.text() or "").strip() or "#F1C40F"
+            if not QtGui.QColor(color_raw).isValid():
+                QtWidgets.QMessageBox.warning(self, "Birthdays", "Embed color must be a valid color (e.g. #F1C40F).")
+                return
+
+            payload = {
+                "CHANNEL_ID": int(channel_raw) if channel_raw else 0,
+                "EMBED_TITLE": (self.bd_embed_title.text() or "").strip() or "🎂 Birthday",
+                "EMBED_DESCRIPTION": (self.bd_embed_description.toPlainText() or "").strip() or "🎉 Today is {mention}'s birthday!",
+                "EMBED_FOOTER": (self.bd_embed_footer.text() or "").strip(),
+                "EMBED_COLOR": color_raw,
+            }
+            self._save_birthdays_config(payload)
+
+            if reload_after:
+                try:
+                    self.send_cmd_async(
+                        {"action": "reload"},
+                        timeout=3.0,
+                        cb=self._on_reload_after_save_birthdays,
+                    )
+                except Exception as e:
+                    QtWidgets.QMessageBox.warning(self, "Reload error", str(e))
+
+            QtWidgets.QMessageBox.information(self, "Saved", "Birthday settings saved")
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save birthday settings: {e}")
+
     def _insert_placeholder(self, text: str):
         self._insert_placeholder_into(self.pv_message, text)
 
     def _insert_placeholder_into(self, target: QtWidgets.QPlainTextEdit, text: str):
+        self._insert_text_into_target(target, text)
+
+    def _insert_text_into_target(self, target, text: str):
         try:
-            cur = target.textCursor()
-            cur.insertText(text)
-            target.setTextCursor(cur)
+            if isinstance(target, QtWidgets.QPlainTextEdit):
+                cur = target.textCursor()
+                cur.insertText(text)
+                target.setTextCursor(cur)
+            elif isinstance(target, QtWidgets.QLineEdit):
+                cur_pos = target.cursorPosition()
+                cur_txt = target.text() or ""
+                target.setText(cur_txt[:cur_pos] + text + cur_txt[cur_pos:])
+                target.setCursorPosition(cur_pos + len(text))
+            else:
+                return
             # trigger live preview
             try:
                 self._preview_debounce.start()

@@ -223,6 +223,9 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     ph_grid.addWidget(window.ph_about, 0, 3)
     pv_form.addRow("Placeholders:", ph_widget)
 
+    window.pv_emoji_picker_btn = QtWidgets.QPushButton("Server Emoji Picker...")
+    pv_form.addRow("Server emojis:", window.pv_emoji_picker_btn)
+
     pv_form.addRow(_section_label("Background"))
     window.pv_bg_mode = QtWidgets.QComboBox()
     window.pv_bg_mode.addItem("Fill (cover)", "cover")
@@ -619,12 +622,25 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     )
     window.lv_emoji_win = QtWidgets.QLineEdit()
     window.lv_emoji_win.setPlaceholderText("Leading emoji ID or <:name:id>")
-    lv_form.addRow("Leading emoji ID/tag:", window.lv_emoji_win)
+    window.lv_emoji_win_picker_btn = QtWidgets.QPushButton("Pick...")
+    window.lv_emoji_win_picker_btn.setFixedWidth(72)
+    lv_leading_row = QtWidgets.QHBoxLayout()
+    lv_leading_row.addWidget(window.lv_emoji_win, 1)
+    lv_leading_row.addWidget(window.lv_emoji_win_picker_btn, 0)
+    lv_form.addRow("Leading emoji ID/tag:", lv_leading_row)
 
     window.lv_emoji_heart = QtWidgets.QLineEdit()
     window.lv_emoji_heart.setPlaceholderText("Trailing emoji ID or <:name:id>")
-    lv_form.addRow("Trailing emoji ID/tag:", window.lv_emoji_heart)
+    window.lv_emoji_heart_picker_btn = QtWidgets.QPushButton("Pick...")
+    window.lv_emoji_heart_picker_btn.setFixedWidth(72)
+    lv_trailing_row = QtWidgets.QHBoxLayout()
+    lv_trailing_row.addWidget(window.lv_emoji_heart, 1)
+    lv_trailing_row.addWidget(window.lv_emoji_heart_picker_btn, 0)
+    lv_form.addRow("Trailing emoji ID/tag:", lv_trailing_row)
     lv_form.addRow("Level-up message:", window.lv_levelup_msg)
+
+    window.lv_levelup_emoji_picker_btn = QtWidgets.QPushButton("Insert server emoji into level-up message...")
+    lv_form.addRow("", window.lv_levelup_emoji_picker_btn)
 
     window.lv_ph_member_mention = QtWidgets.QPushButton("{member_mention}")
     window.lv_ph_member_name = QtWidgets.QPushButton("{member_name}")
@@ -657,6 +673,9 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
         "Use {member_mention}, {member_name}, {member_display_name}, {member_id}, {guild_name}, {achievement_name}"
     )
     lv_form.addRow("Achievement message:", window.lv_achievement_msg)
+
+    window.lv_achievement_emoji_picker_btn = QtWidgets.QPushButton("Insert server emoji into achievement message...")
+    lv_form.addRow("", window.lv_achievement_emoji_picker_btn)
 
     window.av_ph_member_mention = QtWidgets.QPushButton("{member_mention}")
     window.av_ph_member_name = QtWidgets.QPushButton("{member_name}")
@@ -762,6 +781,104 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
 
     tabs.addTab(leveling_w, "Leveling")
 
+    birthdays_w = QtWidgets.QWidget()
+    birthdays_layout = QtWidgets.QVBoxLayout(birthdays_w)
+    birthdays_layout.setContentsMargins(8, 8, 10, 8)
+    birthdays_layout.setSpacing(10)
+
+    bd_scroll = QtWidgets.QScrollArea()
+    bd_scroll.setWidgetResizable(True)
+    bd_content = QtWidgets.QWidget()
+    bd_content_layout = QtWidgets.QVBoxLayout(bd_content)
+    bd_form = QtWidgets.QFormLayout()
+    bd_form.setFieldGrowthPolicy(QtWidgets.QFormLayout.ExpandingFieldsGrow)
+    bd_form.setFormAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
+    bd_form.setLabelAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+    bd_form.setHorizontalSpacing(10)
+    bd_form.setVerticalSpacing(8)
+
+    window.bd_channel_id = QtWidgets.QLineEdit()
+    window.bd_channel_id.setPlaceholderText("Birthday channel ID")
+    bd_form.addRow("Channel ID:", window.bd_channel_id)
+
+    window.bd_embed_title = QtWidgets.QLineEdit()
+    window.bd_embed_title.setPlaceholderText("🎂 Birthday")
+    bd_form.addRow("Embed title:", window.bd_embed_title)
+
+    window.bd_embed_description = QtWidgets.QPlainTextEdit()
+    window.bd_embed_description.setMinimumHeight(110)
+    window.bd_embed_description.setPlaceholderText("🎉 Today is {mention}'s birthday!")
+    bd_form.addRow("Embed message:", window.bd_embed_description)
+
+    ph_widget = QtWidgets.QWidget()
+    ph_layout = QtWidgets.QGridLayout(ph_widget)
+    ph_layout.setContentsMargins(0, 0, 0, 0)
+    ph_layout.setHorizontalSpacing(8)
+    ph_layout.setVerticalSpacing(8)
+    window.bd_ph_mention = QtWidgets.QPushButton("{mention}")
+    window.bd_ph_user_name = QtWidgets.QPushButton("{user_name}")
+    window.bd_ph_display_name = QtWidgets.QPushButton("{display_name}")
+    window.bd_ph_user_id = QtWidgets.QPushButton("{user_id}")
+    window.bd_ph_date = QtWidgets.QPushButton("{date}")
+    for _btn in (
+        window.bd_ph_mention,
+        window.bd_ph_user_name,
+        window.bd_ph_display_name,
+        window.bd_ph_user_id,
+        window.bd_ph_date,
+    ):
+        try:
+            _btn.setMinimumHeight(34)
+        except Exception:
+            pass
+    ph_layout.addWidget(window.bd_ph_mention, 0, 0)
+    ph_layout.addWidget(window.bd_ph_user_name, 0, 1)
+    ph_layout.addWidget(window.bd_ph_display_name, 0, 2)
+    ph_layout.addWidget(window.bd_ph_user_id, 1, 0)
+    ph_layout.addWidget(window.bd_ph_date, 1, 1)
+    bd_form.addRow("Placeholders:", ph_widget)
+
+    window.bd_emoji_picker_btn = QtWidgets.QPushButton("Server Emoji Picker...")
+    bd_form.addRow("Server emojis:", window.bd_emoji_picker_btn)
+
+    window.bd_embed_footer = QtWidgets.QLineEdit()
+    window.bd_embed_footer.setPlaceholderText("Optional footer")
+    bd_form.addRow("Embed footer:", window.bd_embed_footer)
+
+    window.bd_embed_color = QtWidgets.QLineEdit()
+    window.bd_embed_color.setPlaceholderText("#F1C40F")
+    window.bd_embed_color_pick = QtWidgets.QPushButton("Pick...")
+    window.bd_embed_color_pick.setFixedWidth(72)
+    bd_color_row = QtWidgets.QHBoxLayout()
+    bd_color_row.addWidget(window.bd_embed_color, 1)
+    bd_color_row.addWidget(window.bd_embed_color_pick, 0)
+    bd_form.addRow("Embed color:", bd_color_row)
+
+    bd_hint = QtWidgets.QLabel("Message is sent as embed once per birthday/day.")
+    bd_hint.setStyleSheet("color:#9aa0a6;")
+    bd_form.addRow("", bd_hint)
+
+    bd_content_layout.addLayout(bd_form)
+    bd_content_layout.addStretch()
+    bd_scroll.setWidget(bd_content)
+    birthdays_layout.addWidget(bd_scroll, 1)
+
+    bd_buttons = QtWidgets.QHBoxLayout()
+    window.bd_save = QtWidgets.QPushButton("Save")
+    window.bd_save_reload = QtWidgets.QPushButton("Save + Reload")
+    for _btn in (window.bd_save, window.bd_save_reload):
+        try:
+            _btn.setMinimumWidth(_btn.sizeHint().width() + 18)
+            _btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        except Exception:
+            pass
+    bd_buttons.addStretch()
+    bd_buttons.addWidget(window.bd_save)
+    bd_buttons.addWidget(window.bd_save_reload)
+    birthdays_layout.addLayout(bd_buttons)
+
+    tabs.addTab(birthdays_w, "Birthdays")
+
     window.rk_refresh.clicked.connect(window.on_refresh_rankpreview)
     window.rk_bg_browse.clicked.connect(window._choose_rank_bg)
     window.rk_name_color_pick.clicked.connect(lambda: window._pick_color(window.rk_name_color, "Choose rank name color"))
@@ -785,12 +902,26 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     window.lv_achievements_add_btn.clicked.connect(window.on_leveling_add_achievement_row)
     window.lv_achievements_remove_btn.clicked.connect(window.on_leveling_remove_achievement_row)
     window.lv_achievements_choose_image_btn.clicked.connect(window.on_leveling_choose_achievement_image)
+    window.lv_emoji_win_picker_btn.clicked.connect(window.on_open_leveling_leading_emoji_picker)
+    window.lv_emoji_heart_picker_btn.clicked.connect(window.on_open_leveling_trailing_emoji_picker)
+    window.lv_levelup_emoji_picker_btn.clicked.connect(window.on_open_leveling_levelup_emoji_picker)
+    window.lv_achievement_emoji_picker_btn.clicked.connect(window.on_open_leveling_achievement_emoji_picker)
     window.lv_save.clicked.connect(lambda: window._save_leveling_settings(reload_after=False))
     window.lv_save_reload.clicked.connect(lambda: window._save_leveling_settings(reload_after=True))
+    window.bd_ph_mention.clicked.connect(lambda: window._insert_placeholder_into(window.bd_embed_description, '{mention}'))
+    window.bd_ph_user_name.clicked.connect(lambda: window._insert_placeholder_into(window.bd_embed_description, '{user_name}'))
+    window.bd_ph_display_name.clicked.connect(lambda: window._insert_placeholder_into(window.bd_embed_description, '{display_name}'))
+    window.bd_ph_user_id.clicked.connect(lambda: window._insert_placeholder_into(window.bd_embed_description, '{user_id}'))
+    window.bd_ph_date.clicked.connect(lambda: window._insert_placeholder_into(window.bd_embed_description, '{date}'))
+    window.bd_emoji_picker_btn.clicked.connect(window.on_open_birthday_emoji_picker)
+    window.bd_embed_color_pick.clicked.connect(lambda: window._pick_color(window.bd_embed_color, "Choose birthday embed color"))
+    window.bd_save.clicked.connect(lambda: window._save_birthday_settings(reload_after=False))
+    window.bd_save_reload.clicked.connect(lambda: window._save_birthday_settings(reload_after=True))
     window.rk_save.clicked.connect(lambda: window._save_rank_preview(reload_after=False))
     window.rk_save_reload.clicked.connect(lambda: window._save_rank_preview(reload_after=True))
 
     window.pv_banner_browse.clicked.connect(window._choose_banner)
+    window.pv_emoji_picker_btn.clicked.connect(window.on_open_welcome_emoji_picker)
     window.pv_title_color_pick.clicked.connect(lambda: window._pick_color(window.pv_title_color, "Choose title color"))
     window.pv_user_color_pick.clicked.connect(lambda: window._pick_color(window.pv_user_color, "Choose username color"))
     window.pv_refresh.clicked.connect(window.on_refresh_preview)

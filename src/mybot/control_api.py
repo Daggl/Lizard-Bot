@@ -117,12 +117,24 @@ def _build_guild_snapshot(bot):
                 )
             roles.sort(key=lambda r: (-int(r.get("position") or 0), str(r.get("name") or "")))
 
+            emojis = []
+            for emoji in list(getattr(guild, "emojis", []) or []):
+                emojis.append(
+                    {
+                        "id": getattr(emoji, "id", None),
+                        "name": getattr(emoji, "name", "unknown"),
+                        "animated": bool(getattr(emoji, "animated", False)),
+                    }
+                )
+            emojis.sort(key=lambda e: str(e.get("name") or "").lower())
+
             guilds_payload.append(
                 {
                     "id": getattr(guild, "id", None),
                     "name": getattr(guild, "name", "unknown"),
                     "channels": channels,
                     "roles": roles,
+                    "emojis": emojis,
                 }
             )
         except Exception:

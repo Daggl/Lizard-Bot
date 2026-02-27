@@ -98,5 +98,11 @@
     "DATA_FOLDER": "data",
     "DATA_FILE": "count.json"
   }
-  ,"birthdays": { "CHANNEL_ID": 0 }
+  ,"birthdays": {
+    "CHANNEL_ID": 0,
+    "EMBED_TITLE": "🎂 Birthday",
+    "EMBED_DESCRIPTION": "🎉 Today is {mention}'s birthday!",
+    "EMBED_FOOTER": "",
+    "EMBED_COLOR": "#F1C40F"
+  }
 }
