@@ -41,7 +41,9 @@ class AdminHelpView(discord.ui.View):
             description=(
                 "This menu gives you a complete overview\n"
                 "of all admin features of the bot.\n\n"
-                "Use the buttons to open detailed explanations."
+                "Use the buttons to open detailed explanations.\n\n"
+                "Open command: `*admin_help`\n"
+                "Aliases: `*adminhelp`, `*ahelp`"
             ),
             color=discord.Color.blue(),
         )
@@ -312,7 +314,9 @@ class AdminHelp(commands.Cog):
             title="🛠 Administrator Control Center",
             description=(
                 "This menu is for administrators only.\n\n"
-                "Here you get a full system overview."
+                "Here you get a full system overview.\n\n"
+                "Command: `*admin_help`\n"
+                "Aliases: `*adminhelp`, `*ahelp`"
             ),
             color=discord.Color.blue(),
         )

@@ -15,7 +15,11 @@ class HelpTutorial(commands.Cog):
 
         embed = discord.Embed(
             title="🤖 Bot Help & Tutorials",
-            description="Here you can find all features explained",
+            description=(
+                "Here you can find all features explained.\n\n"
+                "Command: `*help`\n"
+                "Aliases: `*tutorial`, `*hilfe`"
+            ),
             color=discord.Color.blurple(),
         )
 
@@ -81,6 +85,7 @@ class HelpTutorial(commands.Cog):
             value=(
                 "`*ping` → Tests if the bot is online\n"
                 "`*help` → Shows this menu\n"
+                "`*tutorial` / `*hilfe` → Aliases for help\n"
                 "`*admin_help` → Opens admin command center"
             ),
             inline=False,
