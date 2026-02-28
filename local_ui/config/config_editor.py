@@ -4,7 +4,7 @@ import os
 from core.repo_paths import get_repo_root
 from PySide6 import QtCore, QtWidgets
 
-from .config_io import ensure_env_file, load_env_dict, save_env_dict
+from .config_io import config_json_path, ensure_env_file, load_env_dict, save_env_dict
 
 _HIDDEN_ENV_KEYS = {"LOCAL_UI_ENABLE"}
 
@@ -51,13 +51,78 @@ class ConfigEditor(QtWidgets.QDialog):
 
         self.refresh_list()
 
+    # ------------------------------------------------------------------
+    # Guild awareness
+    # ------------------------------------------------------------------
+
+    def _active_guild_id(self) -> str | None:
+        """Return the currently selected guild ID from the parent window."""
+        try:
+            parent = self.parent()
+            if parent is not None:
+                gid = getattr(parent, "_active_guild_id", None)
+                return str(gid) if gid else None
+        except Exception:
+            pass
+        return None
+
+    def _config_dir(self) -> str:
+        """Return the config directory for the active guild (or global)."""
+        gid = self._active_guild_id()
+        if gid:
+            d = os.path.join(self.repo_root, "config", "guilds", gid)
+            os.makedirs(d, exist_ok=True)
+            return d
+        return os.path.join(self.repo_root, "config")
+
+    def _config_path_for(self, filename: str) -> str:
+        """Return the full path to a config file for the active guild.
+
+        If a guild is active, returns the guild-specific path.  On read the
+        caller should fall back to the global path when the file is missing.
+        """
+        gid = self._active_guild_id()
+        return config_json_path(self.repo_root, filename, guild_id=gid)
+
+    def _load_config_data(self, filename: str) -> dict:
+        """Load config JSON for the active guild, falling back to global."""
+        gid = self._active_guild_id()
+        if gid:
+            guild_path = config_json_path(self.repo_root, filename, guild_id=gid)
+            if os.path.exists(guild_path):
+                try:
+                    with open(guild_path, "r", encoding="utf-8") as fh:
+                        return json.load(fh)
+                except Exception:
+                    return {}
+        # fallback: global config
+        global_path = os.path.join(self.repo_root, "config", filename)
+        try:
+            with open(global_path, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except Exception:
+            return {}
+
     def refresh_list(self):
-        cfg_dir = os.path.join(self.repo_root, "config")
+        global_dir = os.path.join(self.repo_root, "config")
         self.list.clear()
         self.list.addItem(".env")
+        seen = set()
+        # Guild‑specific files first (if any)
+        gid = self._active_guild_id()
+        if gid:
+            guild_dir = os.path.join(self.repo_root, "config", "guilds", gid)
+            try:
+                for fn in sorted(os.listdir(guild_dir)):
+                    if fn.endswith(".json"):
+                        self.list.addItem(fn)
+                        seen.add(fn)
+            except Exception:
+                pass
+        # Global files (skip duplicates if guild overrides exist)
         try:
-            for fn in sorted(os.listdir(cfg_dir)):
-                if fn.endswith(".json"):
+            for fn in sorted(os.listdir(global_dir)):
+                if fn.endswith(".json") and fn not in seen:
                     self.list.addItem(fn)
         except Exception:
             pass
@@ -74,12 +139,7 @@ class ConfigEditor(QtWidgets.QDialog):
             except Exception:
                 data = {}
         else:
-            path = os.path.join(self.repo_root, "config", name)
-            try:
-                with open(path, "r", encoding="utf-8") as fh:
-                    data = json.load(fh)
-            except Exception:
-                data = {}
+            data = self._load_config_data(name)
 
         self.table.setRowCount(0)
         if isinstance(data, dict):
@@ -140,7 +200,8 @@ class ConfigEditor(QtWidgets.QDialog):
             if is_env:
                 save_env_dict(self.repo_root, data)
             else:
-                path = os.path.join(self.repo_root, "config", name)
+                path = self._config_path_for(name)
+                os.makedirs(os.path.dirname(path), exist_ok=True)
                 with open(path, "w", encoding="utf-8") as fh:
                     json.dump(data, fh, indent=2, ensure_ascii=False)
             QtWidgets.QMessageBox.information(self, "Saved", f"Saved {name}")

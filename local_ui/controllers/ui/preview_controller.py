@@ -103,9 +103,10 @@ class PreviewControllerMixin:
         cfg = load_json_dict(cfg_path)
         self._rank_config = cfg
         try:
-            bg = cfg.get("BG_PATH")
-            if bg and (not self.rk_bg_path.text()):
-                self.rk_bg_path.setText(str(bg))
+            bg = str(cfg.get("BG_PATH", "") or "")
+            if not self.rk_bg_path.hasFocus():
+                self.rk_bg_path.setText(bg)
+            if bg and os.path.exists(bg):
                 try:
                     pix = QtGui.QPixmap(bg)
                     self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
@@ -125,12 +126,9 @@ class PreviewControllerMixin:
             self.rk_info_color.setText(str(cfg.get("INFO_COLOR", "#C8C8C8") or "#C8C8C8"))
             self.rk_text_x.setValue(int(cfg.get("TEXT_OFFSET_X", 0) or 0))
             self.rk_text_y.setValue(int(cfg.get("TEXT_OFFSET_Y", 0) or 0))
-            name = cfg.get("EXAMPLE_NAME")
-            if name and (not self.rk_name.text()):
-                try:
-                    self.rk_name.setText(str(name))
-                except Exception:
-                    pass
+            name = str(cfg.get("EXAMPLE_NAME", "") or "")
+            if not self.rk_name.hasFocus():
+                self.rk_name.setText(name)
         except Exception:
             pass
 
@@ -631,13 +629,12 @@ class PreviewControllerMixin:
                         self.pv_avatar_y.setValue(int(cfg.get("OFFSET_Y", 0) or 0))
 
                     welcome_msg = cfg.get("WELCOME_MESSAGE")
-                    if welcome_msg and not self.pv_message.hasFocus():
-                        cur_text = self.pv_message.toPlainText()
-                        if not cur_text or not cur_text.strip():
-                            try:
-                                self.pv_message.setPlainText(str(welcome_msg))
-                            except Exception:
-                                pass
+                    if not self.pv_message.hasFocus():
+                        msg_text = str(welcome_msg) if welcome_msg else ""
+                        try:
+                            self.pv_message.setPlainText(msg_text)
+                        except Exception:
+                            pass
                 finally:
                     self._preview_syncing = False
 

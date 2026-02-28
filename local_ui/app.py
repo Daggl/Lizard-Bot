@@ -286,6 +286,12 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
             self.update_preview()
         except Exception:
             pass
+        # Refresh the ConfigEditor file list for the new guild
+        try:
+            if hasattr(self, "cfg_editor") and self.cfg_editor is not None:
+                self.cfg_editor.refresh_list()
+        except Exception:
+            pass
         try:
             self._set_status(f"Loaded configs for guild {self._active_guild_id or 'global'}")
         except Exception:
