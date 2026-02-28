@@ -466,7 +466,6 @@ def _handle_purge_status(bot) -> dict:
 
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, bot):
-    peer = writer.get_extra_info("peername")
     try:
         data = await reader.readline()
         if not data:
@@ -793,11 +792,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         elif action == "purge_status":
             resp = _handle_purge_status(bot)
 
-        else:
-            resp = {"ok": False, "error": "unknown action"}
-
-        # Rank card preview: generate rank image for a dummy member using Rank cog
-        if action == "rank_preview":
+        elif action == "rank_preview":
             name = req.get("name") or getattr(getattr(bot, "user", None), "name", None) or "NewMember"
             avatar_url = req.get("avatar_url")
             try:
@@ -828,7 +823,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     if not avatar_url:
                         avatar_url = "https://httpbin.org/image/png"
 
-                    _DummyMember(123456789, name, avatar_url)
+                    dummy = _DummyMember(123456789, name, avatar_url)
                     bg_path = req.get("bg_path")
                     bg_mode = req.get("bg_mode")
                     bg_zoom = req.get("bg_zoom")
@@ -899,6 +894,9 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         resp = {"ok": True, "png_base64": b64}
             except Exception as e:
                 resp = {"ok": False, "error": str(e)}
+
+        else:
+            resp = {"ok": False, "error": "unknown action"}
 
         writer.write((json.dumps(resp) + "\n").encode())
         await writer.drain()

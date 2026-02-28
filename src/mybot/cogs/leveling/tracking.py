@@ -28,9 +28,15 @@ class Tracking(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def save_loop(self):
-        """Periodically save database for all guilds."""
+        """Periodically save database for all guilds and prune stale cooldowns."""
         for guild in self.bot.guilds:
             self.bot.db.save(guild_id=guild.id)
+
+        # Prune cooldowns older than 5 minutes to prevent memory leak
+        now = time.time()
+        stale = [k for k, v in self.cooldowns.items() if now - v > 300]
+        for k in stale:
+            del self.cooldowns[k]
 
     # ==========================================================
     # VOICE UPDATE LOOP (FIX)

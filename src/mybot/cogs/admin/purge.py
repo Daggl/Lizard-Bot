@@ -93,7 +93,7 @@ class Purge(commands.Cog):
                         await m.delete()
                         deleted += 1
                     except discord.NotFound:
-                        deleted += 1  # already gone
+                        pass  # already gone, don't count
                     except discord.HTTPException:
                         pass
                     await asyncio.sleep(0.35)
@@ -106,7 +106,7 @@ class Purge(commands.Cog):
                 await m.delete()
                 deleted += 1
             except discord.NotFound:
-                deleted += 1
+                pass  # already gone, don't count
             except discord.HTTPException:
                 pass
             # Rate limit: bot's own messages are a bit more lenient

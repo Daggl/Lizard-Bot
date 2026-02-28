@@ -24,25 +24,44 @@ def get_achievement_channel_id(guild_id: int | str | None = None) -> int:
         return 0
 
 
+def get_levelup_channel_id(guild_id: int | str | None = None) -> int:
+    """Return the level-up announcement channel.
+
+    Falls back to ``ACHIEVEMENT_CHANNEL_ID`` when ``LEVEL_UP_CHANNEL_ID``
+    is not explicitly configured.
+    """
+    cfg = _cfg(guild_id)
+    try:
+        val = cfg.get("LEVEL_UP_CHANNEL_ID")
+        if val is not None and val != "" and val != 0:
+            return int(val)
+    except Exception:
+        pass
+    return get_achievement_channel_id(guild_id)
+
+
 def get_xp_per_message(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg(guild_id).get("XP_PER_MESSAGE") or 0)
+        val = _cfg(guild_id).get("XP_PER_MESSAGE")
+        return int(val) if val is not None and val != "" else 15
     except Exception:
-        return 0
+        return 15
 
 
 def get_voice_xp_per_minute(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg(guild_id).get("VOICE_XP_PER_MINUTE") or 0)
+        val = _cfg(guild_id).get("VOICE_XP_PER_MINUTE")
+        return int(val) if val is not None and val != "" else 5
     except Exception:
-        return 0
+        return 5
 
 
 def get_message_cooldown(guild_id: int | str | None = None) -> int:
     try:
-        return int(_cfg(guild_id).get("MESSAGE_COOLDOWN") or 0)
+        val = _cfg(guild_id).get("MESSAGE_COOLDOWN")
+        return int(val) if val is not None and val != "" else 60
     except Exception:
-        return 0
+        return 60
 
 
 def get_level_base_xp(guild_id: int | str | None = None) -> int:

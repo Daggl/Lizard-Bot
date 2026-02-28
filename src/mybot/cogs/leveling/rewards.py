@@ -21,7 +21,10 @@ class Rewards(commands.Cog):
 
             role = discord.utils.get(member.guild.roles, name=role_name)
             if role:
-                await member.add_roles(role)
+                try:
+                    await member.add_roles(role)
+                except (discord.Forbidden, discord.HTTPException) as exc:
+                    print(f"[Rewards] Failed to assign role '{role_name}' to {member}: {exc}")
 
 
 async def setup(bot):

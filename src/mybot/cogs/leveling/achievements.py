@@ -68,52 +68,57 @@ class Achievements(commands.Cog):
                 })
 
         channel = self.bot.get_channel(get_achievement_channel_id(guild_id=guild_id))
+        if channel is None and getattr(getattr(member, 'guild', None), 'system_channel', None):
+            channel = member.guild.system_channel
         if channel and unlocked:
-            if len(unlocked) == 1:
-                item = unlocked[0]
-                image_value = str(item.get("image", "") or "").strip()
-                image_url = ""
-                image_file = None
+            try:
+                if len(unlocked) == 1:
+                    item = unlocked[0]
+                    image_value = str(item.get("image", "") or "").strip()
+                    image_url = ""
+                    image_file = None
 
-                if image_value:
-                    if image_value.lower().startswith(("http://", "https://")):
-                        image_url = image_value
-                    else:
-                        abs_path = image_value
-                        if not os.path.isabs(abs_path):
-                            abs_path = os.path.abspath(os.path.join(REPO_ROOT, image_value))
-                        if os.path.exists(abs_path) and os.path.isfile(abs_path):
-                            try:
-                                with Image.open(abs_path) as img:
-                                    fixed = ImageOps.exif_transpose(img).convert("RGB")
-                                    buf = io.BytesIO()
-                                    fixed.save(buf, format="PNG")
-                                    buf.seek(0)
-                                image_file = discord.File(buf, filename="achievement.png")
-                            except Exception:
-                                image_file = None
+                    if image_value:
+                        if image_value.lower().startswith(("http://", "https://")):
+                            image_url = image_value
+                        else:
+                            abs_path = image_value
+                            if not os.path.isabs(abs_path):
+                                abs_path = os.path.abspath(os.path.join(REPO_ROOT, image_value))
+                            if os.path.exists(abs_path) and os.path.isfile(abs_path):
+                                try:
+                                    with Image.open(abs_path) as img:
+                                        fixed = ImageOps.exif_transpose(img).convert("RGB")
+                                        buf = io.BytesIO()
+                                        fixed.save(buf, format="PNG")
+                                        buf.seek(0)
+                                    image_file = discord.File(buf, filename="achievement.png")
+                                except Exception:
+                                    image_file = None
 
-                if image_url or image_file is not None:
-                    embed = discord.Embed(description=item.get("message", ""), color=0xF1C40F)
-                    if image_url:
-                        embed.set_image(url=image_url)
-                        await channel.send(embed=embed)
+                    if image_url or image_file is not None:
+                        embed = discord.Embed(description=item.get("message", ""), color=0xF1C40F)
+                        if image_url:
+                            embed.set_image(url=image_url)
+                            await channel.send(embed=embed)
+                        else:
+                            embed.set_image(url="attachment://achievement.png")
+                            await channel.send(embed=embed, file=image_file)
                     else:
-                        embed.set_image(url="attachment://achievement.png")
-                        await channel.send(embed=embed, file=image_file)
+                        await channel.send(item.get("message", ""))
                 else:
-                    await channel.send(item.get("message", ""))
-            else:
-                names = "\n".join(f"• {item.get('name', '')}" for item in unlocked[:15])
-                extra = len(unlocked) - 15
-                if extra > 0:
-                    names += f"\n• +{extra} more"
-                summary = discord.Embed(
-                    title="🏆 Achievements unlocked",
-                    description=f"{member.mention} unlocked **{len(unlocked)}** achievements:\n\n{names}",
-                    color=0xF1C40F,
-                )
-                await channel.send(embed=summary)
+                    names = "\n".join(f"• {item.get('name', '')}" for item in unlocked[:15])
+                    extra = len(unlocked) - 15
+                    if extra > 0:
+                        names += f"\n• +{extra} more"
+                    summary = discord.Embed(
+                        title="🏆 Achievements unlocked",
+                        description=f"{member.mention} unlocked **{len(unlocked)}** achievements:\n\n{names}",
+                        color=0xF1C40F,
+                    )
+                    await channel.send(embed=summary)
+            except (discord.Forbidden, discord.HTTPException) as exc:
+                print(f"[Achievements] Failed to send achievement message: {exc}")
 
         db.save(guild_id=guild_id)
 

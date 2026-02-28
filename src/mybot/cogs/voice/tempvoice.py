@@ -662,7 +662,10 @@ class TempVoice(commands.Cog):
             await interaction.response.send_message(err, ephemeral=True)
             return
         try:
-            await channel.set_permissions(channel.guild.default_role, connect=not lock)
+            default_role = channel.guild.default_role
+            existing = channel.overwrites_for(default_role)
+            existing.connect = not lock
+            await channel.set_permissions(default_role, overwrite=existing)
             self._set_lock_hidden(channel.id, locked=lock)
             key = "tempvoice.msg.locked" if lock else "tempvoice.msg.unlocked"
             default = "✅ Locked." if lock else "✅ Unlocked."
@@ -691,7 +694,10 @@ class TempVoice(commands.Cog):
             await interaction.response.send_message(err, ephemeral=True)
             return
         try:
-            await channel.set_permissions(channel.guild.default_role, view_channel=not hide)
+            default_role = channel.guild.default_role
+            existing = channel.overwrites_for(default_role)
+            existing.view_channel = not hide
+            await channel.set_permissions(default_role, overwrite=existing)
             self._set_lock_hidden(channel.id, hidden=hide)
             key = "tempvoice.msg.hidden" if hide else "tempvoice.msg.unhidden"
             default = "✅ Hidden." if hide else "✅ Unhidden."

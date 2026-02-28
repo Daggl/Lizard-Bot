@@ -12,11 +12,13 @@ Quick navigation for operations, structure and configuration.
 
 ## Runtime Data
 
-- Configuration: `config/*.json`
+- Per-guild configuration: `config/guilds/{guild_id}/*.json`
+- Language settings: `data/language.json`
+- Per-guild user data: `data/guilds/{guild_id}/`
 - Runtime data: `data/`
 - Logs / tracing: `data/logs/`
 - Log database: `data/db/logs.db`
-- Poll data: `data/polls.json`
+- Poll data: `data/guilds/{guild_id}/polls_data.json`
 
 ## Runtime Architecture
 

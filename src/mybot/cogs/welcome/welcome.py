@@ -339,11 +339,11 @@ class Welcome(commands.Cog):
     async def on_member_join(self, member: discord.Member):
         guild_id = getattr(getattr(member, 'guild', None), 'id', None)
         cfg = _load_welcome_cfg(guild_id=guild_id)
-        verify_channel_id = cfg.get("VERIFY_CHANNEL_ID", 0)
-        welcome_channel_id = cfg.get("WELCOME_CHANNEL_ID", 0)
-        rules_channel_id = cfg.get("RULES_CHANNEL_ID", 0)
-        aboutme_channel_id = cfg.get("ABOUTME_CHANNEL_ID", 0)
-        role_id = cfg.get("ROLE_ID", 0)
+        verify_channel_id = int(cfg.get("VERIFY_CHANNEL_ID", 0) or 0)
+        welcome_channel_id = int(cfg.get("WELCOME_CHANNEL_ID", 0) or 0)
+        rules_channel_id = int(cfg.get("RULES_CHANNEL_ID", 0) or 0)
+        aboutme_channel_id = int(cfg.get("ABOUTME_CHANNEL_ID", 0) or 0)
+        role_id = int(cfg.get("ROLE_ID", 0) or 0)
         welcome_message: Optional[str] = cfg.get("WELCOME_MESSAGE")
 
         _debug(f"[DEBUG] Member join detected: {member}")

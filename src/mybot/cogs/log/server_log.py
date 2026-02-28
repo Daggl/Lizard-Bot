@@ -44,7 +44,7 @@ class ServerLog(commands.Cog):
 
     async def send(self, guild, embed):
 
-        channel_id = int(_cfg().get("CHANNEL_ID", 0) or 0)
+        channel_id = int(_cfg(guild_id=guild.id).get("CHANNEL_ID", 0) or 0)
         channel = guild.get_channel(channel_id)
 
         if channel:

@@ -10,13 +10,35 @@ import os
 import threading
 from typing import Any
 
-from .config import load_cog_config, write_cog_config
 from .paths import REPO_ROOT
 
 _LOCALES_DIR = os.path.join(REPO_ROOT, "data", "locales")
-_LANGUAGE_CONFIG_NAME = "language"
+_LANGUAGE_CONFIG_PATH = os.path.join(REPO_ROOT, "data", "language.json")
 _DEFAULT_LANGUAGE = "en"
 _LANGUAGE_LOCK = threading.RLock()
+
+
+def _load_language_config() -> dict:
+    """Load the global language config from ``data/language.json``."""
+    try:
+        if os.path.isfile(_LANGUAGE_CONFIG_PATH):
+            with open(_LANGUAGE_CONFIG_PATH, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+                return data if isinstance(data, dict) else {}
+    except Exception:
+        pass
+    return {}
+
+
+def _save_language_config(data: dict) -> bool:
+    """Persist the global language config to ``data/language.json``."""
+    try:
+        os.makedirs(os.path.dirname(_LANGUAGE_CONFIG_PATH), exist_ok=True)
+        with open(_LANGUAGE_CONFIG_PATH, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2, ensure_ascii=False)
+        return True
+    except Exception:
+        return False
 
 
 def _load_locale_file(path: str) -> dict[str, str]:
@@ -100,7 +122,7 @@ def reload_translations() -> None:
 
 def refresh_language_cache() -> None:
     """Sync the in-memory guild→language mapping from the config file."""
-    data = load_cog_config(_LANGUAGE_CONFIG_NAME) or {}
+    data = _load_language_config()
     default_raw = (
         data.get("DEFAULT_LANGUAGE")
         or data.get("default_language")
@@ -152,7 +174,7 @@ def set_language_for_guild(guild_id: int, language: str) -> None:
     if language_code not in available_languages():
         raise ValueError(f"Unsupported language code: {language_code}")
 
-    data = load_cog_config(_LANGUAGE_CONFIG_NAME) or {}
+    data = _load_language_config()
     guilds = data.get("GUILD_LANGUAGES") or data.get("guilds") or {}
     if not isinstance(guilds, dict):
         guilds = {}
@@ -160,7 +182,7 @@ def set_language_for_guild(guild_id: int, language: str) -> None:
     data["GUILD_LANGUAGES"] = guilds
     if "DEFAULT_LANGUAGE" not in data:
         data["DEFAULT_LANGUAGE"] = get_default_language()
-    write_cog_config(_LANGUAGE_CONFIG_NAME, data)
+    _save_language_config(data)
     refresh_language_cache()
 
 
@@ -169,9 +191,9 @@ def set_default_language(language: str) -> None:
     language_code = str(language or "").lower()
     if language_code not in available_languages():
         raise ValueError(f"Unsupported language code: {language_code}")
-    data = load_cog_config(_LANGUAGE_CONFIG_NAME) or {}
+    data = _load_language_config()
     data["DEFAULT_LANGUAGE"] = language_code
-    write_cog_config(_LANGUAGE_CONFIG_NAME, data)
+    _save_language_config(data)
     refresh_language_cache()
 
 

@@ -132,10 +132,25 @@ class PollView(discord.ui.View):
         return callback
 
     async def close_poll(self, interaction: discord.Interaction):
+        # Only the poll creator or an admin/moderator can close the poll
         polls = load_polls(self.guild_id)
         poll = polls.get(self.poll_id)
         if not poll:
             return
+
+        is_creator = str(interaction.user.id) == str(poll.get("creator_id", ""))
+        is_admin = getattr(interaction.user, "guild_permissions", None) and interaction.user.guild_permissions.manage_messages
+        if not is_creator and not is_admin:
+            await interaction.response.send_message(
+                translate_for_interaction(
+                    interaction,
+                    "poll.error.no_permission",
+                    default="❌ Only the poll creator or a moderator can close this poll.",
+                ),
+                ephemeral=True,
+            )
+            return
+
         poll["closed"] = True
         save_polls(self.guild_id, polls)
 
@@ -256,6 +271,12 @@ class Poll(commands.Cog):
                 )
             )
 
+        # Cap duration at 7 days (604800 seconds)
+        if duration < 10:
+            return await ctx.send("❌ Duration must be at least 10 seconds.")
+        if duration > 604800:
+            duration = 604800
+
         await ctx.send(
             translate_for_ctx(
                 ctx,
@@ -298,6 +319,7 @@ class Poll(commands.Cog):
             "votes": {},
             "closed": False,
             "guild_id": guild_id,
+            "creator_id": str(ctx.author.id),
         }
 
         save_polls(guild_id, polls)

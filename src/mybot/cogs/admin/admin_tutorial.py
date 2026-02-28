@@ -102,8 +102,8 @@ class AdminHelpView(discord.ui.View):
             name="🏆 Leveling & XP",
             value=(
                 "`/rankuser @user` ↳ Show rank card for target user\n"
-                "`/addxp @user <amount>` ↳ Add XP + trigger normal checks\n"
-                "`/removexp @user <amount>` ↳ Remove XP (not below 0)\n"
+                "`/addxp @user <amount>` ↳ Add XP (positive only) + trigger checks\n"
+                "`/removexp @user <amount>` ↳ Remove XP (positive amount, not below 0)\n"
                 "`/givexp @user <amount>` ↳ Direct admin XP utility\n"
                 "`/setxp @user <amount>` ↳ Set exact XP value\n"
                 "`/setlevel @user <level>` ↳ Set exact level\n"
@@ -129,6 +129,16 @@ class AdminHelpView(discord.ui.View):
                 "`/transcript <#channel>` ↳ Export transcript file\n"
                 "`/close_ticket <#channel>` ↳ Force close ticket\n"
                 "`/delete_poll <poll_id>` ↳ Delete poll from database"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="🧹 Purge",
+            value=(
+                "`/purge @user [hours]` ↳ Delete user messages in current channel\n"
+                "`/purgeall @user [hours]` ↳ Delete user messages in all channels\n"
+                "↳ Also available in the Local UI with live progress"
             ),
             inline=False,
         )
@@ -197,11 +207,11 @@ class AdminHelpView(discord.ui.View):
             name="Storage",
             value=(
                 "All logs are additionally saved to the SQLite database "
-                "``data/logs/logs.db`` for long-term storage.\n"
-                "You can query or export logs with the helper script "
-                "``tools/query_logs.py`` (recent, by-category, search, raw).\n"
+                "``data/db/logs.db`` for long-term storage.\n"
                 "Stored fields include type, user_id, channel_id,"
-                " message, extra and timestamp."
+                " message, extra and timestamp.\n"
+                "Log channels are configured **per guild** in the "
+                "UI or directly in ``config/guilds/{guild_id}/log_*.json``."
             ),
             inline=False,
         )

@@ -1,7 +1,6 @@
 """Birthday tracking cog — stores birthdays and posts daily announcements."""
 
 import datetime
-import os
 import re
 
 import discord
@@ -146,10 +145,13 @@ class Birthdays(commands.Cog):
             return
 
         birthdays = load_birthdays(guild_id)
-        birthdays[str(ctx.author.id)] = date
+        # Normalise to zero-padded DD.MM format for reliable matching
+        day, month = date.split(".")
+        normalised = f"{int(day):02d}.{int(month):02d}"
+        birthdays[str(ctx.author.id)] = normalised
         save_birthdays(guild_id, birthdays)
 
-        await ctx.send(translate("birthdays.msg.saved", guild_id=guild_id, date=date))
+        await ctx.send(translate("birthdays.msg.saved", guild_id=guild_id, date=normalised))
 
     @tasks.loop(hours=24)
     async def check_birthdays(self):

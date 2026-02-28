@@ -4,7 +4,7 @@ Native desktop UI (PySide6) for controlling the bot over local JSON-over-TCP API
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.12+
 - Dependencies from [requirements.txt](requirements.txt)
 - Bot started with `LOCAL_UI_ENABLE=1`
 
@@ -32,6 +32,7 @@ $env:CONTROL_API_TOKEN='your-token'
 - Rank preview and config save
 - Live log tailing (file + sqlite mode)
 - Birthday message editing and save flow
+- Purge UI: delete user messages across channels with live progress
 
 ## Modules
 

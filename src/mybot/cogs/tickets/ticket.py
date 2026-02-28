@@ -225,7 +225,7 @@ class TicketCog(commands.Cog):
         )
 
     def _support_role(self, guild: discord.Guild) -> Optional[discord.Role]:
-        support_role_id = _cfg_opt_int("SUPPORT_ROLE_ID")
+        support_role_id = _cfg_opt_int("SUPPORT_ROLE_ID", guild_id=guild.id)
         if support_role_id:
             return guild.get_role(support_role_id)
         for role in guild.roles:
@@ -240,7 +240,7 @@ class TicketCog(commands.Cog):
     async def _ticket_category(
         self, guild: discord.Guild
     ) -> Optional[discord.CategoryChannel]:
-        ticket_category_id = _cfg_opt_int("TICKET_CATEGORY_ID")
+        ticket_category_id = _cfg_opt_int("TICKET_CATEGORY_ID", guild_id=guild.id)
         # If a category ID is configured, try to resolve it. Accept either a
         # category ID or a channel ID (channel's parent category will be used).
         if ticket_category_id:
@@ -477,7 +477,7 @@ class TicketCog(commands.Cog):
         except Exception:
             pass
 
-        ticket_log_channel_id = _cfg_opt_int("TICKET_LOG_CHANNEL_ID")
+        ticket_log_channel_id = _cfg_opt_int("TICKET_LOG_CHANNEL_ID", guild_id=guild.id if guild else None)
         if ticket_log_channel_id:
             ch = guild.get_channel(ticket_log_channel_id)
             if ch:

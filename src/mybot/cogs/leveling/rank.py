@@ -301,12 +301,14 @@ def render_rankcard(
     level_text = translate("rank.card.level", guild_id=guild_id, level=level, default=f"Level {level}")
     draw.text((level_x, level_y), level_text, font=font_level, fill=color_level)
 
+    # Sanitise XP values before using them in text or progress bar
+    xp = _to_int(xp, 0)
+    xp_needed = _to_int(xp_needed, 0)
+
     xp_text = translate("rank.card.xp_progress", guild_id=guild_id, current=xp, needed=xp_needed, default=f"{xp}/{xp_needed} XP")
     draw.text((xp_x, xp_y), xp_text, font=font_xp, fill=color_xp)
 
     # Progress bar
-    xp = _to_int(xp, 0)
-    xp_needed = _to_int(xp_needed, 0)
     progress = 0 if xp_needed <= 0 else max(0.0, min(1.0, xp / xp_needed))
     draw.rectangle((bar_x, bar_y, bar_x + bar_width, bar_y + bar_height), fill=color_bar_bg)
     draw.rectangle((bar_x, bar_y, bar_x + int(bar_width * progress), bar_y + bar_height), fill=color_bar_fill)
@@ -500,6 +502,9 @@ class Rank(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def addxp(self, ctx, member: discord.Member, amount: int):
+        if amount <= 0:
+            await ctx.send("❌ Amount must be positive.")
+            return
         levels = self.bot.get_cog("Levels")
         if levels:
             await levels.add_xp(member, amount)
@@ -520,6 +525,9 @@ class Rank(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def removexp(self, ctx, member: discord.Member, amount: int):
+        if amount <= 0:
+            await ctx.send("❌ Amount must be positive.")
+            return
         guild_id = getattr(getattr(ctx, "guild", None), "id", None)
         user = self.bot.db.get_user(member.id, guild_id=guild_id)
         user["xp"] = max(0, user["xp"] - amount)

@@ -305,8 +305,11 @@ class Music(commands.Cog, name="music"):
     async def _play_next(self, guild_id: int):
         async with self.players_lock:
             queue = self.queues.get(guild_id, [])
+            guild = self.bot.get_guild(guild_id)
+            if not guild:
+                return
             if not queue:
-                vc = self.bot.get_guild(guild_id).voice_client
+                vc = guild.voice_client
                 if vc and vc.is_connected():
                     await vc.disconnect()
                 self.now_playing[guild_id] = None
@@ -315,7 +318,7 @@ class Music(commands.Cog, name="music"):
             track = queue.pop(0)
             self.now_playing[guild_id] = track
 
-            vc = self.bot.get_guild(guild_id).voice_client
+            vc = guild.voice_client
             if not vc or not vc.is_connected():
                 return
 

@@ -7,7 +7,8 @@ from discord.ext import commands
 
 from .utils.database import Database
 from .utils.level_config import (get_achievement_channel_id, get_level_base_xp,
-                                 get_level_xp_step, get_message_templates)
+                                 get_level_xp_step, get_levelup_channel_id,
+                                 get_message_templates)
 
 log = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class Levels(commands.Cog):
 
     async def _resolve_levelup_channel(self, member: discord.Member):
         guild = getattr(member, "guild", None)
-        channel_id = get_achievement_channel_id(guild_id=getattr(guild, 'id', None))
+        channel_id = get_levelup_channel_id(guild_id=getattr(guild, 'id', None))
 
         channel = None
         if channel_id > 0:

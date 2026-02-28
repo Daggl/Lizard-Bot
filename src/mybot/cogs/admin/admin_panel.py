@@ -6,8 +6,14 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ..leveling.utils.level_config import (get_achievement_channel_id,
-                                           get_achievements, get_level_rewards)
+try:
+    from ..leveling.utils.level_config import (get_achievement_channel_id,
+                                               get_achievements, get_level_rewards)
+except Exception:
+    # Graceful fallback if leveling cog is not installed
+    def get_achievement_channel_id(guild_id=None): return 0
+    def get_achievements(guild_id=None): return {}
+    def get_level_rewards(guild_id=None): return {}
 
 
 def _format_uptime(seconds: int) -> str:

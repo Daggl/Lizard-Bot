@@ -10,9 +10,11 @@ Short rules to keep the repository clean and consistent.
 
 ## Configuration & Data
 
-- Persistent bot settings live in `config/*.json`.
+- Per-guild bot settings live in `config/guilds/{guild_id}/*.json`.
+- Global language settings are stored in `data/language.json`.
 - Runtime backups (`*.bak.*`) should not be committed.
 - Use consistent file names in `data/` (lowercase, e.g. `polls.json`).
+- Per-guild user data is stored in `data/guilds/{guild_id}/` (e.g. `levels_data.json`).
 
 ## Logging
 

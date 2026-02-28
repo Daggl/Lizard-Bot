@@ -59,6 +59,9 @@ def load_cog_config(name: str, guild_id: str | int | None = None) -> dict:
 def clear_cog_config_cache(name: str = None) -> None:
     """Clear cached config for `name` or all caches if name is None.
 
+    Cache keys are stored as ``"{guild_id}:{name}"`` so when a bare
+    *name* is given we remove every key that ends with ``:{name}``.
+
     This is useful when config files are edited at runtime and the bot
     should pick up new values without a full restart.
     """
@@ -68,8 +71,11 @@ def clear_cog_config_cache(name: str = None) -> None:
         _CACHE.clear()
         _CACHE_MTIME.clear()
     else:
-        _CACHE.pop(name, None)
-        _CACHE_MTIME.pop(name, None)
+        suffix = f":{name}"
+        keys_to_remove = [k for k in _CACHE if k == name or k.endswith(suffix)]
+        for k in keys_to_remove:
+            _CACHE.pop(k, None)
+            _CACHE_MTIME.pop(k, None)
 
 
 def get_cached_configs() -> dict:
