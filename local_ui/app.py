@@ -258,6 +258,11 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
             self._load_ui_settings()
         except Exception:
             pass
+        # Load welcome preview once at startup (before language overview)
+        try:
+            self.update_preview()
+        except Exception:
+            pass
         try:
             self.request_language_overview()
         except Exception:
@@ -269,22 +274,28 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
     def _reload_guild_configs(self):
         """Reload all guild-scoped configs and previews for the active guild."""
         gid = self._active_guild_id
+        print(f"[guild-reload] START guild={gid!r}")
+        import os as _os
         try:
             self._load_rank_config()
+            print(f"[guild-reload] _load_rank_config OK (rank keys={len(getattr(self, '_rank_config', {}))})") 
         except Exception as exc:
             print(f"[guild-reload] _load_rank_config failed (guild={gid}): {exc}")
         try:
             self._load_leveling_config()
+            print(f"[guild-reload] _load_leveling_config OK")
         except Exception as exc:
             print(f"[guild-reload] _load_leveling_config failed (guild={gid}): {exc}")
         try:
             self._load_birthdays_config()
+            print(f"[guild-reload] _load_birthdays_config OK")
         except Exception as exc:
             print(f"[guild-reload] _load_birthdays_config failed (guild={gid}): {exc}")
         try:
             self._preview_dirty = False
             self._preview_banner_data_url = None
             self.update_preview()
+            print(f"[guild-reload] update_preview OK")
         except Exception as exc:
             print(f"[guild-reload] update_preview failed (guild={gid}): {exc}")
         # Refresh the ConfigEditor file list for the new guild
@@ -298,10 +309,23 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
             self._open_log()
         except Exception:
             pass
+        # Build a helpful status message
         try:
-            self._set_status(f"Loaded configs for guild {gid or 'global'}")
+            parts = []
+            for fname in ("welcome.json", "rank.json", "leveling.json", "birthdays.json"):
+                if gid:
+                    guild_path = _os.path.join(self._repo_root, "config", "guilds", str(gid), fname)
+                    if _os.path.isfile(guild_path):
+                        parts.append(f"{fname}=guild")
+                    else:
+                        parts.append(f"{fname}=global")
+                else:
+                    parts.append(f"{fname}=global")
+            source_info = ", ".join(parts)
+            self._set_status(f"Guild {gid or 'global'}: {source_info}")
         except Exception:
             pass
+        print(f"[guild-reload] END guild={gid!r}")
 
     # ------------------------------------------------------------------
     # Init helpers (called once during __init__, not per guild switch)

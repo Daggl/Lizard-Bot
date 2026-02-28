@@ -295,6 +295,7 @@ class DashboardControllerMixin:
         guild_id = self._selected_language_guild_id()
         # Normalise: empty string → None so config_json_path never gets guild_id=""
         self._active_guild_id = guild_id if guild_id else None
+        print(f"[guild-switch] on_language_guild_changed: raw={guild_id!r} active={self._active_guild_id!r}")
         self._populate_language_combo()
         if hasattr(self, "_reload_guild_configs"):
             self._reload_guild_configs()

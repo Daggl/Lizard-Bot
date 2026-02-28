@@ -113,6 +113,7 @@ class PreviewControllerMixin:
         gid = getattr(self, '_active_guild_id', None)
         cfg = load_guild_config(self._repo_root, "rank.json", guild_id=gid)
         self._rank_config = cfg
+        print(f"[rank-load] guild={gid!r} keys={len(cfg)} BG_PATH={cfg.get('BG_PATH', '')!r}")
         try:
             bg = str(cfg.get("BG_PATH", "") or "")
             if not self.rk_bg_path.hasFocus():
@@ -566,6 +567,7 @@ class PreviewControllerMixin:
         try:
             repo_root = self._repo_root
             cfg_path = self._welcome_config_path_existing()
+            print(f"[update_preview] cfg_path={cfg_path!r} exists={os.path.exists(cfg_path)} guild={getattr(self, '_active_guild_id', None)!r}")
             if not os.path.exists(cfg_path):
                 try:
                     self.status_label.setText(f"No welcome config found ({cfg_path})")
