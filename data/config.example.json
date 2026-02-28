@@ -80,9 +80,7 @@
   },
   "count": {
     "COUNT_CHANNEL_ID": 0,
-    "MIN_COUNT_FOR_RECORD": 0,
-    "DATA_FOLDER": "data",
-    "DATA_FILE": "count.json"
+    "MIN_COUNT_FOR_RECORD": 0
   },
   "birthdays": {
     "CHANNEL_ID": 0,
@@ -116,5 +114,17 @@
     "safe_read_only": false,
     "safe_debug_logging": false,
     "safe_auto_reload_off": false
-  }
+  },
+  "birthdays_data": {},
+  "birthdays_sent": {},
+  "count_data": {
+    "current": 0,
+    "last_user": null,
+    "record": 0,
+    "record_holder": null,
+    "total_counts": {},
+    "fails": 0
+  },
+  "levels_data": {},
+  "polls_data": {}
 }

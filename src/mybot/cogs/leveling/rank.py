@@ -139,8 +139,9 @@ class Rank(commands.Cog):
         """User rank card."""
 
         member = member or ctx.author
+        guild_id = getattr(getattr(ctx, 'guild', None), 'id', None)
 
-        user = self.bot.db.get_user(member.id)
+        user = self.bot.db.get_user(member.id, guild_id=guild_id)
         achievements = user.get("achievements", [])
 
         file = await self.generate_rankcard(member)
@@ -183,8 +184,9 @@ class Rank(commands.Cog):
         text_offset_x: int = None,
         text_offset_y: int = None,
     ):
+        guild_id = getattr(getattr(member, 'guild', None), 'id', None)
 
-        user = self.bot.db.get_user(member.id)
+        user = self.bot.db.get_user(member.id, guild_id=guild_id)
 
         level = user["level"]
         xp = user["xp"]
@@ -362,14 +364,13 @@ class Rank(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def removexp(self, ctx, member: discord.Member, amount: int):
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
 
-        user = self.bot.db.get_user(member.id)
+        user = self.bot.db.get_user(member.id, guild_id=guild_id)
 
         user["xp"] = max(0, user["xp"] - amount)
 
-        self.bot.db.save()
-
-        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        self.bot.db.save(guild_id=guild_id)
         await ctx.send(
             translate(
                 "rank.msg.removexp",
@@ -383,8 +384,9 @@ class Rank(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def reset(self, ctx, member: discord.Member):
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
 
-        user = self.bot.db.get_user(member.id)
+        user = self.bot.db.get_user(member.id, guild_id=guild_id)
 
         user["xp"] = 0
         user["level"] = 1
@@ -392,9 +394,7 @@ class Rank(commands.Cog):
         user["voice_time"] = 0
         user["achievements"] = []
 
-        self.bot.db.save()
-
-        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        self.bot.db.save(guild_id=guild_id)
         await ctx.send(translate("rank.msg.reset", guild_id=guild_id))
 
 

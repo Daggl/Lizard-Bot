@@ -10,10 +10,11 @@ class Rewards(commands.Cog):
         self.bot = bot
 
     async def check_rewards(self, member):
+        guild_id = getattr(getattr(member, 'guild', None), 'id', None)
 
-        user = self.bot.db.get_user(member.id)
+        user = self.bot.db.get_user(member.id, guild_id=guild_id)
         level = user["level"]
-        level_rewards = get_level_rewards(guild_id=getattr(getattr(member, 'guild', None), 'id', None))
+        level_rewards = get_level_rewards(guild_id=guild_id)
 
         if level in level_rewards:
             role_name = level_rewards[level]

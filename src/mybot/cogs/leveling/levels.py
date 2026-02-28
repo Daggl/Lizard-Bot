@@ -80,8 +80,9 @@ class Levels(commands.Cog):
     # ==================================================
 
     async def add_xp(self, member, amount: int):
+        guild_id = getattr(getattr(member, "guild", None), "id", None)
 
-        user = self.db.get_user(member.id)
+        user = self.db.get_user(member.id, guild_id=guild_id)
 
         user["xp"] += int(amount)
 
@@ -106,7 +107,6 @@ class Levels(commands.Cog):
 
             if channel:
                 try:
-                    guild_id = getattr(getattr(member, "guild", None), "id", None)
                     level_up_tpl, _achievement_tpl, win_emoji, heart_emoji = get_message_templates(guild_id)
                     template_raw = str(level_up_tpl)
                     includes_win = ("{emoji_win}" in template_raw) or ("{leading_emoji}" in template_raw)
@@ -161,7 +161,7 @@ class Levels(commands.Cog):
         # SAVE
         # ==================================================
 
-        self.db.save()
+        self.db.save(guild_id=guild_id)
 
 
 # ======================================================

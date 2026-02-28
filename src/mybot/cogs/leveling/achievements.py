@@ -18,11 +18,12 @@ class Achievements(commands.Cog):
         self.bot = bot
 
     async def check_achievements(self, member):
+        guild_id = getattr(getattr(member, 'guild', None), 'id', None)
 
         db = self.bot.db
-        user = db.get_user(member.id)
+        user = db.get_user(member.id, guild_id=guild_id)
 
-        for name, entry in get_achievement_entries(guild_id=getattr(getattr(member, 'guild', None), 'id', None)).items():
+        for name, entry in get_achievement_entries(guild_id=guild_id).items():
             req = dict((entry or {}).get("requirements") or {})
             image_value = str((entry or {}).get("image", "") or "").strip()
 
@@ -39,10 +40,9 @@ class Achievements(commands.Cog):
             if valid:
                 user["achievements"].append(name)
 
-                channel = self.bot.get_channel(get_achievement_channel_id(guild_id=getattr(getattr(member, 'guild', None), 'id', None)))
+                channel = self.bot.get_channel(get_achievement_channel_id(guild_id=guild_id))
                 if channel:
                     try:
-                        guild_id = getattr(getattr(member, "guild", None), "id", None)
                         _, achievement_tpl, _win_emoji, _heart_emoji = get_message_templates(guild_id)
                         msg = str(achievement_tpl).format(
                             member_mention=member.mention,
@@ -81,7 +81,7 @@ class Achievements(commands.Cog):
                     else:
                         await channel.send(msg)
 
-        db.save()
+        db.save(guild_id=guild_id)
 
 
 async def setup(bot):

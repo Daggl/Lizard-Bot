@@ -46,6 +46,22 @@ DB_DIR = os.path.join(DATA_DIR, "db")
 TICKETS_DIR = os.path.join(DATA_DIR, "tickets")
 TICKET_TRANSCRIPTS = os.path.join(TICKETS_DIR, "transcripts")
 LOGS_DIR = os.path.join(DATA_DIR, "logs")
+CONFIG_DIR = os.path.join(REPO_ROOT, "config")
+GUILDS_DIR = os.path.join(CONFIG_DIR, "guilds")
+
+
+def guild_data_path(guild_id: int | str | None, filename: str) -> str:
+    """Return the path to a guild-specific data file in config/guilds/{guild_id}/{filename}.
+    
+    If guild_id is None, returns empty string (no global fallback).
+    Creates the guild directory if it doesn't exist.
+    """
+    if guild_id is None:
+        return ""
+    gid = str(guild_id)
+    guild_dir = os.path.join(GUILDS_DIR, gid)
+    os.makedirs(guild_dir, exist_ok=True)
+    return os.path.join(guild_dir, filename)
 
 
 def repo_path(*parts: str) -> str:

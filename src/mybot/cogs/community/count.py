@@ -1,7 +1,5 @@
 """Counting game cog — tracks sequential counting in a dedicated channel."""
 
-import os
-
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -9,6 +7,7 @@ from discord.ext import commands
 from mybot.utils.config import load_cog_config
 from mybot.utils.i18n import translate
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
+from mybot.utils.paths import guild_data_path
 
 
 def _cfg(guild_id: int | str | None = None) -> dict:
@@ -33,15 +32,7 @@ def _min_count_for_record(guild_id: int | str | None = None) -> int:
         return 150
 
 
-def _data_paths(guild_id: int | str | None = None) -> tuple[str, str]:
-    cfg = _cfg(guild_id)
-    folder = str(cfg.get("DATA_FOLDER", "data") or "data")
-    file_name = str(cfg.get("DATA_FILE", "count.json") or "count.json")
-    return folder, os.path.join(folder, file_name)
-
-
 def default_data():
-
     return {
         "current": 0,
         "last_user": None,
@@ -52,20 +43,17 @@ def default_data():
     }
 
 
-def load():
-    data_folder, data_file = _data_paths()
-
-    if not os.path.exists(data_folder):
-        os.makedirs(data_folder)
-
-    if not os.path.exists(data_file):
-        save(default_data())
-    return safe_load_json(data_file, default=default_data())
+def load(guild_id: int | str | None = None) -> dict:
+    path = guild_data_path(guild_id, "count_data.json")
+    if not path:
+        return default_data()
+    return safe_load_json(path, default=default_data())
 
 
-def save(data):
-    _, data_file = _data_paths()
-    safe_save_json(data_file, data)
+def save(guild_id: int | str | None, data: dict):
+    path = guild_data_path(guild_id, "count_data.json")
+    if path:
+        safe_save_json(path, data)
 
 
 class Count(commands.Cog):
@@ -80,11 +68,15 @@ class Count(commands.Cog):
         if message.author.bot:
             return
 
-        count_channel_id = _count_channel_id()
+        guild_id = getattr(getattr(message, "guild", None), "id", None)
+        if guild_id is None:
+            return
+
+        count_channel_id = _count_channel_id(guild_id)
         if count_channel_id and message.channel.id != count_channel_id:
             return
 
-        data = load()
+        data = load(guild_id)
 
         try:
 
@@ -100,8 +92,6 @@ class Count(commands.Cog):
             await message.add_reaction("❌")
 
             return
-
-        guild_id = getattr(getattr(message, "guild", None), "id", None)
 
         if number != expected:
 
@@ -122,7 +112,7 @@ class Count(commands.Cog):
 
             data["fails"] += 1
 
-            save(data)
+            save(guild_id, data)
 
             return
 
@@ -139,7 +129,7 @@ class Count(commands.Cog):
 
         data["total_counts"][user] += 1
 
-        min_count_for_record = _min_count_for_record()
+        min_count_for_record = _min_count_for_record(guild_id)
         if number > data["record"] and number >= min_count_for_record:
 
             data["record"] = number
@@ -155,14 +145,13 @@ class Count(commands.Cog):
                 )
             )
 
-        save(data)
+        save(guild_id, data)
 
     @commands.hybrid_command(description="Countstats command.")
     async def countstats(self, ctx):
 
-        data = load()
-
         guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        data = load(guild_id)
 
         embed = discord.Embed(title=translate("count.embed.stats.title", guild_id=guild_id), color=discord.Color.blue())
 
@@ -177,13 +166,12 @@ class Count(commands.Cog):
     @commands.hybrid_command(description="Counttop command.")
     async def counttop(self, ctx):
 
-        data = load()
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        data = load(guild_id)
 
         sorted_users = sorted(
             data["total_counts"].items(), key=lambda x: x[1], reverse=True
         )[:10]
-
-        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
 
         embed = discord.Embed(title=translate("count.embed.top.title", guild_id=guild_id), color=discord.Color.gold())
 
@@ -206,9 +194,9 @@ class Count(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def countreset(self, ctx):
 
-        save(default_data())
-
         guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        save(guild_id, default_data())
+
         await ctx.send(translate("count.msg.reset", guild_id=guild_id))
 
 

@@ -12,10 +12,10 @@ class Tracking(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-        # cooldowns for message xp
+        # cooldowns for message xp: (user_id, guild_id) -> timestamp
         self.cooldowns = {}
 
-        # voice join timestamps
+        # voice join timestamps: (user_id, guild_id) -> timestamp
         self.voice_times = {}
 
         # start loops
@@ -28,8 +28,9 @@ class Tracking(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def save_loop(self):
-        """Periodically save database."""
-        self.bot.db.save()
+        """Periodically save database for all guilds."""
+        for guild in self.bot.guilds:
+            self.bot.db.save(guild_id=guild.id)
 
     # ==========================================================
     # VOICE UPDATE LOOP (FIX)
@@ -41,39 +42,33 @@ class Tracking(commands.Cog):
 
         now = time.time()
 
-        for user_id in list(self.voice_times.keys()):
+        for (user_id, guild_id) in list(self.voice_times.keys()):
 
-            joined = self.voice_times[user_id]
+            joined = self.voice_times[(user_id, guild_id)]
 
             seconds = int(now - joined)
 
             if seconds <= 0:
                 continue
 
-            user = self.bot.db.get_user(user_id)
+            user = self.bot.db.get_user(user_id, guild_id=guild_id)
 
             user["voice_time"] += seconds
 
-            xp = int((seconds / 60) * get_voice_xp_per_minute())
+            xp = int((seconds / 60) * get_voice_xp_per_minute(guild_id=guild_id))
 
             levels = self.bot.get_cog("Levels")
 
             if levels and xp > 0:
 
-                member = None
-
-                for guild in self.bot.guilds:
-
-                    member = guild.get_member(user_id)
-
-                    if member:
-                        break
+                guild = self.bot.get_guild(guild_id)
+                member = guild.get_member(user_id) if guild else None
 
                 if member:
                     await levels.add_xp(member, xp)
 
             # reset timer
-            self.voice_times[user_id] = now
+            self.voice_times[(user_id, guild_id)] = now
 
     # ==========================================================
     # READY EVENT
@@ -93,7 +88,7 @@ class Tracking(commands.Cog):
 
                     if not member.bot:
 
-                        self.voice_times[member.id] = now
+                        self.voice_times[(member.id, guild.id)] = now
 
         print("[TRACKING] Voice timers restored")
 
@@ -107,27 +102,32 @@ class Tracking(commands.Cog):
         if message.author.bot:
             return
 
+        guild_id = getattr(getattr(message, 'guild', None), 'id', None)
+        if guild_id is None:
+            return
+
         user_id = message.author.id
         now = time.time()
 
-        if user_id in self.cooldowns:
+        cooldown_key = (user_id, guild_id)
+        if cooldown_key in self.cooldowns:
 
-            elapsed = now - self.cooldowns[user_id]
+            elapsed = now - self.cooldowns[cooldown_key]
 
-            if elapsed < get_message_cooldown(guild_id=getattr(getattr(message, 'guild', None), 'id', None)):
+            if elapsed < get_message_cooldown(guild_id=guild_id):
                 return
 
-        self.cooldowns[user_id] = now
+        self.cooldowns[cooldown_key] = now
 
         db = self.bot.db
-        user = db.get_user(user_id)
+        user = db.get_user(user_id, guild_id=guild_id)
 
         user["messages"] += 1
 
         levels = self.bot.get_cog("Levels")
 
         if levels:
-            await levels.add_xp(message.author, get_xp_per_message(guild_id=getattr(getattr(message, 'guild', None), 'id', None)))
+            await levels.add_xp(message.author, get_xp_per_message(guild_id=guild_id))
 
         achievements = self.bot.get_cog("Achievements")
 
@@ -145,46 +145,49 @@ class Tracking(commands.Cog):
             return
 
         db = self.bot.db
+        guild_id = member.guild.id
 
         before_channel = before.channel
         after_channel = after.channel
 
+        voice_key = (member.id, guild_id)
+
         # LEFT VOICE
         if before_channel and not after_channel:
 
-            if member.id in self.voice_times:
+            if voice_key in self.voice_times:
 
-                joined = self.voice_times.pop(member.id)
+                joined = self.voice_times.pop(voice_key)
 
                 seconds = int(time.time() - joined)
 
                 if seconds > 0:
 
-                    user = db.get_user(member.id)
+                    user = db.get_user(member.id, guild_id=guild_id)
 
                     user["voice_time"] += seconds
 
         # JOINED VOICE
         elif after_channel and not before_channel:
 
-            self.voice_times[member.id] = time.time()
+            self.voice_times[voice_key] = time.time()
 
         # SWITCHED CHANNEL
         elif before_channel != after_channel:
 
-            if member.id in self.voice_times:
+            if voice_key in self.voice_times:
 
-                joined = self.voice_times.pop(member.id)
+                joined = self.voice_times.pop(voice_key)
 
                 seconds = int(time.time() - joined)
 
                 if seconds > 0:
 
-                    user = db.get_user(member.id)
+                    user = db.get_user(member.id, guild_id=guild_id)
 
                     user["voice_time"] += seconds
 
-            self.voice_times[member.id] = time.time()
+            self.voice_times[voice_key] = time.time()
 
     # ==========================================================
 

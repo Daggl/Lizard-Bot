@@ -14,30 +14,56 @@ except Exception:  # pragma: no cover - fallback for relative imports during pac
     from src.mybot.utils.i18n import translate, translate_for_ctx, translate_for_interaction
 
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
-
-DATA_FOLDER = "data"
-DATA_FILE = os.path.join(DATA_FOLDER, "polls.json")
+from mybot.utils.paths import guild_data_path, GUILDS_DIR
 
 
-def load_polls():
-    return safe_load_json(DATA_FILE, default={})
+def load_polls(guild_id: int | str | None = None) -> dict:
+    path = guild_data_path(guild_id, "polls_data.json")
+    if not path:
+        return {}
+    return safe_load_json(path, default={})
 
 
-def save_polls(data):
-    safe_save_json(DATA_FILE, data)
+def save_polls(guild_id: int | str | None, data: dict):
+    path = guild_data_path(guild_id, "polls_data.json")
+    if path:
+        safe_save_json(path, data)
+
+
+def load_all_polls() -> dict:
+    """Load all polls from all guild directories for view restoration."""
+    all_polls = {}
+    if not os.path.exists(GUILDS_DIR):
+        return all_polls
+    for guild_dir in os.listdir(GUILDS_DIR):
+        guild_path = os.path.join(GUILDS_DIR, guild_dir)
+        if not os.path.isdir(guild_path):
+            continue
+        polls_file = os.path.join(guild_path, "polls_data.json")
+        if os.path.exists(polls_file):
+            guild_polls = safe_load_json(polls_file, default={})
+            all_polls.update(guild_polls)
+    return all_polls
 
 
 class PollView(discord.ui.View):
-    def __init__(self, poll_id):
+    def __init__(self, poll_id, guild_id=None):
         super().__init__(timeout=None)
         self.poll_id = poll_id
-        poll = load_polls().get(self.poll_id, {})
-        self.guild_id = poll.get("guild_id")
+        # Try to get guild_id from the poll data if not provided
+        if guild_id is None:
+            all_polls = load_all_polls()
+            poll = all_polls.get(self.poll_id, {})
+            self.guild_id = poll.get("guild_id")
+        else:
+            self.guild_id = guild_id
         self.add_buttons()
 
     def add_buttons(self):
-        polls = load_polls()
-        poll = polls[self.poll_id]
+        polls = load_polls(self.guild_id)
+        poll = polls.get(self.poll_id, {})
+        if not poll:
+            return
 
         for index, option in enumerate(poll["options"]):
             button = discord.ui.Button(
@@ -62,8 +88,10 @@ class PollView(discord.ui.View):
 
     def vote_callback(self, index):
         async def callback(interaction: discord.Interaction):
-            polls = load_polls()
-            poll = polls[self.poll_id]
+            polls = load_polls(self.guild_id)
+            poll = polls.get(self.poll_id)
+            if not poll:
+                return
             user_id = str(interaction.user.id)
 
             if poll["closed"]:
@@ -89,7 +117,7 @@ class PollView(discord.ui.View):
                 return
 
             poll["votes"][user_id] = index
-            save_polls(polls)
+            save_polls(self.guild_id, polls)
 
             await interaction.response.send_message(
                 translate_for_interaction(
@@ -104,10 +132,12 @@ class PollView(discord.ui.View):
         return callback
 
     async def close_poll(self, interaction: discord.Interaction):
-        polls = load_polls()
-        poll = polls[self.poll_id]
+        polls = load_polls(self.guild_id)
+        poll = polls.get(self.poll_id)
+        if not poll:
+            return
         poll["closed"] = True
-        save_polls(polls)
+        save_polls(self.guild_id, polls)
 
         await interaction.response.send_message(
             translate_for_interaction(
@@ -120,8 +150,10 @@ class PollView(discord.ui.View):
         await self.update_message(interaction.message)
 
     async def update_message(self, message):
-        polls = load_polls()
-        poll = polls[self.poll_id]
+        polls = load_polls(self.guild_id)
+        poll = polls.get(self.poll_id)
+        if not poll:
+            return
 
         total_votes = len(poll["votes"])
         results = [0] * len(poll["options"])
@@ -253,18 +285,22 @@ class Poll(commands.Cog):
                 )
             )
 
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        if guild_id is None:
+            return await ctx.send("❌ This command must be used in a server.")
+
         poll_id = str(uuid.uuid4())
-        polls = load_polls()
+        polls = load_polls(guild_id)
 
         polls[poll_id] = {
             "question": question,
             "options": options,
             "votes": {},
             "closed": False,
-            "guild_id": getattr(getattr(ctx, "guild", None), "id", None),
+            "guild_id": guild_id,
         }
 
-        save_polls(polls)
+        save_polls(guild_id, polls)
 
         embed = discord.Embed(
             title=translate_for_ctx(
@@ -281,22 +317,23 @@ class Poll(commands.Cog):
             color=discord.Color.green(),
         )
 
-        view = PollView(poll_id)
+        view = PollView(poll_id, guild_id)
         message = await ctx.send(embed=embed, view=view)
 
         await asyncio.sleep(duration)
 
-        polls = load_polls()
-        if not polls[poll_id]["closed"]:
+        polls = load_polls(guild_id)
+        if poll_id in polls and not polls[poll_id]["closed"]:
             polls[poll_id]["closed"] = True
-            save_polls(polls)
+            save_polls(guild_id, polls)
             await view.update_message(message)
 
     @commands.hybrid_command(name="delete_poll", description="Delete poll command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def delete_poll(self, ctx, poll_id: str):
-        polls = load_polls()
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        polls = load_polls(guild_id)
 
         if poll_id not in polls:
             return await ctx.send(
@@ -308,7 +345,7 @@ class Poll(commands.Cog):
             )
 
         del polls[poll_id]
-        save_polls(polls)
+        save_polls(guild_id, polls)
 
         await ctx.send(
             translate_for_ctx(
@@ -319,9 +356,10 @@ class Poll(commands.Cog):
         )
 
     async def cog_load(self):
-        polls = load_polls()
-        for poll_id in polls:
-            self.bot.add_view(PollView(poll_id))
+        all_polls = load_all_polls()
+        for poll_id, poll_data in all_polls.items():
+            guild_id = poll_data.get("guild_id")
+            self.bot.add_view(PollView(poll_id, guild_id))
 
 
 async def setup(bot):

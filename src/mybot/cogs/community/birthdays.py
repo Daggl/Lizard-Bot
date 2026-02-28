@@ -10,28 +10,35 @@ from discord.ext import commands, tasks
 from mybot.utils.config import load_cog_config
 from mybot.utils.i18n import resolve_localized_value, translate
 from mybot.utils.jsonstore import safe_load_json, safe_save_json
+from mybot.utils.paths import guild_data_path
 
 _BIRTHDAY_RE = re.compile(r"^\d{1,2}\.\d{1,2}$")
 
-DATA_FOLDER = "data"
-BIRTHDAY_FILE = os.path.join(DATA_FOLDER, "birthdays.json")
-SENT_FILE = os.path.join(DATA_FOLDER, "birthdays_sent.json")
+
+def load_birthdays(guild_id: int | str | None = None) -> dict:
+    path = guild_data_path(guild_id, "birthdays_data.json")
+    if not path:
+        return {}
+    return safe_load_json(path, default={})
 
 
-def load_birthdays():
-    return safe_load_json(BIRTHDAY_FILE, default={})
+def save_birthdays(guild_id: int | str | None, data: dict):
+    path = guild_data_path(guild_id, "birthdays_data.json")
+    if path:
+        safe_save_json(path, data)
 
 
-def save_birthdays(data):
-    safe_save_json(BIRTHDAY_FILE, data)
+def load_sent_birthdays(guild_id: int | str | None = None) -> dict:
+    path = guild_data_path(guild_id, "birthdays_sent.json")
+    if not path:
+        return {}
+    return safe_load_json(path, default={})
 
 
-def load_sent_birthdays():
-    return safe_load_json(SENT_FILE, default={})
-
-
-def save_sent_birthdays(data):
-    safe_save_json(SENT_FILE, data)
+def save_sent_birthdays(guild_id: int | str | None, data: dict):
+    path = guild_data_path(guild_id, "birthdays_sent.json")
+    if path:
+        safe_save_json(path, data)
 
 
 def _cfg(guild_id: int | str | None = None) -> dict:
@@ -134,73 +141,79 @@ class Birthdays(commands.Cog):
             ))
             return
 
-        birthdays = load_birthdays()
+        if guild_id is None:
+            await ctx.send("❌ This command must be used in a server.")
+            return
+
+        birthdays = load_birthdays(guild_id)
         birthdays[str(ctx.author.id)] = date
-        save_birthdays(birthdays)
+        save_birthdays(guild_id, birthdays)
 
         await ctx.send(translate("birthdays.msg.saved", guild_id=guild_id, date=date))
 
     @tasks.loop(hours=24)
     async def check_birthdays(self):
-
-        birthdays = load_birthdays()
-        sent = load_sent_birthdays()
-        channel_id = _channel_id()
-
+        """Check birthdays for all guilds the bot is in."""
         now = datetime.datetime.now()
         today = now.strftime("%d.%m")
         today_key = now.strftime("%Y-%m-%d")
 
-        # cleanup old sent markers to keep file small (keep only today)
-        if isinstance(sent, dict):
-            sent = {k: v for k, v in sent.items() if k == today_key}
-        else:
-            sent = {}
+        for guild in self.bot.guilds:
+            guild_id = guild.id
+            channel_id = _channel_id(guild_id)
+            if not channel_id:
+                continue  # No birthday channel configured for this guild
 
-        sent_today = sent.get(today_key, [])
-        if not isinstance(sent_today, list):
-            sent_today = []
-        sent_today_set = {str(uid) for uid in sent_today}
+            channel = self.bot.get_channel(int(channel_id))
+            if channel is None:
+                channel = guild.get_channel(int(channel_id))
+            if channel is None:
+                continue
 
-        for user_id, date in birthdays.items():
+            birthdays = load_birthdays(guild_id)
+            sent = load_sent_birthdays(guild_id)
 
-            if date == today:
+            # cleanup old sent markers to keep file small (keep only today)
+            if isinstance(sent, dict):
+                sent = {k: v for k, v in sent.items() if k == today_key}
+            else:
+                sent = {}
+
+            sent_today = sent.get(today_key, [])
+            if not isinstance(sent_today, list):
+                sent_today = []
+            sent_today_set = {str(uid) for uid in sent_today}
+
+            for user_id, date in birthdays.items():
+                if date != today:
+                    continue
                 if str(user_id) in sent_today_set:
                     continue
 
                 try:
-
                     user = await self.bot.fetch_user(int(user_id))
-
-                    channel = None
-                    if channel_id:
-                        channel = self.bot.get_channel(int(channel_id))
-
-                    if channel is not None:
-                        guild_id = getattr(getattr(channel, "guild", None), "id", None)
-                        values = {
-                            "mention": user.mention,
-                            "user_name": getattr(user, "name", "User"),
-                            "display_name": getattr(user, "display_name", getattr(user, "name", "User")),
-                            "user_id": getattr(user, "id", 0),
-                            "date": today,
-                        }
-                        embed = discord.Embed(
-                            title=_safe_format(_embed_title(guild_id), values),
-                            description=_safe_format(_embed_description(guild_id), values),
-                            color=_embed_color(),
-                        )
-                        footer = _safe_format(_embed_footer(guild_id), values).strip()
-                        if footer:
-                            embed.set_footer(text=footer)
-                        await channel.send(embed=embed)
-                        sent_today_set.add(str(user_id))
-
+                    values = {
+                        "mention": user.mention,
+                        "user_name": getattr(user, "name", "User"),
+                        "display_name": getattr(user, "display_name", getattr(user, "name", "User")),
+                        "user_id": getattr(user, "id", 0),
+                        "date": today,
+                    }
+                    embed = discord.Embed(
+                        title=_safe_format(_embed_title(guild_id), values),
+                        description=_safe_format(_embed_description(guild_id), values),
+                        color=_embed_color(guild_id),
+                    )
+                    footer = _safe_format(_embed_footer(guild_id), values).strip()
+                    if footer:
+                        embed.set_footer(text=footer)
+                    await channel.send(embed=embed)
+                    sent_today_set.add(str(user_id))
                 except Exception as exc:
-                    print(f"[Birthdays] Error checking birthday for user {user_id}: {exc}")
+                    print(f"[Birthdays] Error checking birthday for user {user_id} in guild {guild_id}: {exc}")
 
-        sent[today_key] = sorted(list(sent_today_set))
-        save_sent_birthdays(sent)
+            sent[today_key] = sorted(list(sent_today_set))
+            save_sent_birthdays(guild_id, sent)
 
     @check_birthdays.before_loop
     async def before_check(self):
