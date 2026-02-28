@@ -85,17 +85,16 @@ class ConfigEditor(QtWidgets.QDialog):
         return config_json_path(self.repo_root, filename, guild_id=gid)
 
     def _load_config_data(self, filename: str) -> dict:
-        """Load config JSON for the active guild, falling back to global."""
+        """Load config JSON for the active guild (no global fallback)."""
         gid = self._active_guild_id()
         if gid:
             guild_path = config_json_path(self.repo_root, filename, guild_id=gid)
-            if os.path.exists(guild_path):
-                try:
-                    with open(guild_path, "r", encoding="utf-8") as fh:
-                        return json.load(fh)
-                except Exception:
-                    return {}
-        # fallback: global config
+            try:
+                with open(guild_path, "r", encoding="utf-8") as fh:
+                    return json.load(fh)
+            except Exception:
+                return {}
+        # No guild selected → global config
         global_path = os.path.join(self.repo_root, "config", filename)
         try:
             with open(global_path, "r", encoding="utf-8") as fh:

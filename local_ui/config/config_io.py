@@ -36,19 +36,20 @@ def load_json_dict(path: str) -> dict:
 
 
 def load_guild_config(repo_root: str, filename: str, guild_id: str | int | None = None) -> dict:
-    """Load a guild-specific config with fallback to the global config.
+    """Load a config for the selected scope.
 
-    Tries ``config/guilds/{guild_id}/{filename}`` first.  If that file does not
-    exist or is empty, falls back to ``config/{filename}``.  This ensures the
-    UI always shows meaningful values even when no per-guild override exists.
+    When *guild_id* is given, loads **only** the guild-specific file at
+    ``config/guilds/{guild_id}/{filename}``.  If that file does not exist the
+    caller receives an empty dict so the UI shows clean defaults — this makes
+    it obvious that the guild has no own override yet.
+
+    When *guild_id* is ``None`` (global / no guild selected) the global
+    ``config/{filename}`` is loaded.
     """
     if guild_id:
         guild_path = _config_json_path(repo_root, filename, guild_id=guild_id)
-        if os.path.isfile(guild_path):
-            data = _load_json_dict(guild_path)
-            if data:
-                return data
-    # fallback to global
+        return _load_json_dict(guild_path)          # {} when file missing
+    # global
     global_path = _config_json_path(repo_root, filename)
     return _load_json_dict(global_path)
 

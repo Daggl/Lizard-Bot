@@ -60,12 +60,15 @@ class PreviewControllerMixin:
         return config_json_path(self._repo_root, "welcome.json", guild_id=getattr(self, '_active_guild_id', None))
 
     def _welcome_config_path_existing(self):
-        """Return the welcome config path that actually exists (guild or global fallback)."""
+        """Return the welcome config path for the current scope.
+
+        When a guild is selected, returns the guild-specific path (even if
+        the file does not exist yet — the caller must handle that).
+        When no guild is selected, returns the global path.
+        """
         gid = getattr(self, '_active_guild_id', None)
         if gid:
-            guild_path = config_json_path(self._repo_root, "welcome.json", guild_id=gid)
-            if os.path.isfile(guild_path):
-                return guild_path
+            return config_json_path(self._repo_root, "welcome.json", guild_id=gid)
         return config_json_path(self._repo_root, "welcome.json")
 
     def _ui_settings_path(self):
@@ -126,6 +129,12 @@ class PreviewControllerMixin:
                 try:
                     pix = QtGui.QPixmap(bg_resolved)
                     self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+                except Exception:
+                    pass
+            else:
+                # No background image — clear the preview
+                try:
+                    self.rk_image.clear()
                 except Exception:
                     pass
             mode_val = str(cfg.get("BG_MODE", "cover") or "cover")
@@ -566,14 +575,46 @@ class PreviewControllerMixin:
     def update_preview(self):
         try:
             repo_root = self._repo_root
+            gid = getattr(self, '_active_guild_id', None)
             cfg_path = self._welcome_config_path_existing()
-            print(f"[update_preview] cfg_path={cfg_path!r} exists={os.path.exists(cfg_path)} guild={getattr(self, '_active_guild_id', None)!r}")
+            print(f"[update_preview] cfg_path={cfg_path!r} exists={os.path.exists(cfg_path)} guild={gid!r}")
             if not os.path.exists(cfg_path):
                 try:
-                    self.status_label.setText(f"No welcome config found ({cfg_path})")
+                    if gid:
+                        self.status_label.setText(f"Keine Welcome-Config für diese Guild — speichere, um eine zu erstellen")
+                    else:
+                        self.status_label.setText("No welcome config found")
                     self.pv_banner.clear()
                 except Exception:
                     pass
+                # Clear all welcome fields so the user sees empty defaults
+                try:
+                    self._preview_syncing = True
+                    self.pv_name.setText("")
+                    self.pv_banner_path.setText("")
+                    self.pv_title.setText("WELCOME")
+                    self.pv_title_size.setValue(140)
+                    self.pv_user_size.setValue(64)
+                    self.pv_title_color.setText("#FFFFFF")
+                    self.pv_user_color.setText("#E6E6E6")
+                    self.pv_bg_zoom.setValue(100)
+                    self.pv_bg_x.setValue(0)
+                    self.pv_bg_y.setValue(0)
+                    self.pv_title_x.setValue(0)
+                    self.pv_title_y.setValue(0)
+                    self.pv_user_x.setValue(0)
+                    self.pv_user_y.setValue(0)
+                    self.pv_text_x.setValue(0)
+                    self.pv_text_y.setValue(0)
+                    self.pv_avatar_x.setValue(0)
+                    self.pv_avatar_y.setValue(0)
+                    self.pv_message.setPlainText("")
+                finally:
+                    self._preview_syncing = False
+                    try:
+                        self._preview_debounce.stop()
+                    except Exception:
+                        pass
                 return
             with open(cfg_path, "r", encoding="utf-8") as fh:
                 cfg = json.load(fh)

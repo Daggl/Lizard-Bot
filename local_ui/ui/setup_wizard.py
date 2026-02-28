@@ -226,10 +226,6 @@ class SetupWizardDialog(QtWidgets.QDialog):
         if name not in self._configs:
             path = config_json_path(self._repo_root, f"{name}.json", guild_id=self._guild_id)
             cfg = load_json_dict(path)
-            # Fall back to global config if guild-specific file is empty
-            if not cfg and self._guild_id:
-                global_path = config_json_path(self._repo_root, f"{name}.json")
-                cfg = load_json_dict(global_path)
             self._configs[name] = cfg
         return self._configs[name]
 
