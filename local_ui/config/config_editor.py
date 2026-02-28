@@ -103,28 +103,27 @@ class ConfigEditor(QtWidgets.QDialog):
             return {}
 
     def refresh_list(self):
-        global_dir = os.path.join(self.repo_root, "config")
         self.list.clear()
         self.list.addItem(".env")
-        seen = set()
-        # Guild‑specific files first (if any)
         gid = self._active_guild_id()
         if gid:
+            # Guild selected → show only guild-specific files
             guild_dir = os.path.join(self.repo_root, "config", "guilds", gid)
             try:
                 for fn in sorted(os.listdir(guild_dir)):
                     if fn.endswith(".json"):
                         self.list.addItem(fn)
-                        seen.add(fn)
             except Exception:
                 pass
-        # Global files (skip duplicates if guild overrides exist)
-        try:
-            for fn in sorted(os.listdir(global_dir)):
-                if fn.endswith(".json") and fn not in seen:
-                    self.list.addItem(fn)
-        except Exception:
-            pass
+        else:
+            # No guild → show global files
+            global_dir = os.path.join(self.repo_root, "config")
+            try:
+                for fn in sorted(os.listdir(global_dir)):
+                    if fn.endswith(".json"):
+                        self.list.addItem(fn)
+            except Exception:
+                pass
 
     def on_select(self, current, prev=None):
         if current is None:

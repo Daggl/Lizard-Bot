@@ -271,6 +271,69 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
         self._init_startup_marker()
         self._init_timers()
 
+    # ------------------------------------------------------------------
+    # One-time global → guild migration
+    # ------------------------------------------------------------------
+
+    def _maybe_migrate_global_configs(self, guild_details: list):
+        """Copy global configs to the first guild if no guild has any configs.
+
+        This handles the transition from a single-guild setup (configs in
+        ``config/``) to multi-guild (configs in ``config/guilds/{id}/``).
+        The migration runs only once: it copies global JSON files to the
+        **first** guild in the list.  Other guilds start with empty configs.
+        """
+        if getattr(self, "_global_config_migrated", False):
+            return
+        self._global_config_migrated = True
+
+        if not guild_details:
+            return
+
+        repo_root = self._repo_root
+        global_dir = os.path.join(repo_root, "config")
+
+        # Check if ANY guild already has at least one config file
+        for guild in guild_details:
+            gid = str(guild.get("id") or "")
+            if not gid:
+                continue
+            guild_dir = os.path.join(repo_root, "config", "guilds", gid)
+            if os.path.isdir(guild_dir):
+                json_files = [f for f in os.listdir(guild_dir) if f.endswith(".json")]
+                if json_files:
+                    print(f"[migration] Guild {gid} already has {len(json_files)} config(s) — skipping migration")
+                    return
+
+        # Collect global JSON config files
+        global_jsons = [f for f in os.listdir(global_dir)
+                        if f.endswith(".json") and os.path.isfile(os.path.join(global_dir, f))]
+        if not global_jsons:
+            print("[migration] No global configs to migrate")
+            return
+
+        # Copy to the first guild only
+        first_gid = str(guild_details[0].get("id") or "")
+        if not first_gid:
+            return
+
+        import shutil
+        target_dir = os.path.join(repo_root, "config", "guilds", first_gid)
+        os.makedirs(target_dir, exist_ok=True)
+        copied = 0
+        for fn in global_jsons:
+            src = os.path.join(global_dir, fn)
+            dst = os.path.join(target_dir, fn)
+            if not os.path.exists(dst):
+                shutil.copy2(src, dst)
+                copied += 1
+        first_name = guild_details[0].get("name") or first_gid
+        print(f"[migration] Copied {copied} global config(s) to guild '{first_name}' ({first_gid})")
+        try:
+            self._set_status(f"Configs migriert → {first_name}")
+        except Exception:
+            pass
+
     def _reload_guild_configs(self):
         """Reload all guild-scoped configs and previews for the active guild."""
         gid = self._active_guild_id
