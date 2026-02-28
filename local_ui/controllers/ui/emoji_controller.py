@@ -15,12 +15,6 @@ class EmojiControllerMixin:
     def on_open_leveling_achievement_emoji_picker(self):
         self._open_server_emoji_picker_for(self.lv_achievement_msg)
 
-    def on_open_leveling_leading_emoji_picker(self):
-        self._open_server_emoji_picker_for(self.lv_emoji_win, replace_text=True)
-
-    def on_open_leveling_trailing_emoji_picker(self):
-        self._open_server_emoji_picker_for(self.lv_emoji_heart, replace_text=True)
-
     def _open_server_emoji_picker_for(self, target_widget, replace_text: bool = False):
         try:
             self._emoji_picker_target = target_widget

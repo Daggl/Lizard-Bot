@@ -22,6 +22,7 @@ from controllers.ui.admin_controller import AdminControllerMixin
 from controllers.ui.emoji_controller import EmojiControllerMixin
 from controllers.ui.preview_api_controller import PreviewApiControllerMixin
 from controllers.ui.preview_controller import PreviewControllerMixin
+from controllers.ui.purge_controller import PurgeControllerMixin
 from core.exception_handler import install_exception_hook
 from core.repo_paths import get_repo_root
 from core.runtime import run_main_window
@@ -29,7 +30,7 @@ from core.startup_trace import write_startup_trace
 # HTML embed removed; no html module required
 from PySide6 import QtCore, QtWidgets
 from ui.ui_tabs import (build_configs_tab, build_dashboard_tab, build_logs_tab,
-                        build_welcome_and_rank_tabs)
+                        build_purge_tab, build_welcome_and_rank_tabs)
 
 write_startup_trace()
 
@@ -37,7 +38,7 @@ write_startup_trace()
 install_exception_hook()
 
 
-class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControllerMixin, DashboardControllerMixin, AdminControllerMixin, EmojiControllerMixin, PreviewControllerMixin, PreviewApiControllerMixin, LifecycleControllerMixin, RuntimeCoreControllerMixin, QtWidgets.QMainWindow):
+class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControllerMixin, DashboardControllerMixin, AdminControllerMixin, EmojiControllerMixin, PreviewControllerMixin, PreviewApiControllerMixin, PurgeControllerMixin, LifecycleControllerMixin, RuntimeCoreControllerMixin, QtWidgets.QMainWindow):
     _async_done = QtCore.Signal(object)
 
     def __init__(self):
@@ -59,6 +60,7 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
         build_configs_tab(self, tabs, ConfigEditor)
 
         build_welcome_and_rank_tabs(self, tabs, QtCore)
+        build_purge_tab(self, tabs)
 
         self.setCentralWidget(tabs)
 

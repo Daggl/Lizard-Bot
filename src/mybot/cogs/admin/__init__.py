@@ -4,4 +4,5 @@ __all__ = [
     "admin_panel",
     "admin_tools",
     "admin_tutorial",
+    "purge",
 ]

@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 from config.config_io import (config_json_path, global_config_path,
                               load_guild_config, load_json_dict,
@@ -7,6 +8,14 @@ from config.config_io import (config_json_path, global_config_path,
 from PySide6 import QtCore, QtGui, QtWidgets
 from services.file_ops import (open_tracked_writer, prune_backups,
                                rotate_log_file)
+
+# Add src to path so we can import from the cogs
+_src_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")
+if _src_path not in sys.path:
+    sys.path.insert(0, _src_path)
+
+from mybot.cogs.welcome.welcome import render_welcome_banner
+from mybot.cogs.leveling.rank import render_rankcard
 
 
 class PreviewControllerMixin:
@@ -119,6 +128,34 @@ class PreviewControllerMixin:
         cfg = load_guild_config(self._repo_root, "rank.json", guild_id=gid)
         self._rank_config = cfg
         try:
+            default_pos = {
+                "AVATAR_X": 75,
+                "AVATAR_Y": 125,
+                "USERNAME_X": 400,
+                "USERNAME_Y": 80,
+                "LEVEL_X": 400,
+                "LEVEL_Y": 200,
+                "XP_X": 1065,
+                "XP_Y": 270,
+                "MESSAGES_X": 400,
+                "MESSAGES_Y": 400,
+                "VOICE_X": 680,
+                "VOICE_Y": 400,
+                "ACHIEVEMENTS_X": 980,
+                "ACHIEVEMENTS_Y": 400,
+                "BAR_X": 400,
+                "BAR_Y": 330,
+            }
+
+            def g(key, default):
+                val = cfg.get(key)
+                return default if val is None else val
+
+            text_off_x = int(cfg.get("TEXT_OFFSET_X", 0) or 0)
+            text_off_y = int(cfg.get("TEXT_OFFSET_Y", 0) or 0)
+            avatar_off_x = int(cfg.get("AVATAR_OFFSET_X", 0) or 0)
+            avatar_off_y = int(cfg.get("AVATAR_OFFSET_Y", 0) or 0)
+
             bg = str(cfg.get("BG_PATH", "") or "")
             if not self.rk_bg_path.hasFocus():
                 self.rk_bg_path.setText(bg)
@@ -140,19 +177,57 @@ class PreviewControllerMixin:
             mode_val = str(cfg.get("BG_MODE", "") or "")
             idx = self.rk_bg_mode.findData(mode_val) if mode_val else -1
             self.rk_bg_mode.setCurrentIndex(idx if idx >= 0 else 0)
-            self.rk_bg_zoom.setValue(int(cfg.get("BG_ZOOM", 0) or 0))
+            self.rk_bg_zoom.setValue(int(cfg.get("BG_ZOOM", 100) or 100))
             self.rk_bg_x.setValue(int(cfg.get("BG_OFFSET_X", 0) or 0))
             self.rk_bg_y.setValue(int(cfg.get("BG_OFFSET_Y", 0) or 0))
-            name_font = str(cfg.get("NAME_FONT", "") or "")
-            info_font = str(cfg.get("INFO_FONT", "") or "")
-            self._load_rank_name_font_choices(name_font)
-            self._load_rank_info_font_choices(info_font)
-            self.rk_name_size.setValue(int(cfg.get("NAME_FONT_SIZE", 0) or 0))
-            self.rk_info_size.setValue(int(cfg.get("INFO_FONT_SIZE", 0) or 0))
-            self.rk_name_color.setText(str(cfg.get("NAME_COLOR", "") or ""))
-            self.rk_info_color.setText(str(cfg.get("INFO_COLOR", "") or ""))
-            self.rk_text_x.setValue(int(cfg.get("TEXT_OFFSET_X", 0) or 0))
-            self.rk_text_y.setValue(int(cfg.get("TEXT_OFFSET_Y", 0) or 0))
+
+            username_font = str(g("USERNAME_FONT", cfg.get("NAME_FONT", "assets/fonts/Poppins-Bold.ttf")) or "")
+            info_font = str(cfg.get("INFO_FONT", "assets/fonts/Poppins-Regular.ttf") or "assets/fonts/Poppins-Regular.ttf")
+            self._load_font_choices(self.rk_username_font, username_font)
+            self._load_font_choices(self.rk_level_font, str(g("LEVEL_FONT", info_font) or info_font))
+            self._load_font_choices(self.rk_xp_font, str(g("XP_FONT", info_font) or info_font))
+            self._load_font_choices(self.rk_messages_font, str(g("MESSAGES_FONT", info_font) or info_font))
+            self._load_font_choices(self.rk_voice_font, str(g("VOICE_FONT", info_font) or info_font))
+            self._load_font_choices(self.rk_achievements_font, str(g("ACHIEVEMENTS_FONT", info_font) or info_font))
+
+            self.rk_username_size.setValue(int(g("USERNAME_FONT_SIZE", cfg.get("NAME_FONT_SIZE", 90)) or 90))
+            self.rk_level_size.setValue(int(g("LEVEL_FONT_SIZE", cfg.get("INFO_FONT_SIZE", 60)) or 60))
+            self.rk_xp_size.setValue(int(g("XP_FONT_SIZE", 33) or 33))
+            self.rk_messages_size.setValue(int(g("MESSAGES_FONT_SIZE", 33) or 33))
+            self.rk_voice_size.setValue(int(g("VOICE_FONT_SIZE", 33) or 33))
+            self.rk_achievements_size.setValue(int(g("ACHIEVEMENTS_FONT_SIZE", 33) or 33))
+
+            self.rk_username_color.setText(str(g("USERNAME_COLOR", cfg.get("NAME_COLOR", "#FFFFFF")) or "#FFFFFF"))
+            info_col = str(cfg.get("INFO_COLOR", "#C8C8C8") or "#C8C8C8")
+            self.rk_level_color.setText(str(g("LEVEL_COLOR", info_col) or info_col))
+            self.rk_xp_color.setText(str(g("XP_COLOR", info_col) or info_col))
+            self.rk_messages_color.setText(str(g("MESSAGES_COLOR", info_col) or info_col))
+            self.rk_voice_color.setText(str(g("VOICE_COLOR", info_col) or info_col))
+            self.rk_achievements_color.setText(str(g("ACHIEVEMENTS_COLOR", info_col) or info_col))
+
+            self.rk_username_x.setValue(int(g("USERNAME_X", default_pos["USERNAME_X"] + text_off_x) or 0))
+            self.rk_username_y.setValue(int(g("USERNAME_Y", default_pos["USERNAME_Y"] + text_off_y) or 0))
+            self.rk_level_x.setValue(int(g("LEVEL_X", default_pos["LEVEL_X"] + text_off_x) or 0))
+            self.rk_level_y.setValue(int(g("LEVEL_Y", default_pos["LEVEL_Y"] + text_off_y) or 0))
+            self.rk_xp_x.setValue(int(g("XP_X", default_pos["XP_X"] + text_off_x) or 0))
+            self.rk_xp_y.setValue(int(g("XP_Y", default_pos["XP_Y"] + text_off_y) or 0))
+            self.rk_messages_x.setValue(int(g("MESSAGES_X", default_pos["MESSAGES_X"] + text_off_x) or 0))
+            self.rk_messages_y.setValue(int(g("MESSAGES_Y", default_pos["MESSAGES_Y"] + text_off_y) or 0))
+            self.rk_voice_x.setValue(int(g("VOICE_X", default_pos["VOICE_X"] + text_off_x) or 0))
+            self.rk_voice_y.setValue(int(g("VOICE_Y", default_pos["VOICE_Y"] + text_off_y) or 0))
+            self.rk_achievements_x.setValue(int(g("ACHIEVEMENTS_X", default_pos["ACHIEVEMENTS_X"] + text_off_x) or 0))
+            self.rk_achievements_y.setValue(int(g("ACHIEVEMENTS_Y", default_pos["ACHIEVEMENTS_Y"] + text_off_y) or 0))
+
+            self.rk_avatar_x.setValue(int(g("AVATAR_X", default_pos["AVATAR_X"] + avatar_off_x) or 0))
+            self.rk_avatar_y.setValue(int(g("AVATAR_Y", default_pos["AVATAR_Y"] + avatar_off_y) or 0))
+            self.rk_avatar_size.setValue(int(cfg.get("AVATAR_SIZE", 300) or 300))
+            self.rk_bar_x.setValue(int(g("BAR_X", default_pos["BAR_X"]) or default_pos["BAR_X"]))
+            self.rk_bar_y.setValue(int(g("BAR_Y", default_pos["BAR_Y"]) or default_pos["BAR_Y"]))
+            self.rk_bar_width.setValue(int(cfg.get("BAR_WIDTH", 900) or 900))
+            self.rk_bar_height.setValue(int(cfg.get("BAR_HEIGHT", 38) or 38))
+            self.rk_bar_bg_color.setText(str(cfg.get("BAR_BG_COLOR", "#323232") or "#323232"))
+            self.rk_bar_fill_color.setText(str(cfg.get("BAR_FILL_COLOR", cfg.get("BAR_COLOR", "#8C6EFF")) or "#8C6EFF"))
+
             name = str(cfg.get("EXAMPLE_NAME", "") or "")
             if not self.rk_name.hasFocus():
                 self.rk_name.setText(name)
@@ -182,14 +257,50 @@ class PreviewControllerMixin:
             data["BG_ZOOM"] = int(self.rk_bg_zoom.value())
             data["BG_OFFSET_X"] = int(self.rk_bg_x.value())
             data["BG_OFFSET_Y"] = int(self.rk_bg_y.value())
-            data["NAME_FONT"] = self._selected_rank_name_font_path() or "assets/fonts/Poppins-Bold.ttf"
-            data["INFO_FONT"] = self._selected_rank_info_font_path() or "assets/fonts/Poppins-Regular.ttf"
-            data["NAME_FONT_SIZE"] = int(self.rk_name_size.value())
-            data["INFO_FONT_SIZE"] = int(self.rk_info_size.value())
-            data["NAME_COLOR"] = (self.rk_name_color.text() or "#FFFFFF").strip()
-            data["INFO_COLOR"] = (self.rk_info_color.text() or "#C8C8C8").strip()
-            data["TEXT_OFFSET_X"] = int(self.rk_text_x.value())
-            data["TEXT_OFFSET_Y"] = int(self.rk_text_y.value())
+
+            data["USERNAME_FONT"] = self._resolve_font_combo_path(self.rk_username_font) or "assets/fonts/Poppins-Bold.ttf"
+            data["LEVEL_FONT"] = self._resolve_font_combo_path(self.rk_level_font) or "assets/fonts/Poppins-Regular.ttf"
+            data["XP_FONT"] = self._resolve_font_combo_path(self.rk_xp_font) or "assets/fonts/Poppins-Regular.ttf"
+            data["MESSAGES_FONT"] = self._resolve_font_combo_path(self.rk_messages_font) or "assets/fonts/Poppins-Regular.ttf"
+            data["VOICE_FONT"] = self._resolve_font_combo_path(self.rk_voice_font) or "assets/fonts/Poppins-Regular.ttf"
+            data["ACHIEVEMENTS_FONT"] = self._resolve_font_combo_path(self.rk_achievements_font) or "assets/fonts/Poppins-Regular.ttf"
+
+            data["USERNAME_FONT_SIZE"] = int(self.rk_username_size.value())
+            data["LEVEL_FONT_SIZE"] = int(self.rk_level_size.value())
+            data["XP_FONT_SIZE"] = int(self.rk_xp_size.value())
+            data["MESSAGES_FONT_SIZE"] = int(self.rk_messages_size.value())
+            data["VOICE_FONT_SIZE"] = int(self.rk_voice_size.value())
+            data["ACHIEVEMENTS_FONT_SIZE"] = int(self.rk_achievements_size.value())
+
+            data["USERNAME_COLOR"] = (self.rk_username_color.text() or "#FFFFFF").strip()
+            data["LEVEL_COLOR"] = (self.rk_level_color.text() or "#C8C8C8").strip()
+            data["XP_COLOR"] = (self.rk_xp_color.text() or "#C8C8C8").strip()
+            data["MESSAGES_COLOR"] = (self.rk_messages_color.text() or "#C8C8C8").strip()
+            data["VOICE_COLOR"] = (self.rk_voice_color.text() or "#C8C8C8").strip()
+            data["ACHIEVEMENTS_COLOR"] = (self.rk_achievements_color.text() or "#C8C8C8").strip()
+
+            data["USERNAME_X"] = int(self.rk_username_x.value())
+            data["USERNAME_Y"] = int(self.rk_username_y.value())
+            data["LEVEL_X"] = int(self.rk_level_x.value())
+            data["LEVEL_Y"] = int(self.rk_level_y.value())
+            data["XP_X"] = int(self.rk_xp_x.value())
+            data["XP_Y"] = int(self.rk_xp_y.value())
+            data["MESSAGES_X"] = int(self.rk_messages_x.value())
+            data["MESSAGES_Y"] = int(self.rk_messages_y.value())
+            data["VOICE_X"] = int(self.rk_voice_x.value())
+            data["VOICE_Y"] = int(self.rk_voice_y.value())
+            data["ACHIEVEMENTS_X"] = int(self.rk_achievements_x.value())
+            data["ACHIEVEMENTS_Y"] = int(self.rk_achievements_y.value())
+
+            data["AVATAR_X"] = int(self.rk_avatar_x.value())
+            data["AVATAR_Y"] = int(self.rk_avatar_y.value())
+            data["AVATAR_SIZE"] = int(self.rk_avatar_size.value())
+            data["BAR_X"] = int(self.rk_bar_x.value())
+            data["BAR_Y"] = int(self.rk_bar_y.value())
+            data["BAR_WIDTH"] = int(self.rk_bar_width.value())
+            data["BAR_HEIGHT"] = int(self.rk_bar_height.value())
+            data["BAR_BG_COLOR"] = (self.rk_bar_bg_color.text() or "#323232").strip()
+            data["BAR_FILL_COLOR"] = (self.rk_bar_fill_color.text() or "#8C6EFF").strip()
             if data:
                 self._save_rank_config(data)
 
@@ -267,10 +378,10 @@ class PreviewControllerMixin:
         return self._resolve_font_combo_path(self.pv_user_font)
 
     def _selected_rank_name_font_path(self) -> str:
-        return self._resolve_font_combo_path(self.rk_name_font)
+        return self._resolve_font_combo_path(self.rk_username_font)
 
     def _selected_rank_info_font_path(self) -> str:
-        return self._resolve_font_combo_path(self.rk_info_font)
+        return self._resolve_font_combo_path(self.rk_level_font)
 
     def _resolve_font_combo_path(self, combo: QtWidgets.QComboBox) -> str:
         try:
@@ -371,10 +482,17 @@ class PreviewControllerMixin:
         self._load_font_choices(self.pv_user_font, selected_path)
 
     def _load_rank_name_font_choices(self, selected_path: str = None):
-        self._load_font_choices(self.rk_name_font, selected_path)
+        self._load_font_choices(self.rk_username_font, selected_path)
 
     def _load_rank_info_font_choices(self, selected_path: str = None):
-        self._load_font_choices(self.rk_info_font, selected_path)
+        for combo in (
+            self.rk_level_font,
+            self.rk_xp_font,
+            self.rk_messages_font,
+            self.rk_voice_font,
+            self.rk_achievements_font,
+        ):
+            self._load_font_choices(combo, selected_path)
 
     def _prune_backups(self, target_path: str, keep: int = 5):
         prune_backups(target_path, keep=keep)
@@ -419,6 +537,7 @@ class PreviewControllerMixin:
             cfg["BANNER_TITLE"] = self.pv_title.text() or cfg.get("BANNER_TITLE", "WELCOME")
             cfg["OFFSET_X"] = int(self.pv_avatar_x.value())
             cfg["OFFSET_Y"] = int(self.pv_avatar_y.value())
+            cfg["AVATAR_SIZE"] = int(self.pv_avatar_size.value())
             cfg["TITLE_FONT_SIZE"] = int(self.pv_title_size.value())
             cfg["USERNAME_FONT_SIZE"] = int(self.pv_user_size.value())
             cfg["TITLE_COLOR"] = (self.pv_title_color.text() or cfg.get("TITLE_COLOR", "#FFFFFF")).strip()
@@ -533,44 +652,177 @@ class PreviewControllerMixin:
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save preview settings: {e}")
 
     def _apply_live_preview(self):
+        """Render full welcome banner and rankcard preview locally."""
+        # Welcome banner preview - full local rendering
         try:
             name = self.pv_name.text() or "NewMember"
-            banner = self.pv_banner_path.text() or ""
+            banner_path = self.pv_banner_path.text() or ""
             message = self.pv_message.toPlainText() or "Welcome {mention}!"
 
-            # Resolve relative banner paths against repo root
-            if banner and not os.path.isabs(banner):
-                banner = os.path.join(self._repo_root, banner)
+            # Resolve relative paths
+            if banner_path and not os.path.isabs(banner_path):
+                banner_path = os.path.join(self._repo_root, banner_path)
 
-            banner_url = getattr(self, "_preview_banner_data_url", None) or ""
-            if banner_url:
-                pass
+            # Get font paths
+            title_font = self._selected_title_font_path() or os.path.join(self._repo_root, "assets/fonts/Poppins-Bold.ttf")
+            user_font = self._selected_user_font_path() or os.path.join(self._repo_root, "assets/fonts/Poppins-Regular.ttf")
+
+            # Render full welcome banner
+            png_data = render_welcome_banner(
+                banner_path=banner_path,
+                username=name,
+                title=self.pv_title.text() or "WELCOME",
+                avatar_bytes=None,
+                bg_mode=self.pv_bg_mode.currentData() or "cover",
+                bg_zoom=int(self.pv_bg_zoom.value()),
+                bg_offset_x=int(self.pv_bg_x.value()),
+                bg_offset_y=int(self.pv_bg_y.value()),
+                font_welcome_path=title_font,
+                font_username_path=user_font,
+                title_font_size=int(self.pv_title_size.value()) or 140,
+                username_font_size=int(self.pv_user_size.value()) or 64,
+                title_color=self.pv_title_color.text() or "#FFFFFF",
+                username_color=self.pv_user_color.text() or "#E6E6E6",
+                title_offset_x=int(self.pv_title_x.value()),
+                title_offset_y=int(self.pv_title_y.value()),
+                username_offset_x=int(self.pv_user_x.value()),
+                username_offset_y=int(self.pv_user_y.value()),
+                text_offset_x=int(self.pv_text_x.value()),
+                text_offset_y=int(self.pv_text_y.value()),
+                offset_x=int(self.pv_avatar_x.value()),
+                offset_y=int(self.pv_avatar_y.value()),
+                avatar_size=int(self.pv_avatar_size.value()) if hasattr(self, 'pv_avatar_size') else 360,
+            )
+
+            # Display the rendered banner
+            pix = QtGui.QPixmap()
+            if pix.loadFromData(png_data):
+                scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                self.pv_banner.setPixmap(scaled)
             else:
-                if banner and os.path.exists(banner):
-                    try:
-                        pix = QtGui.QPixmap(banner)
-                        try:
-                            scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-                            self.pv_banner.setPixmap(scaled)
-                        except Exception:
-                            self.pv_banner.setPixmap(pix)
-                    except Exception:
-                        try:
-                            self.pv_banner.clear()
-                        except Exception:
-                            pass
-                    banner_url = f"file:///{os.path.abspath(banner).replace('\\', '/')}"
-                else:
-                    try:
-                        self.pv_banner.clear()
-                    except Exception:
-                        pass
+                self.pv_banner.clear()
 
+            # Update tooltip with rendered message
             rendered = message.replace("{mention}", f"@{name}")
+            self.pv_banner.setToolTip(rendered)
+        except Exception as e:
+            # Fallback: just show raw image
             try:
-                self.pv_banner.setToolTip(rendered)
+                banner_path = self.pv_banner_path.text() or ""
+                if banner_path and not os.path.isabs(banner_path):
+                    banner_path = os.path.join(self._repo_root, banner_path)
+                if banner_path and os.path.exists(banner_path):
+                    pix = QtGui.QPixmap(banner_path)
+                    scaled = pix.scaled(self.pv_banner.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                    self.pv_banner.setPixmap(scaled)
+                else:
+                    self.pv_banner.clear()
             except Exception:
-                pass
+                self.pv_banner.clear()
+
+        # Rankcard preview - full local rendering
+        try:
+            rk_name = self.rk_name.text() or "NewMember"
+            rk_bg = self.rk_bg_path.text() or ""
+
+            if rk_bg and not os.path.isabs(rk_bg):
+                rk_bg = os.path.join(self._repo_root, rk_bg)
+
+            # Get font paths
+            username_font = self._resolve_font_combo_path(self.rk_username_font) or "assets/fonts/Poppins-Bold.ttf"
+            level_font = self._resolve_font_combo_path(self.rk_level_font) or "assets/fonts/Poppins-Regular.ttf"
+            xp_font = self._resolve_font_combo_path(self.rk_xp_font) or "assets/fonts/Poppins-Regular.ttf"
+            messages_font = self._resolve_font_combo_path(self.rk_messages_font) or "assets/fonts/Poppins-Regular.ttf"
+            voice_font = self._resolve_font_combo_path(self.rk_voice_font) or "assets/fonts/Poppins-Regular.ttf"
+            achievements_font = self._resolve_font_combo_path(self.rk_achievements_font) or "assets/fonts/Poppins-Regular.ttf"
+
+            # Render full rankcard
+            png_data = render_rankcard(
+                bg_path=rk_bg,
+                username=rk_name,
+                level=5,  # Example values for preview
+                xp=350,
+                xp_needed=500,
+                messages=128,
+                voice_minutes=45,
+                achievements_count=3,
+                avatar_bytes=None,
+                bg_mode=self.rk_bg_mode.currentData() or "cover",
+                bg_zoom=int(self.rk_bg_zoom.value()),
+                bg_offset_x=int(self.rk_bg_x.value()),
+                bg_offset_y=int(self.rk_bg_y.value()),
+                avatar_x=int(self.rk_avatar_x.value()) if hasattr(self, 'rk_avatar_x') else 75,
+                avatar_y=int(self.rk_avatar_y.value()) if hasattr(self, 'rk_avatar_y') else 125,
+                avatar_size=int(self.rk_avatar_size.value()) if hasattr(self, 'rk_avatar_size') else 300,
+                username_x=int(self.rk_username_x.value()) if hasattr(self, 'rk_username_x') else 400,
+                username_y=int(self.rk_username_y.value()) if hasattr(self, 'rk_username_y') else 80,
+                username_font=username_font,
+                username_font_size=int(self.rk_username_size.value()) if hasattr(self, 'rk_username_size') else 90,
+                username_color=self.rk_username_color.text() if hasattr(self, 'rk_username_color') else "#FFFFFF",
+                level_x=int(self.rk_level_x.value()) if hasattr(self, 'rk_level_x') else 400,
+                level_y=int(self.rk_level_y.value()) if hasattr(self, 'rk_level_y') else 200,
+                level_font=level_font,
+                level_font_size=int(self.rk_level_size.value()) if hasattr(self, 'rk_level_size') else 60,
+                level_color=self.rk_level_color.text() if hasattr(self, 'rk_level_color') else "#C8C8C8",
+                xp_x=int(self.rk_xp_x.value()) if hasattr(self, 'rk_xp_x') else 1065,
+                xp_y=int(self.rk_xp_y.value()) if hasattr(self, 'rk_xp_y') else 270,
+                xp_font=xp_font,
+                xp_font_size=int(self.rk_xp_size.value()) if hasattr(self, 'rk_xp_size') else 33,
+                xp_color=self.rk_xp_color.text() if hasattr(self, 'rk_xp_color') else "#C8C8C8",
+                bar_x=int(self.rk_bar_x.value()) if hasattr(self, 'rk_bar_x') else 400,
+                bar_y=int(self.rk_bar_y.value()) if hasattr(self, 'rk_bar_y') else 330,
+                bar_width=int(self.rk_bar_width.value()) if hasattr(self, 'rk_bar_width') else 900,
+                bar_height=int(self.rk_bar_height.value()) if hasattr(self, 'rk_bar_height') else 38,
+                bar_bg_color=self.rk_bar_bg_color.text() if hasattr(self, 'rk_bar_bg_color') else "#323232",
+                bar_fill_color=self.rk_bar_fill_color.text() if hasattr(self, 'rk_bar_fill_color') else "#8C6EFF",
+                messages_x=int(self.rk_messages_x.value()) if hasattr(self, 'rk_messages_x') else 400,
+                messages_y=int(self.rk_messages_y.value()) if hasattr(self, 'rk_messages_y') else 400,
+                messages_font=messages_font,
+                messages_font_size=int(self.rk_messages_size.value()) if hasattr(self, 'rk_messages_size') else 33,
+                messages_color=self.rk_messages_color.text() if hasattr(self, 'rk_messages_color') else "#C8C8C8",
+                voice_x=int(self.rk_voice_x.value()) if hasattr(self, 'rk_voice_x') else 680,
+                voice_y=int(self.rk_voice_y.value()) if hasattr(self, 'rk_voice_y') else 400,
+                voice_font=voice_font,
+                voice_font_size=int(self.rk_voice_size.value()) if hasattr(self, 'rk_voice_size') else 33,
+                voice_color=self.rk_voice_color.text() if hasattr(self, 'rk_voice_color') else "#C8C8C8",
+                achievements_x=int(self.rk_achievements_x.value()) if hasattr(self, 'rk_achievements_x') else 980,
+                achievements_y=int(self.rk_achievements_y.value()) if hasattr(self, 'rk_achievements_y') else 400,
+                achievements_font=achievements_font,
+                achievements_font_size=int(self.rk_achievements_size.value()) if hasattr(self, 'rk_achievements_size') else 33,
+                achievements_color=self.rk_achievements_color.text() if hasattr(self, 'rk_achievements_color') else "#C8C8C8",
+            )
+
+            # Display the rendered rankcard
+            pix = QtGui.QPixmap()
+            if pix.loadFromData(png_data):
+                scaled = pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                self.rk_image.setPixmap(scaled)
+            else:
+                self.rk_image.clear()
+        except Exception as e:
+            # Fallback: just show raw background
+            try:
+                rk_bg = self.rk_bg_path.text() or ""
+                if rk_bg and not os.path.isabs(rk_bg):
+                    rk_bg = os.path.join(self._repo_root, rk_bg)
+                if rk_bg and os.path.exists(rk_bg):
+                    pix = QtGui.QPixmap(rk_bg)
+                    scaled = pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                    self.rk_image.setPixmap(scaled)
+                else:
+                    self.rk_image.clear()
+            except Exception:
+                self.rk_image.clear()
+
+    def on_refresh_preview_local(self):
+        """Refresh preview using local rendering (no bot required)."""
+        try:
+            self._set_status("Refreshing preview locally...")
+        except Exception:
+            pass
+        self._apply_live_preview()
+        try:
+            self._set_status("Preview refreshed")
         except Exception:
             pass
 
@@ -699,6 +951,8 @@ class PreviewControllerMixin:
                         self.pv_avatar_x.setValue(int(cfg.get("OFFSET_X", 0) or 0))
                     if not self.pv_avatar_y.hasFocus():
                         self.pv_avatar_y.setValue(int(cfg.get("OFFSET_Y", 0) or 0))
+                    if not self.pv_avatar_size.hasFocus():
+                        self.pv_avatar_size.setValue(int(cfg.get("AVATAR_SIZE", 360) or 360))
 
                     welcome_msg = cfg.get("WELCOME_MESSAGE")
                     if not self.pv_message.hasFocus():

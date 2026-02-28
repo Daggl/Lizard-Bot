@@ -36,11 +36,11 @@ class AdminTools(commands.Cog):
         await ctx.invoke(cmd, **kwargs)
         return True
 
-    def _get_user_data(self, member: discord.Member):
-        return self.bot.db.get_user(member.id)
+    def _get_user_data(self, member: discord.Member, guild_id=None):
+        gid = guild_id or getattr(getattr(member, 'guild', None), 'id', None)
+        return self.bot.db.get_user(member.id, guild_id=gid)
 
-    @staticmethod
-    def _xp_for_level(level: int) -> int:
+    def _xp_for_level(self, level: int, guild_id=None) -> int:
         """Calculate the XP needed for a given level."""
         try:
             from mybot.cogs.leveling.utils.level_config import (
@@ -53,19 +53,19 @@ class AdminTools(commands.Cog):
                 get_level_xp_step,
             )
 
-        base = max(0, int(get_level_base_xp()))
-        step = max(0, int(get_level_xp_step()))
-        return base + (int(level) * step)
+        base = get_level_base_xp(guild_id=guild_id)
+        step = get_level_xp_step(guild_id=guild_id)
+        return max(1, base + (int(level) * step))
 
     # XP GEBEN
     @commands.hybrid_command(description="Givexp command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def givexp(self, ctx, member: discord.Member, amount: int):
-
-        user = self.bot.db.get_user(member.id)
+        guild_id = getattr(ctx.guild, 'id', None)
+        user = self.bot.db.get_user(member.id, guild_id=guild_id)
         user["xp"] += amount
-        self.bot.db.save()
+        self.bot.db.save(guild_id=guild_id)
 
         await ctx.send(
             translate_for_ctx(
@@ -82,10 +82,10 @@ class AdminTools(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def setxp(self, ctx, member: discord.Member, amount: int):
-
-        user = self.bot.db.get_user(member.id)
+        guild_id = getattr(ctx.guild, 'id', None)
+        user = self.bot.db.get_user(member.id, guild_id=guild_id)
         user["xp"] = amount
-        self.bot.db.save()
+        self.bot.db.save(guild_id=guild_id)
 
         await ctx.send(
             translate_for_ctx(
@@ -102,10 +102,10 @@ class AdminTools(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def setlevel(self, ctx, member: discord.Member, level: int):
-
-        user = self.bot.db.get_user(member.id)
+        guild_id = getattr(ctx.guild, 'id', None)
+        user = self.bot.db.get_user(member.id, guild_id=guild_id)
         user["level"] = level
-        self.bot.db.save()
+        self.bot.db.save(guild_id=guild_id)
 
         await ctx.send(
             translate_for_ctx(
@@ -121,7 +121,8 @@ class AdminTools(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def giveachievement(self, ctx, member: discord.Member, *, name: str):
-        user = self._get_user_data(member)
+        guild_id = getattr(ctx.guild, 'id', None)
+        user = self._get_user_data(member, guild_id=guild_id)
 
         if name in user["achievements"]:
             await ctx.send(
@@ -134,7 +135,7 @@ class AdminTools(commands.Cog):
             return
 
         user["achievements"].append(name)
-        self.bot.db.save()
+        self.bot.db.save(guild_id=guild_id)
 
         await ctx.send(
             translate_for_ctx(
@@ -150,7 +151,8 @@ class AdminTools(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def removeachievement(self, ctx, member: discord.Member, *, name: str):
-        user = self._get_user_data(member)
+        guild_id = getattr(ctx.guild, 'id', None)
+        user = self._get_user_data(member, guild_id=guild_id)
 
         if name not in user["achievements"]:
             await ctx.send(
@@ -163,7 +165,7 @@ class AdminTools(commands.Cog):
             return
 
         user["achievements"].remove(name)
-        self.bot.db.save()
+        self.bot.db.save(guild_id=guild_id)
 
         await ctx.send(
             translate_for_ctx(
@@ -262,12 +264,6 @@ class AdminTools(commands.Cog):
         )
         await ctx.invoke(poll_cmd)
 
-    @commands.hybrid_command(description="Testticketpanel command.")
-    @app_commands.default_permissions(administrator=True)
-    @commands.has_permissions(administrator=True)
-    async def testticketpanel(self, ctx):
-        await self._invoke_or_error(ctx, "ticketpanel")
-
     @commands.hybrid_command(description="Testmusic command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
@@ -319,8 +315,9 @@ class AdminTools(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)
     async def testlevelup(self, ctx, member: discord.Member, bonus_xp: int = 0):
-        user = self.bot.db.get_user(member.id)
-        needed = max(1, self._xp_for_level(int(user.get("level", 1))) - int(user.get("xp", 0)))
+        guild_id = getattr(ctx.guild, 'id', None)
+        user = self.bot.db.get_user(member.id, guild_id=guild_id)
+        needed = max(1, self._xp_for_level(int(user.get("level", 1)), guild_id=guild_id) - int(user.get("xp", 0)))
         amount = needed + max(0, int(bonus_xp))
 
         ok_add = await self._invoke_or_error(ctx, "addxp", member=member, amount=amount)

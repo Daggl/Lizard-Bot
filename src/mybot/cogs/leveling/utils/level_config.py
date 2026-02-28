@@ -9,26 +9,12 @@ def _cfg(guild_id: int | str | None = None) -> dict:
         return {}
 
 
-def _normalize_emoji_input(raw_value, fallback_name: str) -> str:
-    s = str(raw_value or "").strip()
-    if not s:
-        return ""
-    if s.startswith("<:") or s.startswith("<a:"):
-        return s
-    if s.isdigit():
-        return f"<:{fallback_name}:{s}>"
-    if s.lower().startswith("a:") and s[2:].isdigit():
-        return f"<a:{fallback_name}:{s[2:]}>"
-    return s
-
-
 def get_message_templates(guild_id: int | None = None):
+    """Return (level_up_template, achievement_template) for the guild."""
     cfg = _cfg(guild_id)
     level_up_tpl = resolve_localized_value(cfg.get("LEVEL_UP_MESSAGE_TEMPLATE", ""), guild_id=guild_id)
     achievement_tpl = resolve_localized_value(cfg.get("ACHIEVEMENT_MESSAGE_TEMPLATE", ""), guild_id=guild_id)
-    win_emoji = _normalize_emoji_input(cfg.get("EMOJI_WIN", ""), "win")
-    heart_emoji = _normalize_emoji_input(cfg.get("EMOJI_HEART", ""), "heart")
-    return str(level_up_tpl), str(achievement_tpl), win_emoji, heart_emoji
+    return str(level_up_tpl), str(achievement_tpl)
 
 
 def get_achievement_channel_id(guild_id: int | str | None = None) -> int:
@@ -60,17 +46,21 @@ def get_message_cooldown(guild_id: int | str | None = None) -> int:
 
 
 def get_level_base_xp(guild_id: int | str | None = None) -> int:
+    """Get XP needed at level 1. Default: 100 (prevents infinite loop)."""
     try:
-        return int(_cfg(guild_id).get("LEVEL_BASE_XP") or 0)
+        val = _cfg(guild_id).get("LEVEL_BASE_XP")
+        return int(val) if val is not None and val != "" else 100
     except Exception:
-        return 0
+        return 100
 
 
 def get_level_xp_step(guild_id: int | str | None = None) -> int:
+    """XP increase per level. Default: 50 (prevents infinite loop)."""
     try:
-        return int(_cfg(guild_id).get("LEVEL_XP_STEP") or 0)
+        val = _cfg(guild_id).get("LEVEL_XP_STEP")
+        return int(val) if val is not None and val != "" else 50
     except Exception:
-        return 0
+        return 50
 
 def get_level_rewards(guild_id: int | str | None = None) -> dict:
     cfg = _cfg(guild_id)

@@ -388,6 +388,83 @@ async def _run_admin_test(bot, command_name: str, requested_channel_id=None):
     return {"ok": True, "details": "\n".join(lines)}
 
 
+async def _handle_purge(bot, req: dict) -> dict:
+    """Handle the 'purge' control-API action.
+
+    Starts the purge as a **background task** so the API responds immediately.
+    The UI can then poll ``purge_status`` for progress.
+
+    Expected keys:
+        guild_id   – target guild (str or int)
+        user_id    – user whose messages to delete (str or int)
+        hours      – time window in hours (int, default 24)
+        channel_id – (optional) single channel; omit for all text channels
+    """
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+    guild_id = req.get("guild_id")
+    user_id = req.get("user_id")
+    hours = int(req.get("hours") or 24)
+
+    if not guild_id:
+        return {"ok": False, "error": "guild_id required"}
+    if not user_id:
+        return {"ok": False, "error": "user_id required"}
+
+    try:
+        guild_id = int(guild_id)
+        user_id = int(user_id)
+    except (ValueError, TypeError) as e:
+        return {"ok": False, "error": f"invalid id: {e}"}
+
+    guild = bot.get_guild(guild_id)
+    if guild is None:
+        return {"ok": False, "error": f"guild {guild_id} not found"}
+
+    hours = max(1, min(hours, 8760))
+    now = _dt.now(_tz.utc)
+    after = now - _td(hours=hours)
+
+    channel_id = req.get("channel_id")
+
+    channels: list = []
+    if channel_id:
+        try:
+            ch = guild.get_channel(int(channel_id))
+        except Exception:
+            ch = None
+        if ch is None:
+            return {"ok": False, "error": f"channel {channel_id} not found"}
+        channels = [ch]
+    else:
+        channels = list(guild.text_channels)
+
+    purge_cog = bot.get_cog("Purge") or bot.cogs.get("Purge")
+    if purge_cog is None:
+        return {"ok": False, "error": "Purge cog not loaded — restart the bot"}
+
+    if purge_cog._purge_running:
+        return {"ok": False, "error": "A purge is already running. Wait for it to finish or check purge_status."}
+
+    reason = f"Purge via UI (user_id={user_id})"
+
+    # Launch as background task — respond immediately
+    asyncio.create_task(
+        purge_cog.run_background_purge(channels, user_id, after, now, reason=reason)
+    )
+
+    return {"ok": True, "msg": "Purge started in background. Poll 'purge_status' for progress."}
+
+
+def _handle_purge_status(bot) -> dict:
+    """Return current purge progress."""
+    purge_cog = bot.get_cog("Purge") or bot.cogs.get("Purge")
+    if purge_cog is None:
+        return {"ok": False, "error": "Purge cog not loaded"}
+    status = purge_cog.get_purge_status()
+    return {"ok": True, **status}
+
+
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, bot):
     peer = writer.get_extra_info("peername")
     try:
@@ -710,6 +787,12 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         "guilds": _get_all_guild_languages(),
                     }
 
+        elif action == "purge":
+            resp = await _handle_purge(bot, req)
+
+        elif action == "purge_status":
+            resp = _handle_purge_status(bot)
+
         else:
             resp = {"ok": False, "error": "unknown action"}
 
@@ -745,7 +828,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     if not avatar_url:
                         avatar_url = "https://httpbin.org/image/png"
 
-                    dummy = _DummyMember(123456789, name, avatar_url)
+                    _DummyMember(123456789, name, avatar_url)
                     bg_path = req.get("bg_path")
                     bg_mode = req.get("bg_mode")
                     bg_zoom = req.get("bg_zoom")
@@ -757,42 +840,63 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     info_font_size = req.get("info_font_size")
                     name_color = req.get("name_color")
                     info_color = req.get("info_color")
-                    text_offset_x = req.get("text_offset_x")
-                    text_offset_y = req.get("text_offset_y")
+                    text_offset_x = int(req.get("text_offset_x") or 0)
+                    text_offset_y = int(req.get("text_offset_y") or 0)
                     try:
-                        # pass bg_path through to rank cog (bot and UI typically run on same host)
-                        card_file = await rank_cog.generate_rankcard(
-                            dummy,
-                            bg_path=bg_path,
-                            bg_mode=bg_mode,
-                            bg_zoom=bg_zoom,
-                            bg_offset_x=bg_offset_x,
-                            bg_offset_y=bg_offset_y,
-                            name_font=name_font,
-                            info_font=info_font,
-                            name_font_size=name_font_size,
-                            info_font_size=info_font_size,
-                            name_color=name_color,
-                            info_color=info_color,
-                            text_offset_x=text_offset_x,
-                            text_offset_y=text_offset_y,
+                        from mybot.cogs.leveling.rank import render_rankcard
+
+                        png_bytes = render_rankcard(
+                            bg_path=bg_path or "assets/rankcard.png",
+                            bg_mode=bg_mode or "cover",
+                            bg_zoom=bg_zoom if bg_zoom is not None else 100,
+                            bg_offset_x=bg_offset_x if bg_offset_x is not None else 0,
+                            bg_offset_y=bg_offset_y if bg_offset_y is not None else 0,
+                            username=name,
+                            level=5,
+                            xp=350,
+                            xp_needed=500,
+                            messages=128,
+                            voice_minutes=45,
+                            achievements_count=3,
+                            avatar_bytes=None,
+                            username_font=name_font or "assets/fonts/Poppins-Bold.ttf",
+                            username_font_size=name_font_size if name_font_size is not None else 90,
+                            username_color=name_color or "#FFFFFF",
+                            level_font=info_font or "assets/fonts/Poppins-Regular.ttf",
+                            level_font_size=info_font_size if info_font_size is not None else 60,
+                            level_color=info_color or "#C8C8C8",
+                            xp_font=info_font or "assets/fonts/Poppins-Regular.ttf",
+                            xp_font_size=33,
+                            xp_color=info_color or "#C8C8C8",
+                            messages_font=info_font or "assets/fonts/Poppins-Regular.ttf",
+                            messages_font_size=33,
+                            messages_color=info_color or "#C8C8C8",
+                            voice_font=info_font or "assets/fonts/Poppins-Regular.ttf",
+                            voice_font_size=33,
+                            voice_color=info_color or "#C8C8C8",
+                            achievements_font=info_font or "assets/fonts/Poppins-Regular.ttf",
+                            achievements_font_size=33,
+                            achievements_color=info_color or "#C8C8C8",
+                            username_x=400 + text_offset_x,
+                            username_y=80 + text_offset_y,
+                            level_x=400 + text_offset_x,
+                            level_y=200 + text_offset_y,
+                            xp_x=1065 + text_offset_x,
+                            xp_y=270 + text_offset_y,
+                            messages_x=400 + text_offset_x,
+                            messages_y=400 + text_offset_y,
+                            voice_x=680 + text_offset_x,
+                            voice_y=400 + text_offset_y,
+                            achievements_x=980 + text_offset_x,
+                            achievements_y=400 + text_offset_y,
                         )
                     except Exception as e:
                         resp = {"ok": False, "error": f"rank generation failed: {e}"}
                     else:
-                        fp = getattr(card_file, "fp", None)
-                        if fp is None:
-                            resp = {"ok": False, "error": "no file buffer returned"}
-                        else:
-                            try:
-                                fp.seek(0)
-                            except Exception:
-                                pass
-                            import base64
+                        import base64
 
-                            data = fp.read()
-                            b64 = base64.b64encode(data).decode()
-                            resp = {"ok": True, "png_base64": b64}
+                        b64 = base64.b64encode(png_bytes).decode()
+                        resp = {"ok": True, "png_base64": b64}
             except Exception as e:
                 resp = {"ok": False, "error": str(e)}
 

@@ -1,0 +1,16 @@
+{
+  "BG_PATH": "C:/Users/mahoe/Documents/DC Bot/assets/rankcard.png",
+  "EXAMPLE_NAME": "Lizard",
+  "BG_MODE": "cover",
+  "BG_ZOOM": 90,
+  "BG_OFFSET_X": 0,
+  "BG_OFFSET_Y": 120,
+  "NAME_FONT": "C:\\Users\\mahoe\\Documents\\DC Bot\\assets\\fonts\\Poppins-Bold.ttf",
+  "INFO_FONT": "C:\\Users\\mahoe\\Documents\\DC Bot\\assets\\fonts\\Poppins-Regular.ttf",
+  "NAME_FONT_SIZE": 60,
+  "INFO_FONT_SIZE": 40,
+  "NAME_COLOR": "#000000",
+  "INFO_COLOR": "#FFFFFF",
+  "TEXT_OFFSET_X": 0,
+  "TEXT_OFFSET_Y": 0
+}

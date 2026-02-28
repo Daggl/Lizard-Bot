@@ -3,11 +3,20 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 class PreviewApiControllerMixin:
     def on_refresh_preview(self):
+        """Refresh preview - tries bot API first, falls back to local rendering."""
         try:
             try:
-                self._set_status("Preview: requesting...")
+                self._set_status("Preview: refreshing...")
             except Exception:
                 pass
+            
+            # First try local rendering (always works)
+            try:
+                self._apply_live_preview()
+            except Exception:
+                pass
+            
+            # Then try bot API if available (for more accurate preview with real avatar)
             overrides = {
                 "BANNER_PATH": self.pv_banner_path.text() or None,
                 "BG_MODE": self.pv_bg_mode.currentData() or "cover",
@@ -36,14 +45,19 @@ class PreviewApiControllerMixin:
                 cb=lambda ping, overrides=overrides: self._on_preview_ping_result(ping, overrides),
             )
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Preview error", str(e))
+            # Fall back to local rendering
+            try:
+                self._apply_live_preview()
+                self._set_status("Preview refreshed (local)")
+            except Exception:
+                pass
 
     def _on_preview_ping_result(self, ping: dict, overrides: dict):
         try:
             if not ping.get("ok"):
-                QtWidgets.QMessageBox.warning(self, "Preview", f"Control API not available, using local banner ({ping.get('error')})")
+                # Bot not available, local preview already shown
                 try:
-                    self.update_preview()
+                    self._set_status("Preview refreshed (local - bot not running)")
                 except Exception:
                     pass
                 return
@@ -68,10 +82,6 @@ class PreviewApiControllerMixin:
                     except Exception:
                         self.pv_banner.setPixmap(pix)
                     self._preview_banner_data_url = f"data:image/png;base64,{b64}"
-                    try:
-                        self._apply_live_preview()
-                    except Exception:
-                        pass
                     return
             QtWidgets.QMessageBox.warning(self, "Preview", f"Failed to get banner from bot: {r}")
             try:
@@ -83,27 +93,11 @@ class PreviewApiControllerMixin:
 
     def on_refresh_rankpreview(self):
         try:
+            self._apply_live_preview()
             try:
-                self._set_status("Rank Preview: requesting...")
+                self._set_status("Rank preview refreshed (local)")
             except Exception:
                 pass
-            bg = self.rk_bg_path.text() or self._rank_config.get("BG_PATH") if getattr(self, "_rank_config", None) is not None else None
-            req = {"action": "rank_preview"}
-            if bg:
-                req["bg_path"] = bg
-            req["bg_mode"] = self.rk_bg_mode.currentData() or "cover"
-            req["bg_zoom"] = int(self.rk_bg_zoom.value())
-            req["bg_offset_x"] = int(self.rk_bg_x.value())
-            req["bg_offset_y"] = int(self.rk_bg_y.value())
-            req["name_font"] = self._selected_rank_name_font_path()
-            req["info_font"] = self._selected_rank_info_font_path()
-            req["name_font_size"] = int(self.rk_name_size.value())
-            req["info_font_size"] = int(self.rk_info_size.value())
-            req["name_color"] = self.rk_name_color.text() or "#FFFFFF"
-            req["info_color"] = self.rk_info_color.text() or "#C8C8C8"
-            req["text_offset_x"] = int(self.rk_text_x.value())
-            req["text_offset_y"] = int(self.rk_text_y.value())
-            self.send_cmd_async(req, timeout=3.0, cb=self._on_rankpreview_result)
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Rank Preview error", str(e))
 

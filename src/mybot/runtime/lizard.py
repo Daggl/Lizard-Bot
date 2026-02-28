@@ -41,6 +41,7 @@ DEFAULT_EXTENSIONS = [
     "mybot.cogs.admin.admin_panel",
     "mybot.cogs.admin.admin_tools",
     "mybot.cogs.admin.admin_tutorial",
+    "mybot.cogs.admin.purge",
     "mybot.cogs.community.count",
     "mybot.cogs.log.chat_log",
     "mybot.cogs.log.mod_log",

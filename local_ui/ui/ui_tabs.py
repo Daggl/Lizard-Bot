@@ -85,7 +85,6 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.event_test_combo.addItem("Count (testcount)", "testcount")
     window.event_test_combo.addItem("Birthday (testbirthday)", "testbirthday")
     window.event_test_combo.addItem("Poll (testpoll)", "testpoll")
-    window.event_test_combo.addItem("Ticket Panel (testticketpanel)", "testticketpanel")
     window.event_test_combo.addItem("Music (testmusic)", "testmusic")
     window.event_test_combo.addItem("Say (testsay)", "testsay")
     window.event_test_combo.addItem("Level (testlevel)", "testlevel")
@@ -198,7 +197,7 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     pv_lbl_preview.setStyleSheet("font-weight:700; font-size:14px; margin-bottom:6px;")
     pv_left.addWidget(pv_lbl_preview)
     window.pv_banner = QtWidgets.QLabel()
-    window.pv_banner.setFixedSize(520, 180)
+    window.pv_banner.setFixedSize(520, 191)
     window.pv_banner.setScaledContents(False)
     pv_left.addWidget(window.pv_banner)
     pv_left.addStretch()
@@ -221,6 +220,9 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     h.addWidget(window.pv_banner_browse)
     pv_form.addRow("Example name:", window.pv_name)
     pv_form.addRow("Banner image:", h)
+    pv_banner_hint = QtWidgets.QLabel("Recommended: 1500 × 550 px")
+    pv_banner_hint.setStyleSheet("color:#9aa0a6; font-size:11px; margin-top:-4px;")
+    pv_form.addRow("", pv_banner_hint)
     window.pv_message = QtWidgets.QPlainTextEdit()
     window.pv_message.setMinimumHeight(150)
     window.pv_message.setMaximumHeight(220)
@@ -395,6 +397,13 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     pos_row.addStretch()
     pv_form.addRow("Avatar offset:", pos_row)
 
+    window.pv_avatar_size = QtWidgets.QSpinBox()
+    window.pv_avatar_size.setRange(50, 600)
+    window.pv_avatar_size.setValue(360)
+    window.pv_avatar_size.setSuffix(" px")
+    window.pv_avatar_size.setFixedWidth(120)
+    pv_form.addRow("Avatar size:", window.pv_avatar_size)
+
     window.ph_mention.clicked.connect(lambda: window._insert_placeholder('{mention}'))
     window.ph_rules.clicked.connect(lambda: window._insert_placeholder('{rules_channel}'))
     window.ph_verify.clicked.connect(lambda: window._insert_placeholder('{verify_channel}'))
@@ -443,7 +452,7 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     lbl_preview.setStyleSheet("font-weight:700; font-size:14px; margin-bottom:6px;")
     rk_left.addWidget(lbl_preview)
     window.rk_image = QtWidgets.QLabel()
-    window.rk_image.setFixedSize(520, 180)
+    window.rk_image.setFixedSize(520, 191)
     window.rk_image.setScaledContents(False)
     rk_left.addWidget(window.rk_image)
     rk_left.addStretch()
@@ -472,6 +481,9 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     hbg.addWidget(window.rk_bg_browse)
     rk_form.addRow("Example name:", window.rk_name)
     rk_form.addRow("Background PNG:", hbg)
+    rk_bg_hint = QtWidgets.QLabel("Recommended: 1500 × 550 px")
+    rk_bg_hint.setStyleSheet("color:#9aa0a6; font-size:11px; margin-top:-4px;")
+    rk_form.addRow("", rk_bg_hint)
     rk_form.addRow(_section_label("Background"))
     window.rk_bg_mode = QtWidgets.QComboBox()
     window.rk_bg_mode.addItem("Fill (cover)", "cover")
@@ -503,66 +515,162 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     rk_bg_offset_row.addStretch()
     rk_form.addRow("Background offset:", rk_bg_offset_row)
 
-    rk_form.addRow(_section_label("Typography"))
-    window.rk_name_font = QtWidgets.QComboBox()
-    window.rk_name_font.setEditable(True)
-    window.rk_name_font.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
-    rk_form.addRow("Name font:", window.rk_name_font)
+    def _make_rank_xy_row():
+        row = QtWidgets.QHBoxLayout()
+        sx = QtWidgets.QSpinBox()
+        sx.setRange(-4000, 4000)
+        sx.setSingleStep(5)
+        sx.setFixedWidth(110)
+        sy = QtWidgets.QSpinBox()
+        sy.setRange(-4000, 4000)
+        sy.setSingleStep(5)
+        sy.setFixedWidth(110)
+        row.addWidget(QtWidgets.QLabel("X"))
+        row.addWidget(sx)
+        row.addSpacing(10)
+        row.addWidget(QtWidgets.QLabel("Y"))
+        row.addWidget(sy)
+        row.addStretch()
+        return row, sx, sy
 
-    window.rk_info_font = QtWidgets.QComboBox()
-    window.rk_info_font.setEditable(True)
-    window.rk_info_font.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
-    rk_form.addRow("Info font:", window.rk_info_font)
+    def _make_rank_font_combo():
+        combo = QtWidgets.QComboBox()
+        combo.setEditable(True)
+        combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
+        return combo
 
-    window.rk_name_size = QtWidgets.QSpinBox()
-    window.rk_name_size.setRange(8, 200)
-    window.rk_name_size.setValue(60)
-    window.rk_name_size.setFixedWidth(120)
-    rk_form.addRow("Name size:", window.rk_name_size)
+    def _make_rank_size_spin(default_value: int):
+        spin = QtWidgets.QSpinBox()
+        spin.setRange(8, 300)
+        spin.setValue(default_value)
+        spin.setFixedWidth(120)
+        return spin
 
-    window.rk_info_size = QtWidgets.QSpinBox()
-    window.rk_info_size.setRange(8, 120)
-    window.rk_info_size.setValue(40)
-    window.rk_info_size.setFixedWidth(120)
-    rk_form.addRow("Info size:", window.rk_info_size)
+    def _make_rank_color_row(placeholder: str):
+        line = QtWidgets.QLineEdit()
+        line.setPlaceholderText(placeholder)
+        btn = QtWidgets.QPushButton("Pick...")
+        btn.setFixedWidth(72)
+        row = QtWidgets.QHBoxLayout()
+        row.addWidget(line, 1)
+        row.addWidget(btn, 0)
+        return row, line, btn
 
-    window.rk_name_color = QtWidgets.QLineEdit()
-    window.rk_name_color.setPlaceholderText("#FFFFFF")
-    window.rk_name_color_pick = QtWidgets.QPushButton("Pick...")
-    window.rk_name_color_pick.setFixedWidth(72)
-    rk_name_color_row = QtWidgets.QHBoxLayout()
-    rk_name_color_row.addWidget(window.rk_name_color, 1)
-    rk_name_color_row.addWidget(window.rk_name_color_pick, 0)
-    rk_form.addRow("Name color:", rk_name_color_row)
+    rk_form.addRow(_section_label("Username"))
+    window.rk_username_font = _make_rank_font_combo()
+    rk_form.addRow("Font:", window.rk_username_font)
+    window.rk_username_size = _make_rank_size_spin(90)
+    rk_form.addRow("Size:", window.rk_username_size)
+    rk_username_color_row, window.rk_username_color, window.rk_username_color_pick = _make_rank_color_row("#FFFFFF")
+    rk_form.addRow("Color:", rk_username_color_row)
+    rk_username_pos_row, window.rk_username_x, window.rk_username_y = _make_rank_xy_row()
+    rk_form.addRow("Position:", rk_username_pos_row)
 
-    window.rk_info_color = QtWidgets.QLineEdit()
-    window.rk_info_color.setPlaceholderText("#C8C8C8")
-    window.rk_info_color_pick = QtWidgets.QPushButton("Pick...")
-    window.rk_info_color_pick.setFixedWidth(72)
-    rk_info_color_row = QtWidgets.QHBoxLayout()
-    rk_info_color_row.addWidget(window.rk_info_color, 1)
-    rk_info_color_row.addWidget(window.rk_info_color_pick, 0)
-    rk_form.addRow("Info color:", rk_info_color_row)
+    rk_form.addRow(_section_label("Level Text"))
+    window.rk_level_font = _make_rank_font_combo()
+    rk_form.addRow("Font:", window.rk_level_font)
+    window.rk_level_size = _make_rank_size_spin(60)
+    rk_form.addRow("Size:", window.rk_level_size)
+    rk_level_color_row, window.rk_level_color, window.rk_level_color_pick = _make_rank_color_row("#C8C8C8")
+    rk_form.addRow("Color:", rk_level_color_row)
+    rk_level_pos_row, window.rk_level_x, window.rk_level_y = _make_rank_xy_row()
+    rk_form.addRow("Position:", rk_level_pos_row)
 
-    rk_text_pos_row = QtWidgets.QHBoxLayout()
-    window.rk_text_x = QtWidgets.QSpinBox()
-    window.rk_text_x.setRange(-2000, 2000)
-    window.rk_text_x.setSingleStep(5)
-    window.rk_text_x.setFixedWidth(110)
-    window.rk_text_y = QtWidgets.QSpinBox()
-    window.rk_text_y.setRange(-2000, 2000)
-    window.rk_text_y.setSingleStep(5)
-    window.rk_text_y.setFixedWidth(110)
-    rk_text_pos_row.addWidget(QtWidgets.QLabel("X"))
-    rk_text_pos_row.addWidget(window.rk_text_x)
-    rk_text_pos_row.addSpacing(10)
-    rk_text_pos_row.addWidget(QtWidgets.QLabel("Y"))
-    rk_text_pos_row.addWidget(window.rk_text_y)
-    rk_text_pos_row.addStretch()
-    rk_form.addRow("Text offset:", rk_text_pos_row)
+    rk_form.addRow(_section_label("XP Text"))
+    window.rk_xp_font = _make_rank_font_combo()
+    rk_form.addRow("Font:", window.rk_xp_font)
+    window.rk_xp_size = _make_rank_size_spin(33)
+    rk_form.addRow("Size:", window.rk_xp_size)
+    rk_xp_color_row, window.rk_xp_color, window.rk_xp_color_pick = _make_rank_color_row("#C8C8C8")
+    rk_form.addRow("Color:", rk_xp_color_row)
+    rk_xp_pos_row, window.rk_xp_x, window.rk_xp_y = _make_rank_xy_row()
+    rk_form.addRow("Position:", rk_xp_pos_row)
+
+    rk_form.addRow(_section_label("Messages Text"))
+    window.rk_messages_font = _make_rank_font_combo()
+    rk_form.addRow("Font:", window.rk_messages_font)
+    window.rk_messages_size = _make_rank_size_spin(33)
+    rk_form.addRow("Size:", window.rk_messages_size)
+    rk_messages_color_row, window.rk_messages_color, window.rk_messages_color_pick = _make_rank_color_row("#C8C8C8")
+    rk_form.addRow("Color:", rk_messages_color_row)
+    rk_messages_pos_row, window.rk_messages_x, window.rk_messages_y = _make_rank_xy_row()
+    rk_form.addRow("Position:", rk_messages_pos_row)
+
+    rk_form.addRow(_section_label("Voice Text"))
+    window.rk_voice_font = _make_rank_font_combo()
+    rk_form.addRow("Font:", window.rk_voice_font)
+    window.rk_voice_size = _make_rank_size_spin(33)
+    rk_form.addRow("Size:", window.rk_voice_size)
+    rk_voice_color_row, window.rk_voice_color, window.rk_voice_color_pick = _make_rank_color_row("#C8C8C8")
+    rk_form.addRow("Color:", rk_voice_color_row)
+    rk_voice_pos_row, window.rk_voice_x, window.rk_voice_y = _make_rank_xy_row()
+    rk_form.addRow("Position:", rk_voice_pos_row)
+
+    rk_form.addRow(_section_label("Achievements Text"))
+    window.rk_achievements_font = _make_rank_font_combo()
+    rk_form.addRow("Font:", window.rk_achievements_font)
+    window.rk_achievements_size = _make_rank_size_spin(33)
+    rk_form.addRow("Size:", window.rk_achievements_size)
+    rk_achievements_color_row, window.rk_achievements_color, window.rk_achievements_color_pick = _make_rank_color_row("#C8C8C8")
+    rk_form.addRow("Color:", rk_achievements_color_row)
+    rk_achievements_pos_row, window.rk_achievements_x, window.rk_achievements_y = _make_rank_xy_row()
+    rk_form.addRow("Position:", rk_achievements_pos_row)
+
+    rk_form.addRow(_section_label("Avatar"))
+    rk_avatar_pos_row = QtWidgets.QHBoxLayout()
+    window.rk_avatar_x = QtWidgets.QSpinBox()
+    window.rk_avatar_x.setRange(-4000, 4000)
+    window.rk_avatar_x.setSingleStep(5)
+    window.rk_avatar_x.setFixedWidth(110)
+    window.rk_avatar_y = QtWidgets.QSpinBox()
+    window.rk_avatar_y.setRange(-4000, 4000)
+    window.rk_avatar_y.setSingleStep(5)
+    window.rk_avatar_y.setFixedWidth(110)
+    rk_avatar_pos_row.addWidget(QtWidgets.QLabel("X"))
+    rk_avatar_pos_row.addWidget(window.rk_avatar_x)
+    rk_avatar_pos_row.addSpacing(10)
+    rk_avatar_pos_row.addWidget(QtWidgets.QLabel("Y"))
+    rk_avatar_pos_row.addWidget(window.rk_avatar_y)
+    rk_avatar_pos_row.addStretch()
+    rk_form.addRow("Avatar offset:", rk_avatar_pos_row)
+
+    window.rk_avatar_size = QtWidgets.QSpinBox()
+    window.rk_avatar_size.setRange(50, 600)
+    window.rk_avatar_size.setValue(300)
+    window.rk_avatar_size.setSuffix(" px")
+    window.rk_avatar_size.setFixedWidth(120)
+    rk_form.addRow("Size:", window.rk_avatar_size)
+
+    rk_form.addRow(_section_label("Progress Bar"))
+    rk_bar_pos_row, window.rk_bar_x, window.rk_bar_y = _make_rank_xy_row()
+    rk_form.addRow("Position:", rk_bar_pos_row)
+
+    rk_bar_size_row = QtWidgets.QHBoxLayout()
+    window.rk_bar_width = QtWidgets.QSpinBox()
+    window.rk_bar_width.setRange(10, 3000)
+    window.rk_bar_width.setValue(900)
+    window.rk_bar_width.setFixedWidth(120)
+    window.rk_bar_height = QtWidgets.QSpinBox()
+    window.rk_bar_height.setRange(4, 500)
+    window.rk_bar_height.setValue(38)
+    window.rk_bar_height.setFixedWidth(120)
+    rk_bar_size_row.addWidget(QtWidgets.QLabel("W"))
+    rk_bar_size_row.addWidget(window.rk_bar_width)
+    rk_bar_size_row.addSpacing(10)
+    rk_bar_size_row.addWidget(QtWidgets.QLabel("H"))
+    rk_bar_size_row.addWidget(window.rk_bar_height)
+    rk_bar_size_row.addStretch()
+    rk_form.addRow("Size:", rk_bar_size_row)
+
+    rk_bar_bg_color_row, window.rk_bar_bg_color, window.rk_bar_bg_color_pick = _make_rank_color_row("#323232")
+    rk_form.addRow("Background:", rk_bar_bg_color_row)
+
+    rk_bar_fill_color_row, window.rk_bar_fill_color, window.rk_bar_fill_color_pick = _make_rank_color_row("#8C6EFF")
+    rk_form.addRow("Fill color:", rk_bar_fill_color_row)
+
     rk_controls_layout.addLayout(rk_form)
 
-    info = QtWidgets.QLabel("Choose a background PNG to preview the rank. Use Save + Reload to apply to the bot.")
+    info = QtWidgets.QLabel("Preview updates automatically. Use Save + Reload to apply to the bot.")
     info.setWordWrap(True)
     info.setStyleSheet("color:#9aa0a6; font-size:11px; margin-top:8px;")
     rk_controls_layout.addWidget(info)
@@ -878,8 +986,14 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
 
     window.rk_refresh.clicked.connect(window.on_refresh_rankpreview)
     window.rk_bg_browse.clicked.connect(window._choose_rank_bg)
-    window.rk_name_color_pick.clicked.connect(lambda: window._pick_color(window.rk_name_color, "Choose rank name color"))
-    window.rk_info_color_pick.clicked.connect(lambda: window._pick_color(window.rk_info_color, "Choose rank info color"))
+    window.rk_username_color_pick.clicked.connect(lambda: window._pick_color(window.rk_username_color, "Choose username color"))
+    window.rk_level_color_pick.clicked.connect(lambda: window._pick_color(window.rk_level_color, "Choose level color"))
+    window.rk_xp_color_pick.clicked.connect(lambda: window._pick_color(window.rk_xp_color, "Choose XP color"))
+    window.rk_messages_color_pick.clicked.connect(lambda: window._pick_color(window.rk_messages_color, "Choose messages color"))
+    window.rk_voice_color_pick.clicked.connect(lambda: window._pick_color(window.rk_voice_color, "Choose voice color"))
+    window.rk_achievements_color_pick.clicked.connect(lambda: window._pick_color(window.rk_achievements_color, "Choose achievements color"))
+    window.rk_bar_bg_color_pick.clicked.connect(lambda: window._pick_color(window.rk_bar_bg_color, "Choose bar background color"))
+    window.rk_bar_fill_color_pick.clicked.connect(lambda: window._pick_color(window.rk_bar_fill_color, "Choose bar fill color"))
     window.lv_ph_member_mention.clicked.connect(lambda: window._insert_placeholder_into(window.lv_levelup_msg, '{member_mention}'))
     window.lv_ph_member_name.clicked.connect(lambda: window._insert_placeholder_into(window.lv_levelup_msg, '{member_name}'))
     window.lv_ph_display_name.clicked.connect(lambda: window._insert_placeholder_into(window.lv_levelup_msg, '{member_display_name}'))
@@ -970,17 +1084,163 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     window.pv_text_y.valueChanged.connect(window._mark_preview_dirty)
     window.pv_avatar_x.valueChanged.connect(window._mark_preview_dirty)
     window.pv_avatar_y.valueChanged.connect(window._mark_preview_dirty)
+    window.pv_avatar_size.valueChanged.connect(lambda _v: window._preview_debounce.start())
+    window.pv_avatar_size.valueChanged.connect(window._mark_preview_dirty)
     window.rk_name.textChanged.connect(lambda: window._preview_debounce.start())
     window.rk_bg_path.textChanged.connect(lambda: window._preview_debounce.start())
     window.rk_bg_mode.currentIndexChanged.connect(lambda _v: window._preview_debounce.start())
     window.rk_bg_zoom.valueChanged.connect(lambda _v: window._preview_debounce.start())
     window.rk_bg_x.valueChanged.connect(lambda _v: window._preview_debounce.start())
     window.rk_bg_y.valueChanged.connect(lambda _v: window._preview_debounce.start())
-    window.rk_name_font.currentTextChanged.connect(lambda _t: window._preview_debounce.start())
-    window.rk_info_font.currentTextChanged.connect(lambda _t: window._preview_debounce.start())
-    window.rk_name_size.valueChanged.connect(lambda _v: window._preview_debounce.start())
-    window.rk_info_size.valueChanged.connect(lambda _v: window._preview_debounce.start())
-    window.rk_name_color.textChanged.connect(lambda: window._preview_debounce.start())
-    window.rk_info_color.textChanged.connect(lambda: window._preview_debounce.start())
-    window.rk_text_x.valueChanged.connect(lambda _v: window._preview_debounce.start())
-    window.rk_text_y.valueChanged.connect(lambda _v: window._preview_debounce.start())
+
+    for _combo in (
+        window.rk_username_font,
+        window.rk_level_font,
+        window.rk_xp_font,
+        window.rk_messages_font,
+        window.rk_voice_font,
+        window.rk_achievements_font,
+    ):
+        _combo.currentTextChanged.connect(lambda _t: window._preview_debounce.start())
+
+    for _spin in (
+        window.rk_username_size,
+        window.rk_level_size,
+        window.rk_xp_size,
+        window.rk_messages_size,
+        window.rk_voice_size,
+        window.rk_achievements_size,
+        window.rk_username_x,
+        window.rk_username_y,
+        window.rk_level_x,
+        window.rk_level_y,
+        window.rk_xp_x,
+        window.rk_xp_y,
+        window.rk_messages_x,
+        window.rk_messages_y,
+        window.rk_voice_x,
+        window.rk_voice_y,
+        window.rk_achievements_x,
+        window.rk_achievements_y,
+        window.rk_avatar_x,
+        window.rk_avatar_y,
+        window.rk_avatar_size,
+        window.rk_bar_x,
+        window.rk_bar_y,
+        window.rk_bar_width,
+        window.rk_bar_height,
+    ):
+        _spin.valueChanged.connect(lambda _v: window._preview_debounce.start())
+
+    for _line in (
+        window.rk_username_color,
+        window.rk_level_color,
+        window.rk_xp_color,
+        window.rk_messages_color,
+        window.rk_voice_color,
+        window.rk_achievements_color,
+        window.rk_bar_bg_color,
+        window.rk_bar_fill_color,
+    ):
+        _line.textChanged.connect(lambda: window._preview_debounce.start())
+
+
+# =====================================================================
+# Purge tab
+# =====================================================================
+
+def build_purge_tab(window, tabs: QtWidgets.QTabWidget):
+    """Build the 'Purge' tab for bulk-deleting a user's messages."""
+    purge = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(purge)
+    layout.setContentsMargins(12, 12, 12, 12)
+    layout.setSpacing(10)
+
+    # ---- description ----
+    desc = QtWidgets.QLabel(
+        "Delete all messages from a specific user in a given time range.\n"
+        "The bot must have Manage Messages permission in the target channels."
+    )
+    desc.setWordWrap(True)
+    desc.setStyleSheet("color:#aaa; margin-bottom:6px;")
+    layout.addWidget(desc)
+
+    # ---- Guild selector ----
+    guild_row = QtWidgets.QHBoxLayout()
+    guild_row.addWidget(QtWidgets.QLabel("Guild:"))
+    window.purge_guild_combo = QtWidgets.QComboBox()
+    window.purge_guild_combo.setMinimumWidth(260)
+    window.purge_guild_combo.addItem("— select guild —", None)
+    guild_row.addWidget(window.purge_guild_combo)
+    window.purge_refresh_btn = QtWidgets.QPushButton("Refresh Guilds")
+    guild_row.addWidget(window.purge_refresh_btn)
+    guild_row.addStretch()
+    layout.addLayout(guild_row)
+
+    # ---- Channel selector ----
+    ch_row = QtWidgets.QHBoxLayout()
+    ch_row.addWidget(QtWidgets.QLabel("Channel:"))
+    window.purge_channel_combo = QtWidgets.QComboBox()
+    window.purge_channel_combo.setMinimumWidth(260)
+    window.purge_channel_combo.addItem("— all text channels —", "__ALL__")
+    ch_row.addWidget(window.purge_channel_combo)
+    ch_row.addStretch()
+    layout.addLayout(ch_row)
+
+    # ---- User ID ----
+    user_row = QtWidgets.QHBoxLayout()
+    user_row.addWidget(QtWidgets.QLabel("User ID:"))
+    window.purge_user_id = QtWidgets.QLineEdit()
+    window.purge_user_id.setPlaceholderText("e.g. 123456789012345678")
+    window.purge_user_id.setMaximumWidth(260)
+    user_row.addWidget(window.purge_user_id)
+    user_row.addStretch()
+    layout.addLayout(user_row)
+
+    # ---- Hours ----
+    hours_row = QtWidgets.QHBoxLayout()
+    hours_row.addWidget(QtWidgets.QLabel("Hours:"))
+    window.purge_hours = QtWidgets.QSpinBox()
+    window.purge_hours.setRange(1, 8760)
+    window.purge_hours.setValue(24)
+    window.purge_hours.setSuffix(" h")
+    window.purge_hours.setToolTip("Delete messages from the last N hours (1 – 8760 = 365 days)")
+    window.purge_hours.setMaximumWidth(140)
+    hours_row.addWidget(window.purge_hours)
+    hours_row.addStretch()
+    layout.addLayout(hours_row)
+
+    # ---- Execute button ----
+    btn_row = QtWidgets.QHBoxLayout()
+    window.purge_execute_btn = QtWidgets.QPushButton("🗑  Purge Messages")
+    window.purge_execute_btn.setStyleSheet(
+        "QPushButton { background:#c0392b; color:white; font-weight:bold; padding:8px 24px; border-radius:4px; }"
+        "QPushButton:hover { background:#e74c3c; }"
+    )
+    btn_row.addWidget(window.purge_execute_btn)
+    btn_row.addStretch()
+    layout.addLayout(btn_row)
+
+    # ---- Progress label ----
+    window.purge_progress_label = QtWidgets.QLabel("")
+    window.purge_progress_label.setWordWrap(True)
+    window.purge_progress_label.setStyleSheet("color:#e2b714; font-size:13px; margin-top:4px;")
+    layout.addWidget(window.purge_progress_label)
+
+    # ---- time estimate info ----
+    info = QtWidgets.QLabel(
+        "⏱  Time estimate: ~2 min for 12k messages < 14 days (bulk-delete).\n"
+        "    Messages older than 14 days: ~1 message per 0.35s → 12k ≈ 70 min."
+    )
+    info.setWordWrap(True)
+    info.setStyleSheet("color:#666; font-size:11px; margin-top:8px;")
+    layout.addWidget(info)
+
+    layout.addStretch()
+
+    # ---- wire signals ----
+    window.purge_refresh_btn.clicked.connect(window.on_purge_refresh_guilds)
+    window.purge_guild_combo.currentIndexChanged.connect(window._on_purge_guild_changed)
+    window.purge_execute_btn.clicked.connect(window.on_purge_execute)
+
+    tabs.addTab(purge, "Purge")

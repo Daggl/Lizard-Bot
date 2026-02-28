@@ -16,17 +16,20 @@ log = logging.getLogger(__name__)
 # ======================================================
 
 
-def xp_for_level(level: int) -> int:
+def xp_for_level(level: int, guild_id: int | str | None = None) -> int:
     """
     XP required to advance FROM this level to next level.
 
     MEE6 style formula:
     smooth progression, no level 0 bug
+    
+    IMPORTANT: Must pass guild_id for per-guild config!
+    Default fallbacks (100 base, 50 step) prevent infinite loop if config missing.
     """
 
-    base = max(0, int(get_level_base_xp()))
-    step = max(0, int(get_level_xp_step()))
-    return base + (level * step)
+    base = get_level_base_xp(guild_id=guild_id)
+    step = get_level_xp_step(guild_id=guild_id)
+    return max(1, base + (level * step))  # Never return 0 to prevent infinite loop!
 
 
 # ======================================================
@@ -89,12 +92,12 @@ class Levels(commands.Cog):
         leveled = False
 
         # ==================================================
-        # LEVEL LOOP
+        # LEVEL LOOP - calculate all level-ups first (no messages inside loop!)
         # ==================================================
 
-        while user["xp"] >= xp_for_level(user["level"]):
+        while user["xp"] >= xp_for_level(user["level"], guild_id=guild_id):
 
-            needed = xp_for_level(user["level"])
+            needed = xp_for_level(user["level"], guild_id=guild_id)
 
             user["xp"] -= needed
 
@@ -102,15 +105,17 @@ class Levels(commands.Cog):
 
             leveled = True
 
-            # LEVEL UP MESSAGE
+        # ==================================================
+        # LEVEL UP MESSAGE - send ONE message after all level-ups calculated
+        # ==================================================
+
+        if leveled:
             channel = await self._resolve_levelup_channel(member)
 
             if channel:
                 try:
-                    level_up_tpl, _achievement_tpl, win_emoji, heart_emoji = get_message_templates(guild_id)
+                    level_up_tpl, _achievement_tpl = get_message_templates(guild_id)
                     template_raw = str(level_up_tpl)
-                    includes_win = ("{emoji_win}" in template_raw) or ("{leading_emoji}" in template_raw)
-                    includes_heart = ("{emoji_heart}" in template_raw) or ("{trailing_emoji}" in template_raw)
                     description = template_raw.format(
                         member_mention=member.mention,
                         member_name=getattr(member, "name", member.display_name),
@@ -118,15 +123,7 @@ class Levels(commands.Cog):
                         member_id=member.id,
                         guild_name=getattr(getattr(member, "guild", None), "name", ""),
                         level=user["level"],
-                        emoji_win=win_emoji,
-                        emoji_heart=heart_emoji,
-                        leading_emoji=win_emoji,
-                        trailing_emoji=heart_emoji,
                     )
-                    if win_emoji and not includes_win:
-                        description = f"{win_emoji} {description}".strip()
-                    if heart_emoji and not includes_heart:
-                        description = f"{description} {heart_emoji}".strip()
                 except Exception:
                     description = (
                         f"{member.mention}\n"
