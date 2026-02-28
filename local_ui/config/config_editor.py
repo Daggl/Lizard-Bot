@@ -103,6 +103,10 @@ class ConfigEditor(QtWidgets.QDialog):
             return {}
 
     def refresh_list(self):
+        # Remember previous selection so we can re-select after rebuild
+        prev_item = self.list.currentItem()
+        prev_name = prev_item.text() if prev_item else None
+
         self.list.clear()
         self.list.addItem(".env")
         gid = self._active_guild_id()
@@ -124,6 +128,18 @@ class ConfigEditor(QtWidgets.QDialog):
                         self.list.addItem(fn)
             except Exception:
                 pass
+
+        # Try to re-select the previously selected file; if it no longer
+        # exists in this guild, clear the table so stale data disappears.
+        restored = False
+        if prev_name:
+            for i in range(self.list.count()):
+                if self.list.item(i).text() == prev_name:
+                    self.list.setCurrentRow(i)  # triggers on_select → reloads data
+                    restored = True
+                    break
+        if not restored:
+            self.table.setRowCount(0)
 
     def on_select(self, current, prev=None):
         if current is None:
