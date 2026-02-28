@@ -49,10 +49,13 @@ def setup():
         cur.execute("ALTER TABLE logs ADD COLUMN moderator_name TEXT")
     if "channel_name" not in existing_cols:
         cur.execute("ALTER TABLE logs ADD COLUMN channel_name TEXT")
+    if "guild_id" not in existing_cols:
+        cur.execute("ALTER TABLE logs ADD COLUMN guild_id INTEGER")
 
     cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_category ON logs(category)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_type ON logs(type)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_guild_id ON logs(guild_id)")
 
     con.commit()
     con.close()
@@ -93,6 +96,7 @@ def save_log(category, data):
     moderator_name = _pick_str(data, "by_name", "moderator_name", "deleted_by_name", "closed_by_name", "claimed_by_name")
     channel_id = _pick_int(data, "channel", "channel_id", "to", "from")
     channel_name = _pick_str(data, "channel_name", "to_name", "from_name")
+    guild_id = _pick_int(data, "guild", "guild_id")
     log_type = _pick_str(data, "type") or "event"
     message = _pick_str(data, "message", "content", "before", "after", "reason")
     timestamp = _pick_str(data, "timestamp", "created_at") or datetime.now(timezone.utc).isoformat()
@@ -108,8 +112,9 @@ def save_log(category, data):
     cur.execute(
         """
         INSERT INTO logs
-        (category, type, user_id, user_name, moderator_id, moderator_name, channel_id, channel_name, message, extra, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (category, type, user_id, user_name, moderator_id, moderator_name,
+         channel_id, channel_name, guild_id, message, extra, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
         (
             category,
@@ -120,6 +125,7 @@ def save_log(category, data):
             moderator_name,
             channel_id,
             channel_name,
+            guild_id,
             message,
             extra,
             timestamp,

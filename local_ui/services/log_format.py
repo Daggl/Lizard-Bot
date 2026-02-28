@@ -89,6 +89,7 @@ def format_db_row(row) -> str:
         return "-"
 
     ts_val = _pick("timestamp", "created_at", "ts", "time", "date", "created")
+    guild_id_val = _pick("guild_id", "guild")
     user_name = _pick("user_name", "username", "member_name", "moderator_name", "by_name")
     user_id = _pick("user_id", "user", "member_id", "moderator_id", "by")
     moderator_name = _pick("moderator_name", "mod_name", "admin_name", "actor_name", "by_name")
@@ -146,6 +147,7 @@ def format_db_row(row) -> str:
 
     fields = [
         ("Time", _format_ts(ts_val)),
+        ("Guild", _to_text(guild_id_val)),
         ("Username", user_name_text),
         ("UserID", user_id_text),
         ("Action", action_text),

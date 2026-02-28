@@ -292,6 +292,11 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
                 self.cfg_editor.refresh_list()
         except Exception:
             pass
+        # Re-open logs with guild filter
+        try:
+            self._open_log()
+        except Exception:
+            pass
         try:
             self._set_status(f"Loaded configs for guild {self._active_guild_id or 'global'}")
         except Exception:

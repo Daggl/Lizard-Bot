@@ -25,6 +25,7 @@ class LogsControllerMixin:
             if not path:
                 return
             self._active_log_mode = mode
+            guild_id = getattr(self, "_active_guild_id", None) if mode == "db" else None
             if mode == "db":
                 poller = LogPoller(
                     path,
@@ -32,6 +33,7 @@ class LogsControllerMixin:
                     table=table,
                     last_rowid=self._db_last_rowid,
                     interval=2.0,
+                    guild_id=guild_id,
                 )
             else:
                 start_at_end = True
@@ -129,8 +131,13 @@ class LogsControllerMixin:
 
                     try:
                         self.log_text.clear()
-                        self.log_text.appendPlainText(f"Tailing DB: {db_path} table: {table}")
-                        cur.execute(f"SELECT rowid, * FROM '{table}' ORDER BY rowid DESC LIMIT 200;")
+                        guild_id = getattr(self, "_active_guild_id", None)
+                        guild_label = f" guild={guild_id}" if guild_id else ""
+                        self.log_text.appendPlainText(f"Tailing DB: {db_path} table: {table}{guild_label}")
+                        if guild_id:
+                            cur.execute(f"SELECT rowid, * FROM '{table}' WHERE guild_id = ? ORDER BY rowid DESC LIMIT 200;", (int(guild_id),))
+                        else:
+                            cur.execute(f"SELECT rowid, * FROM '{table}' ORDER BY rowid DESC LIMIT 200;")
                         rows = cur.fetchall()
                         for row in reversed(rows):
                             self.log_text.appendPlainText(self._format_db_row(row))
@@ -313,7 +320,17 @@ class LogsControllerMixin:
             if getattr(self, "_db_conn", None) and getattr(self, "_db_table", None):
                 try:
                     cur = self._db_conn.cursor()
-                    cur.execute(f"SELECT rowid, * FROM '{self._db_table}' WHERE rowid > ? ORDER BY rowid ASC", (self._db_last_rowid,))
+                    guild_id = getattr(self, "_active_guild_id", None)
+                    if guild_id:
+                        cur.execute(
+                            f"SELECT rowid, * FROM '{self._db_table}' WHERE rowid > ? AND guild_id = ? ORDER BY rowid ASC",
+                            (self._db_last_rowid, int(guild_id)),
+                        )
+                    else:
+                        cur.execute(
+                            f"SELECT rowid, * FROM '{self._db_table}' WHERE rowid > ? ORDER BY rowid ASC",
+                            (self._db_last_rowid,),
+                        )
                     rows = cur.fetchall()
                     for row in rows:
                         try:

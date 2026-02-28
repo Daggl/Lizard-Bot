@@ -150,7 +150,18 @@ class SetupWizardDialog(QtWidgets.QDialog):
         self._env_values = None
         self._load_env_values()
 
-        self.setWindowTitle("Setup Wizard")
+        # Inherit active guild from parent window
+        self._guild_id = None
+        try:
+            if parent is not None:
+                gid = getattr(parent, "_active_guild_id", None)
+                if gid:
+                    self._guild_id = str(gid)
+        except Exception:
+            pass
+
+        guild_label = f" (Guild {self._guild_id})" if self._guild_id else ""
+        self.setWindowTitle(f"Setup Wizard{guild_label}")
         self.resize(860, 640)
 
         root = QtWidgets.QVBoxLayout(self)
@@ -213,8 +224,13 @@ class SetupWizardDialog(QtWidgets.QDialog):
 
     def _cfg(self, name: str) -> dict:
         if name not in self._configs:
-            path = config_json_path(self._repo_root, f"{name}.json")
-            self._configs[name] = load_json_dict(path)
+            path = config_json_path(self._repo_root, f"{name}.json", guild_id=self._guild_id)
+            cfg = load_json_dict(path)
+            # Fall back to global config if guild-specific file is empty
+            if not cfg and self._guild_id:
+                global_path = config_json_path(self._repo_root, f"{name}.json")
+                cfg = load_json_dict(global_path)
+            self._configs[name] = cfg
         return self._configs[name]
 
     def _add_id_row(self, layout: QtWidgets.QFormLayout, file_name: str, key: str, label: str):
@@ -385,14 +401,15 @@ class SetupWizardDialog(QtWidgets.QDialog):
             if not self._validate_env_before_save(env_updates):
                 return
             for file_name, data in updates.items():
-                path = config_json_path(self._repo_root, f"{file_name}.json")
+                path = config_json_path(self._repo_root, f"{file_name}.json", guild_id=self._guild_id)
                 save_json_merged(path, data)
             if env_updates is not None:
                 save_env_merged(self._repo_root, env_updates)
+            guild_label = f" for guild {self._guild_id}" if self._guild_id else ""
             QtWidgets.QMessageBox.information(
                 self,
                 "Setup Wizard",
-                "Setup saved successfully.",
+                f"Setup saved successfully{guild_label}.",
             )
             self.accept()
         except Exception as exc:

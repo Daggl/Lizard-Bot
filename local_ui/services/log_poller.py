@@ -16,6 +16,7 @@ class LogPoller(QtCore.QThread):
         last_rowid: int = 0,
         interval: float = 5.0,
         start_at_end: bool = True,
+        guild_id: int | str | None = None,
     ):
         super().__init__()
         self.path = path
@@ -25,6 +26,7 @@ class LogPoller(QtCore.QThread):
         self._interval = float(interval)
         self._start_at_end = bool(start_at_end)
         self._stopped = False
+        self._guild_id = int(guild_id) if guild_id else None
 
     def stop(self):
         self._stopped = True
@@ -57,7 +59,16 @@ class LogPoller(QtCore.QThread):
 
                 while not self._stopped and not self.isInterruptionRequested():
                     try:
-                        cur.execute(f"SELECT rowid, * FROM '{self.table}' WHERE rowid > ? ORDER BY rowid ASC", (self._last_rowid,))
+                        if self._guild_id is not None:
+                            cur.execute(
+                                f"SELECT rowid, * FROM '{self.table}' WHERE rowid > ? AND guild_id = ? ORDER BY rowid ASC",
+                                (self._last_rowid, self._guild_id),
+                            )
+                        else:
+                            cur.execute(
+                                f"SELECT rowid, * FROM '{self.table}' WHERE rowid > ? ORDER BY rowid ASC",
+                                (self._last_rowid,),
+                            )
                         rows = cur.fetchall()
                         for row in rows:
                             try:
