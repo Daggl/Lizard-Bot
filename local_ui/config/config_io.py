@@ -36,22 +36,19 @@ def load_json_dict(path: str) -> dict:
 
 
 def load_guild_config(repo_root: str, filename: str, guild_id: str | int | None = None) -> dict:
-    """Load a config for the selected scope.
+    """Load a config **only** for a specific guild.
 
-    When *guild_id* is given, loads **only** the guild-specific file at
+    When *guild_id* is given, loads the guild-specific file at
     ``config/guilds/{guild_id}/{filename}``.  If that file does not exist the
-    caller receives an empty dict so the UI shows clean defaults — this makes
-    it obvious that the guild has no own override yet.
+    caller receives an empty dict so the UI shows clean/empty fields.
 
-    When *guild_id* is ``None`` (global / no guild selected) the global
-    ``config/{filename}`` is loaded.
+    When *guild_id* is ``None`` (no guild selected yet) an empty dict is
+    returned — there are no global settings.
     """
     if guild_id:
         guild_path = _config_json_path(repo_root, filename, guild_id=guild_id)
         return _load_json_dict(guild_path)          # {} when file missing
-    # global
-    global_path = _config_json_path(repo_root, filename)
-    return _load_json_dict(global_path)
+    return {}
 
 
 def save_json_merged(path: str, data: dict) -> dict:

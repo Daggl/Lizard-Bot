@@ -271,96 +271,27 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
         self._init_startup_marker()
         self._init_timers()
 
-    # ------------------------------------------------------------------
-    # One-time global → guild migration
-    # ------------------------------------------------------------------
-
-    def _maybe_migrate_global_configs(self, guild_details: list):
-        """Copy global configs to the first guild if no guild has any configs.
-
-        This handles the transition from a single-guild setup (configs in
-        ``config/``) to multi-guild (configs in ``config/guilds/{id}/``).
-        The migration runs only once: it copies global JSON files to the
-        **first** guild in the list.  Other guilds start with empty configs.
-        """
-        if getattr(self, "_global_config_migrated", False):
-            return
-        self._global_config_migrated = True
-
-        if not guild_details:
-            return
-
-        repo_root = self._repo_root
-        global_dir = os.path.join(repo_root, "config")
-
-        # Check if ANY guild already has at least one config file
-        for guild in guild_details:
-            gid = str(guild.get("id") or "")
-            if not gid:
-                continue
-            guild_dir = os.path.join(repo_root, "config", "guilds", gid)
-            if os.path.isdir(guild_dir):
-                json_files = [f for f in os.listdir(guild_dir) if f.endswith(".json")]
-                if json_files:
-                    print(f"[migration] Guild {gid} already has {len(json_files)} config(s) — skipping migration")
-                    return
-
-        # Collect global JSON config files
-        global_jsons = [f for f in os.listdir(global_dir)
-                        if f.endswith(".json") and os.path.isfile(os.path.join(global_dir, f))]
-        if not global_jsons:
-            print("[migration] No global configs to migrate")
-            return
-
-        # Copy to the first guild only
-        first_gid = str(guild_details[0].get("id") or "")
-        if not first_gid:
-            return
-
-        import shutil
-        target_dir = os.path.join(repo_root, "config", "guilds", first_gid)
-        os.makedirs(target_dir, exist_ok=True)
-        copied = 0
-        for fn in global_jsons:
-            src = os.path.join(global_dir, fn)
-            dst = os.path.join(target_dir, fn)
-            if not os.path.exists(dst):
-                shutil.copy2(src, dst)
-                copied += 1
-        first_name = guild_details[0].get("name") or first_gid
-        print(f"[migration] Copied {copied} global config(s) to guild '{first_name}' ({first_gid})")
-        try:
-            self._set_status(f"Configs migriert → {first_name}")
-        except Exception:
-            pass
-
     def _reload_guild_configs(self):
         """Reload all guild-scoped configs and previews for the active guild."""
         gid = self._active_guild_id
-        print(f"[guild-reload] START guild={gid!r}")
-        import os as _os
         try:
             self._load_rank_config()
-            print(f"[guild-reload] _load_rank_config OK (rank keys={len(getattr(self, '_rank_config', {}))})") 
-        except Exception as exc:
-            print(f"[guild-reload] _load_rank_config failed (guild={gid}): {exc}")
+        except Exception:
+            pass
         try:
             self._load_leveling_config()
-            print(f"[guild-reload] _load_leveling_config OK")
-        except Exception as exc:
-            print(f"[guild-reload] _load_leveling_config failed (guild={gid}): {exc}")
+        except Exception:
+            pass
         try:
             self._load_birthdays_config()
-            print(f"[guild-reload] _load_birthdays_config OK")
-        except Exception as exc:
-            print(f"[guild-reload] _load_birthdays_config failed (guild={gid}): {exc}")
+        except Exception:
+            pass
         try:
             self._preview_dirty = False
             self._preview_banner_data_url = None
             self.update_preview()
-            print(f"[guild-reload] update_preview OK")
-        except Exception as exc:
-            print(f"[guild-reload] update_preview failed (guild={gid}): {exc}")
+        except Exception:
+            pass
         # Refresh the ConfigEditor file list for the new guild
         try:
             if hasattr(self, "cfg_editor") and self.cfg_editor is not None:
@@ -372,26 +303,19 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
             self._open_log()
         except Exception:
             pass
-        # Build a helpful status message
+        # Status message
         try:
-            parts = []
-            for fname in ("welcome.json", "rank.json", "leveling.json", "birthdays.json"):
-                if gid:
+            if gid:
+                import os as _os
+                parts = []
+                for fname in ("welcome.json", "rank.json", "leveling.json", "birthdays.json"):
                     guild_path = _os.path.join(self._repo_root, "config", "guilds", str(gid), fname)
-                    if _os.path.isfile(guild_path):
-                        parts.append(f"{fname}=guild")
-                    else:
-                        parts.append(f"{fname}=global")
-                else:
-                    parts.append(f"{fname}=global")
-            source_info = ", ".join(parts)
-            self._set_status(f"Guild {gid or 'global'}: {source_info}")
+                    parts.append(f"{fname}={'\u2713' if _os.path.isfile(guild_path) else '\u2014'}")
+                self._set_status(f"Guild {gid}: {', '.join(parts)}")
+            else:
+                self._set_status("Keine Guild ausgew\u00e4hlt")
         except Exception:
             pass
-        print(f"[guild-reload] END guild={gid!r}")
-
-    # ------------------------------------------------------------------
-    # Init helpers (called once during __init__, not per guild switch)
     # ------------------------------------------------------------------
 
     def _init_status_helper(self):

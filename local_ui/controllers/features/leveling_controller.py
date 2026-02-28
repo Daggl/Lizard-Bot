@@ -43,59 +43,25 @@ class LevelingControllerMixin:
         gid = getattr(self, '_active_guild_id', None)
         cfg = load_guild_config(self._repo_root, "leveling.json", guild_id=gid)
 
-        default_rewards = {
-            "5": "Bronze",
-            "10": "Silber",
-            "20": "Gold",
-            "30": "Diamond",
-            "40": "Platinum",
-            "50": "Master",
-            "60": "Grandmaster",
-            "70": "Karl-Heinz",
-        }
-        default_achievements = {
-            "Chatter I": {"messages": 100},
-            "Chatter II": {"messages": 500},
-            "Chatter III": {"messages": 1000},
-            "Chatter IV": {"messages": 5000},
-            "Voice Starter": {"voice_time": 3600},
-            "Voice Pro": {"voice_time": 18000},
-            "Voice Master": {"voice_time": 36000},
-            "Level 5": {"level": 5},
-            "Level 10": {"level": 10},
-            "Level 25": {"level": 25},
-            "Level 50": {"level": 50},
-        }
-
-        levelup_tpl = str(
-            cfg.get(
-                "LEVEL_UP_MESSAGE_TEMPLATE",
-                "{member_mention}\nyou just reached level {level}!\nkeep it up, cutie!",
-            )
-        )
-        achievement_tpl = str(
-            cfg.get(
-                "ACHIEVEMENT_MESSAGE_TEMPLATE",
-                "🏆 {member_mention} got Achievement **{achievement_name}**",
-            )
-        )
-        xp_per_message = int(cfg.get("XP_PER_MESSAGE", 15) or 15)
-        voice_xp_per_minute = int(cfg.get("VOICE_XP_PER_MINUTE", 10) or 10)
-        message_cooldown = int(cfg.get("MESSAGE_COOLDOWN", 30) or 30)
+        levelup_tpl = str(cfg.get("LEVEL_UP_MESSAGE_TEMPLATE", "") or "")
+        achievement_tpl = str(cfg.get("ACHIEVEMENT_MESSAGE_TEMPLATE", "") or "")
+        xp_per_message = int(cfg.get("XP_PER_MESSAGE", 0) or 0)
+        voice_xp_per_minute = int(cfg.get("VOICE_XP_PER_MINUTE", 0) or 0)
+        message_cooldown = int(cfg.get("MESSAGE_COOLDOWN", 0) or 0)
         rewards_cfg = cfg.get("LEVEL_REWARDS")
         achievements_cfg = cfg.get("ACHIEVEMENTS")
         if not isinstance(rewards_cfg, dict):
-            rewards_cfg = default_rewards
+            rewards_cfg = {}
         if not isinstance(achievements_cfg, dict):
-            achievements_cfg = default_achievements
+            achievements_cfg = {}
 
         try:
             if not self.lv_levelup_msg.hasFocus():
                 self.lv_levelup_msg.setPlainText(levelup_tpl)
             if not self.lv_achievement_msg.hasFocus():
                 self.lv_achievement_msg.setPlainText(achievement_tpl)
-            self.lv_xp_per_message.setValue(max(1, xp_per_message))
-            self.lv_voice_xp_per_minute.setValue(max(1, voice_xp_per_minute))
+            self.lv_xp_per_message.setValue(max(0, xp_per_message))
+            self.lv_voice_xp_per_minute.setValue(max(0, voice_xp_per_minute))
             self.lv_message_cooldown.setValue(max(0, message_cooldown))
             self._populate_level_rewards_table(rewards_cfg)
             self._populate_achievements_table(achievements_cfg)

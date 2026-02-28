@@ -60,16 +60,17 @@ class PreviewControllerMixin:
         return config_json_path(self._repo_root, "welcome.json", guild_id=getattr(self, '_active_guild_id', None))
 
     def _welcome_config_path_existing(self):
-        """Return the welcome config path for the current scope.
+        """Return the welcome config path for the active guild.
 
         When a guild is selected, returns the guild-specific path (even if
         the file does not exist yet — the caller must handle that).
-        When no guild is selected, returns the global path.
+        When no guild is selected, returns an empty string so the caller
+        treats it as "no config".
         """
         gid = getattr(self, '_active_guild_id', None)
         if gid:
             return config_json_path(self._repo_root, "welcome.json", guild_id=gid)
-        return config_json_path(self._repo_root, "welcome.json")
+        return ""
 
     def _ui_settings_path(self):
         return config_json_path(self._repo_root, "local_ui.json")
@@ -116,7 +117,6 @@ class PreviewControllerMixin:
         gid = getattr(self, '_active_guild_id', None)
         cfg = load_guild_config(self._repo_root, "rank.json", guild_id=gid)
         self._rank_config = cfg
-        print(f"[rank-load] guild={gid!r} keys={len(cfg)} BG_PATH={cfg.get('BG_PATH', '')!r}")
         try:
             bg = str(cfg.get("BG_PATH", "") or "")
             if not self.rk_bg_path.hasFocus():
@@ -132,23 +132,24 @@ class PreviewControllerMixin:
                 except Exception:
                     pass
             else:
-                # No background image — clear the preview
                 try:
                     self.rk_image.clear()
                 except Exception:
                     pass
-            mode_val = str(cfg.get("BG_MODE", "cover") or "cover")
-            idx = self.rk_bg_mode.findData(mode_val)
+            mode_val = str(cfg.get("BG_MODE", "") or "")
+            idx = self.rk_bg_mode.findData(mode_val) if mode_val else -1
             self.rk_bg_mode.setCurrentIndex(idx if idx >= 0 else 0)
-            self.rk_bg_zoom.setValue(int(cfg.get("BG_ZOOM", 100) or 100))
+            self.rk_bg_zoom.setValue(int(cfg.get("BG_ZOOM", 0) or 0))
             self.rk_bg_x.setValue(int(cfg.get("BG_OFFSET_X", 0) or 0))
             self.rk_bg_y.setValue(int(cfg.get("BG_OFFSET_Y", 0) or 0))
-            self._load_rank_name_font_choices(str(cfg.get("NAME_FONT", "assets/fonts/Poppins-Bold.ttf")))
-            self._load_rank_info_font_choices(str(cfg.get("INFO_FONT", "assets/fonts/Poppins-Regular.ttf")))
-            self.rk_name_size.setValue(int(cfg.get("NAME_FONT_SIZE", 60) or 60))
-            self.rk_info_size.setValue(int(cfg.get("INFO_FONT_SIZE", 40) or 40))
-            self.rk_name_color.setText(str(cfg.get("NAME_COLOR", "#FFFFFF") or "#FFFFFF"))
-            self.rk_info_color.setText(str(cfg.get("INFO_COLOR", "#C8C8C8") or "#C8C8C8"))
+            name_font = str(cfg.get("NAME_FONT", "") or "")
+            info_font = str(cfg.get("INFO_FONT", "") or "")
+            self._load_rank_name_font_choices(name_font)
+            self._load_rank_info_font_choices(info_font)
+            self.rk_name_size.setValue(int(cfg.get("NAME_FONT_SIZE", 0) or 0))
+            self.rk_info_size.setValue(int(cfg.get("INFO_FONT_SIZE", 0) or 0))
+            self.rk_name_color.setText(str(cfg.get("NAME_COLOR", "") or ""))
+            self.rk_info_color.setText(str(cfg.get("INFO_COLOR", "") or ""))
             self.rk_text_x.setValue(int(cfg.get("TEXT_OFFSET_X", 0) or 0))
             self.rk_text_y.setValue(int(cfg.get("TEXT_OFFSET_Y", 0) or 0))
             name = str(cfg.get("EXAMPLE_NAME", "") or "")
@@ -577,8 +578,7 @@ class PreviewControllerMixin:
             repo_root = self._repo_root
             gid = getattr(self, '_active_guild_id', None)
             cfg_path = self._welcome_config_path_existing()
-            print(f"[update_preview] cfg_path={cfg_path!r} exists={os.path.exists(cfg_path)} guild={gid!r}")
-            if not os.path.exists(cfg_path):
+            if not cfg_path or not os.path.exists(cfg_path):
                 try:
                     if gid:
                         self.status_label.setText(f"Keine Welcome-Config für diese Guild — speichere, um eine zu erstellen")
@@ -587,17 +587,17 @@ class PreviewControllerMixin:
                     self.pv_banner.clear()
                 except Exception:
                     pass
-                # Clear all welcome fields so the user sees empty defaults
+                # Clear all welcome fields so the user sees empty state
                 try:
                     self._preview_syncing = True
                     self.pv_name.setText("")
                     self.pv_banner_path.setText("")
-                    self.pv_title.setText("WELCOME")
-                    self.pv_title_size.setValue(140)
-                    self.pv_user_size.setValue(64)
-                    self.pv_title_color.setText("#FFFFFF")
-                    self.pv_user_color.setText("#E6E6E6")
-                    self.pv_bg_zoom.setValue(100)
+                    self.pv_title.setText("")
+                    self.pv_title_size.setValue(0)
+                    self.pv_user_size.setValue(0)
+                    self.pv_title_color.setText("")
+                    self.pv_user_color.setText("")
+                    self.pv_bg_zoom.setValue(0)
                     self.pv_bg_x.setValue(0)
                     self.pv_bg_y.setValue(0)
                     self.pv_title_x.setValue(0)
@@ -618,8 +618,7 @@ class PreviewControllerMixin:
                 return
             with open(cfg_path, "r", encoding="utf-8") as fh:
                 cfg = json.load(fh)
-        except Exception as exc:
-            print(f"[update_preview] error loading config: {exc}")
+        except Exception:
             cfg = {}
 
         banner = cfg.get("BANNER_PATH") or os.path.join(repo_root, "assets", "welcome.png")
@@ -656,33 +655,33 @@ class PreviewControllerMixin:
                 self._preview_syncing = True
                 try:
                     if not self.pv_name.hasFocus():
-                        self.pv_name.setText(str(cfg.get("EXAMPLE_NAME", "NewMember")))
+                        self.pv_name.setText(str(cfg.get("EXAMPLE_NAME", "") or ""))
                     if not self.pv_banner_path.hasFocus():
-                        self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "")))
+                        self.pv_banner_path.setText(str(cfg.get("BANNER_PATH", "") or ""))
                     if not self.pv_bg_mode.hasFocus():
-                        mode_val = str(cfg.get("BG_MODE", "cover") or "cover")
-                        idx = self.pv_bg_mode.findData(mode_val)
+                        mode_val = str(cfg.get("BG_MODE", "") or "")
+                        idx = self.pv_bg_mode.findData(mode_val) if mode_val else -1
                         self.pv_bg_mode.setCurrentIndex(idx if idx >= 0 else 0)
                     if not self.pv_bg_zoom.hasFocus():
-                        self.pv_bg_zoom.setValue(int(cfg.get("BG_ZOOM", 100) or 100))
+                        self.pv_bg_zoom.setValue(int(cfg.get("BG_ZOOM", 0) or 0))
                     if not self.pv_bg_x.hasFocus():
                         self.pv_bg_x.setValue(int(cfg.get("BG_OFFSET_X", 0) or 0))
                     if not self.pv_bg_y.hasFocus():
                         self.pv_bg_y.setValue(int(cfg.get("BG_OFFSET_Y", 0) or 0))
                     if not self.pv_title.hasFocus():
-                        self.pv_title.setText(str(cfg.get("BANNER_TITLE", "WELCOME")))
+                        self.pv_title.setText(str(cfg.get("BANNER_TITLE", "") or ""))
                     if not self.pv_title_font.hasFocus():
-                        self._load_title_font_choices(str(cfg.get("FONT_WELCOME", "assets/fonts/Poppins-Bold.ttf")))
+                        self._load_title_font_choices(str(cfg.get("FONT_WELCOME", "") or ""))
                     if not self.pv_user_font.hasFocus():
-                        self._load_user_font_choices(str(cfg.get("FONT_USERNAME", "assets/fonts/Poppins-Regular.ttf")))
+                        self._load_user_font_choices(str(cfg.get("FONT_USERNAME", "") or ""))
                     if not self.pv_title_size.hasFocus():
-                        self.pv_title_size.setValue(int(cfg.get("TITLE_FONT_SIZE", 140) or 140))
+                        self.pv_title_size.setValue(int(cfg.get("TITLE_FONT_SIZE", 0) or 0))
                     if not self.pv_user_size.hasFocus():
-                        self.pv_user_size.setValue(int(cfg.get("USERNAME_FONT_SIZE", 64) or 64))
+                        self.pv_user_size.setValue(int(cfg.get("USERNAME_FONT_SIZE", 0) or 0))
                     if not self.pv_title_color.hasFocus():
-                        self.pv_title_color.setText(str(cfg.get("TITLE_COLOR", "#FFFFFF")))
+                        self.pv_title_color.setText(str(cfg.get("TITLE_COLOR", "") or ""))
                     if not self.pv_user_color.hasFocus():
-                        self.pv_user_color.setText(str(cfg.get("USERNAME_COLOR", "#E6E6E6")))
+                        self.pv_user_color.setText(str(cfg.get("USERNAME_COLOR", "") or ""))
                     if not self.pv_title_x.hasFocus():
                         self.pv_title_x.setValue(int(cfg.get("TITLE_OFFSET_X", 0) or 0))
                     if not self.pv_title_y.hasFocus():
@@ -732,7 +731,7 @@ class PreviewControllerMixin:
                 return
             with open(cfg_path, "r", encoding="utf-8") as fh:
                 cfg = json.load(fh)
-            msg = str(cfg.get("WELCOME_MESSAGE", cfg.get("PREVIEW_MESSAGE", "Welcome {mention}!")))
+            msg = str(cfg.get("WELCOME_MESSAGE", "") or "")
             try:
                 self._preview_syncing = True
                 self.pv_message.setPlainText(msg)

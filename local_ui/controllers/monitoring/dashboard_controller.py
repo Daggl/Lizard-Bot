@@ -252,9 +252,6 @@ class DashboardControllerMixin:
             self._log_language_event("_populate_language_controls found no guilds; added placeholder")
             return
         guild_combo.setCurrentIndex(0)
-        # One-time migration: copy global configs to first guild
-        if hasattr(self, "_maybe_migrate_global_configs"):
-            self._maybe_migrate_global_configs(guild_details)
         # Explicitly fire the handler because setCurrentIndex(0) may be a
         # no-op if the index is already 0 after addItem inside the blocker.
         self.on_language_guild_changed()
@@ -298,7 +295,6 @@ class DashboardControllerMixin:
         guild_id = self._selected_language_guild_id()
         # Normalise: empty string → None so config_json_path never gets guild_id=""
         self._active_guild_id = guild_id if guild_id else None
-        print(f"[guild-switch] on_language_guild_changed: raw={guild_id!r} active={self._active_guild_id!r}")
         self._populate_language_combo()
         if hasattr(self, "_reload_guild_configs"):
             self._reload_guild_configs()
