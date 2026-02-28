@@ -268,24 +268,25 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
 
     def _reload_guild_configs(self):
         """Reload all guild-scoped configs and previews for the active guild."""
+        gid = self._active_guild_id
         try:
             self._load_rank_config()
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[guild-reload] _load_rank_config failed (guild={gid}): {exc}")
         try:
             self._load_leveling_config()
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[guild-reload] _load_leveling_config failed (guild={gid}): {exc}")
         try:
             self._load_birthdays_config()
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[guild-reload] _load_birthdays_config failed (guild={gid}): {exc}")
         try:
             self._preview_dirty = False
             self._preview_banner_data_url = None
             self.update_preview()
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[guild-reload] update_preview failed (guild={gid}): {exc}")
         # Refresh the ConfigEditor file list for the new guild
         try:
             if hasattr(self, "cfg_editor") and self.cfg_editor is not None:
@@ -298,7 +299,7 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
         except Exception:
             pass
         try:
-            self._set_status(f"Loaded configs for guild {self._active_guild_id or 'global'}")
+            self._set_status(f"Loaded configs for guild {gid or 'global'}")
         except Exception:
             pass
 

@@ -107,10 +107,6 @@ class DashboardControllerMixin:
                 except Exception:
                     pass
                 try:
-                    self.update_preview()
-                except Exception:
-                    pass
-                try:
                     self._update_window_icon_from_avatar(avatar_url)
                 except Exception:
                     pass
@@ -297,7 +293,8 @@ class DashboardControllerMixin:
 
     def on_language_guild_changed(self, *_args):
         guild_id = self._selected_language_guild_id()
-        self._active_guild_id = guild_id
+        # Normalise: empty string → None so config_json_path never gets guild_id=""
+        self._active_guild_id = guild_id if guild_id else None
         self._populate_language_combo()
         if hasattr(self, "_reload_guild_configs"):
             self._reload_guild_configs()

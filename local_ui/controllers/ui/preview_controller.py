@@ -117,9 +117,13 @@ class PreviewControllerMixin:
             bg = str(cfg.get("BG_PATH", "") or "")
             if not self.rk_bg_path.hasFocus():
                 self.rk_bg_path.setText(bg)
-            if bg and os.path.exists(bg):
+            # Resolve relative paths against repo root
+            bg_resolved = bg
+            if bg and not os.path.isabs(bg):
+                bg_resolved = os.path.join(self._repo_root, bg)
+            if bg_resolved and os.path.exists(bg_resolved):
                 try:
-                    pix = QtGui.QPixmap(bg)
+                    pix = QtGui.QPixmap(bg_resolved)
                     self.rk_image.setPixmap(pix.scaled(self.rk_image.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
                 except Exception:
                     pass
@@ -451,9 +455,13 @@ class PreviewControllerMixin:
             cfg["FONT_USERNAME"] = saved_user_font
 
             banner_path_input = self.pv_banner_path.text() or cfg.get("BANNER_PATH", "assets/welcome.png")
+            # Resolve relative path for existence check
+            banner_path_check = banner_path_input
+            if banner_path_input and not os.path.isabs(banner_path_input):
+                banner_path_check = os.path.join(repo_root, banner_path_input)
             banner_path_saved = banner_path_input
             try:
-                if banner_path_input and os.path.exists(banner_path_input):
+                if banner_path_check and os.path.exists(banner_path_check):
                     assets_dir = os.path.join(repo_root, "assets")
                     os.makedirs(assets_dir, exist_ok=True)
                     _, ext = os.path.splitext(banner_path_input)
@@ -464,7 +472,7 @@ class PreviewControllerMixin:
                     target_path = os.path.join(assets_dir, target_name)
                     import shutil
 
-                    shutil.copy2(banner_path_input, target_path)
+                    shutil.copy2(banner_path_check, target_path)
                     banner_path_saved = os.path.join("assets", target_name).replace("\\", "/")
                     self.pv_banner_path.setText(banner_path_saved)
             except Exception:
@@ -518,6 +526,10 @@ class PreviewControllerMixin:
             banner = self.pv_banner_path.text() or ""
             message = self.pv_message.toPlainText() or "Welcome {mention}!"
 
+            # Resolve relative banner paths against repo root
+            if banner and not os.path.isabs(banner):
+                banner = os.path.join(self._repo_root, banner)
+
             banner_url = getattr(self, "_preview_banner_data_url", None) or ""
             if banner_url:
                 pass
@@ -556,17 +568,21 @@ class PreviewControllerMixin:
             cfg_path = self._welcome_config_path_existing()
             if not os.path.exists(cfg_path):
                 try:
-                    self.status_label.setText("No welcome config found")
+                    self.status_label.setText(f"No welcome config found ({cfg_path})")
                     self.pv_banner.clear()
                 except Exception:
                     pass
                 return
             with open(cfg_path, "r", encoding="utf-8") as fh:
                 cfg = json.load(fh)
-        except Exception:
+        except Exception as exc:
+            print(f"[update_preview] error loading config: {exc}")
             cfg = {}
 
         banner = cfg.get("BANNER_PATH") or os.path.join(repo_root, "assets", "welcome.png")
+        # Resolve relative banner paths against repo root
+        if banner and not os.path.isabs(banner):
+            banner = os.path.join(repo_root, banner)
         try:
             if getattr(self, "_preview_banner_data_url", None):
                 pass
@@ -650,6 +666,13 @@ class PreviewControllerMixin:
                             pass
                 finally:
                     self._preview_syncing = False
+                    # Cancel any debounce timer that was started by widget
+                    # textChanged signals during the sync — we already called
+                    # _apply_live_preview below so there is nothing to debounce.
+                    try:
+                        self._preview_debounce.stop()
+                    except Exception:
+                        pass
 
             try:
                 self._apply_live_preview()
