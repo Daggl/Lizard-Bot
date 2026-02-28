@@ -1,0 +1,3 @@
+# This folder holds per-guild configuration files
+# Structure: config/guilds/{guild_id}/*.json
+# Guild configs are auto-created from data/config.example.json when first selected

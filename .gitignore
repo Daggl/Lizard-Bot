@@ -7,9 +7,9 @@ data/logs/*.db
 
 .flake8
 
-# Ignore local per-cog configuration folder
-config/*
-!config/.gitkeep
+# Per-guild configuration (folder tracked, JSON contents ignored)
+config/guilds/*/*.json
+config/*.json
 config/*.bak.*
 
 # New data layout
