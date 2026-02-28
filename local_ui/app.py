@@ -272,11 +272,10 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
         self._init_timers()
 
     def _ensure_guild_configs_from_example(self, guild_id: str):
-        """Create empty config files for a guild from config.example.json.
+        """Create missing config files for a guild from config.example.json.
 
-        If the guild directory is empty or does not exist, this reads
-        ``data/config.example.json`` and writes each top-level key as a
-        separate ``{key}.json`` file into ``config/guilds/{guild_id}/``.
+        Reads ``data/config.example.json`` and creates any missing
+        ``{key}.json`` files into ``config/guilds/{guild_id}/``.
         """
         import json as _json
         import os as _os
@@ -286,14 +285,6 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
 
         guild_dir = _os.path.join(self._repo_root, "config", "guilds", str(guild_id))
         _os.makedirs(guild_dir, exist_ok=True)
-
-        # Check if guild already has config files
-        try:
-            existing = [f for f in _os.listdir(guild_dir) if f.endswith(".json")]
-            if existing:
-                return  # Guild already configured
-        except Exception:
-            pass
 
         # Load config.example.json
         example_path = _os.path.join(self._repo_root, "data", "config.example.json")
@@ -309,7 +300,7 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
         if not isinstance(example, dict):
             return
 
-        # Write each top-level key as a separate file
+        # Check and create any missing config files
         created = 0
         for key, value in example.items():
             fname = f"{key}.json"
@@ -325,7 +316,7 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
 
         if created > 0:
             try:
-                self._set_status(f"Created {created} empty configs for guild {guild_id}")
+                self._set_status(f"Created {created} missing configs for guild {guild_id}")
             except Exception:
                 pass
 
