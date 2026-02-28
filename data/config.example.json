@@ -5,18 +5,18 @@
     "RULES_CHANNEL_ID": 0,
     "ABOUTME_CHANNEL_ID": 0,
     "ROLE_ID": 0,
-    "BANNER_PATH": "assets/welcome.png",
-    "BG_MODE": "cover",
-    "BG_ZOOM": 100,
+    "BANNER_PATH": "",
+    "BG_MODE": "",
+    "BG_ZOOM": 0,
     "BG_OFFSET_X": 0,
     "BG_OFFSET_Y": 0,
-    "FONT_WELCOME": "assets/fonts/Poppins-Bold.ttf",
-    "FONT_USERNAME": "assets/fonts/Poppins-Regular.ttf",
-    "BANNER_TITLE": "WELCOME",
-    "TITLE_FONT_SIZE": 140,
-    "USERNAME_FONT_SIZE": 64,
-    "TITLE_COLOR": "#FFFFFF",
-    "USERNAME_COLOR": "#E6E6E6",
+    "FONT_WELCOME": "",
+    "FONT_USERNAME": "",
+    "BANNER_TITLE": "",
+    "TITLE_FONT_SIZE": 0,
+    "USERNAME_FONT_SIZE": 0,
+    "TITLE_COLOR": "",
+    "USERNAME_COLOR": "",
     "TITLE_OFFSET_X": 0,
     "TITLE_OFFSET_Y": 0,
     "USERNAME_OFFSET_X": 0,
@@ -25,8 +25,15 @@
     "TEXT_OFFSET_Y": 0,
     "OFFSET_X": 0,
     "OFFSET_Y": 0,
-    "EXAMPLE_NAME": "NewMember",
-    "WELCOME_MESSAGE": "Welcome {mention}!"
+    "EXAMPLE_NAME": "",
+    "WELCOME_MESSAGE": "",
+    "FIT_MODE": "",
+    "FONT_FAMILY": "",
+    "FONT_SIZE": 0,
+    "FONT_COLOR": "",
+    "ALIGN": "",
+    "OPACITY": 0,
+    "OVERLAY_TEXT": false
   },
   "autorole": {
     "VERIFY_CHANNEL_ID": 0,
@@ -36,15 +43,15 @@
     "DEFAULT_ROLE_ID": 0,
     "VERIFY_MESSAGE_IDS": [],
     "RULES_MESSAGE_IDS": [],
-    "EMOJI": "✅",
+    "EMOJI": "",
     "DB_PATH": "data/db/autorole.db"
   },
   "tempvoice": {
-    "ENABLED": true,
+    "ENABLED": false,
     "CATEGORY_ID": 0,
     "CREATE_CHANNEL_ID": 0,
     "CONTROL_CHANNEL_ID": 0,
-    "CHANNEL_NAME_TEMPLATE": "🔊 {display_name}",
+    "CHANNEL_NAME_TEMPLATE": "",
     "DEFAULT_USER_LIMIT": 0
   },
   "tickets": {
@@ -59,54 +66,55 @@
   "log_server": { "CHANNEL_ID": 0 },
   "leveling": {
     "ACHIEVEMENT_CHANNEL_ID": 0,
-    "XP_PER_MESSAGE": 15,
-    "VOICE_XP_PER_MINUTE": 10,
-    "MESSAGE_COOLDOWN": 30,
-    "LEVEL_BASE_XP": 100,
-    "LEVEL_XP_STEP": 50,
-    "EMOJI_WIN": "<:gg_wp:1473709030839943189>",
-    "EMOJI_HEART": "<a:AP_scribbleheart:1472809672946745519>",
-    "LEVEL_UP_MESSAGE_TEMPLATE": "{member_mention}\nyou just reached level {level}!\nkeep it up, cutie!",
-    "ACHIEVEMENT_MESSAGE_TEMPLATE": "🏆 {member_mention} got Achievement **{achievement_name}**",
-    "LEVEL_REWARDS": {
-      "5": "Bronze",
-      "10": "Silber",
-      "20": "Gold",
-      "30": "Diamond",
-      "40": "Platinum",
-      "50": "Master",
-      "60": "Grandmaster",
-      "70": "Karl-Heinz"
-    },
-    "ACHIEVEMENTS": {
-      "Chatter I": { "messages": 100 },
-      "Chatter II": { "messages": 500 },
-      "Chatter III": { "messages": 1000 },
-      "Chatter IV": { "messages": 5000 },
-      "Voice Starter": { "voice_time": 3600 },
-      "Voice Pro": { "voice_time": 18000 },
-      "Voice Master": { "voice_time": 36000 },
-      "Level 5": { "level": 5 },
-      "Level 10": { "level": 10 },
-      "Level 25": { "level": 25 },
-      "Level 50": { "level": 50 }
-    }
+    "XP_PER_MESSAGE": 0,
+    "VOICE_XP_PER_MINUTE": 0,
+    "MESSAGE_COOLDOWN": 0,
+    "LEVEL_BASE_XP": 0,
+    "LEVEL_XP_STEP": 0,
+    "EMOJI_WIN": "",
+    "EMOJI_HEART": "",
+    "LEVEL_UP_MESSAGE_TEMPLATE": "",
+    "ACHIEVEMENT_MESSAGE_TEMPLATE": "",
+    "LEVEL_REWARDS": {},
+    "ACHIEVEMENTS": {}
   },
   "count": {
     "COUNT_CHANNEL_ID": 0,
-    "MIN_COUNT_FOR_RECORD": 150,
+    "MIN_COUNT_FOR_RECORD": 0,
     "DATA_FOLDER": "data",
     "DATA_FILE": "count.json"
-  }
-  ,"birthdays": {
+  },
+  "birthdays": {
     "CHANNEL_ID": 0,
-    "EMBED_TITLE": "🎂 Birthday",
-    "EMBED_DESCRIPTION": "🎉 Today is {mention}'s birthday!",
+    "EMBED_TITLE": "",
+    "EMBED_DESCRIPTION": "",
     "EMBED_FOOTER": "",
-    "EMBED_COLOR": "#F1C40F"
+    "EMBED_COLOR": ""
   },
   "language": {
-    "DEFAULT_LANGUAGE": "en",
+    "DEFAULT_LANGUAGE": "",
     "GUILD_LANGUAGES": {}
+  },
+  "rank": {
+    "BG_PATH": "",
+    "EXAMPLE_NAME": "",
+    "BG_MODE": "",
+    "BG_ZOOM": 0,
+    "BG_OFFSET_X": 0,
+    "BG_OFFSET_Y": 0,
+    "NAME_FONT": "",
+    "INFO_FONT": "",
+    "NAME_FONT_SIZE": 0,
+    "INFO_FONT_SIZE": 0,
+    "NAME_COLOR": "",
+    "INFO_COLOR": "",
+    "TEXT_OFFSET_X": 0,
+    "TEXT_OFFSET_Y": 0
+  },
+  "local_ui": {
+    "event_test_channel_id": "",
+    "safe_read_only": false,
+    "safe_debug_logging": false,
+    "safe_auto_reload_off": false
   }
 }
