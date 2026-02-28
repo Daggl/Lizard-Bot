@@ -35,6 +35,24 @@ def load_json_dict(path: str) -> dict:
     return _load_json_dict(path)
 
 
+def load_guild_config(repo_root: str, filename: str, guild_id: str | int | None = None) -> dict:
+    """Load a guild-specific config with fallback to the global config.
+
+    Tries ``config/guilds/{guild_id}/{filename}`` first.  If that file does not
+    exist or is empty, falls back to ``config/{filename}``.  This ensures the
+    UI always shows meaningful values even when no per-guild override exists.
+    """
+    if guild_id:
+        guild_path = _config_json_path(repo_root, filename, guild_id=guild_id)
+        if os.path.isfile(guild_path):
+            data = _load_json_dict(guild_path)
+            if data:
+                return data
+    # fallback to global
+    global_path = _config_json_path(repo_root, filename)
+    return _load_json_dict(global_path)
+
+
 def save_json_merged(path: str, data: dict) -> dict:
     return _save_json_merged(path, data)
 

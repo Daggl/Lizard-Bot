@@ -1,7 +1,8 @@
 import os
 import re
 
-from config.config_io import config_json_path, load_json_dict, save_json_merged
+from config.config_io import (config_json_path, load_guild_config,
+                              load_json_dict, save_json_merged)
 from PySide6 import QtCore, QtWidgets
 
 
@@ -39,7 +40,8 @@ class LevelingControllerMixin:
 
     def _load_leveling_config(self):
         cfg_path = self._leveling_config_paths()
-        cfg = load_json_dict(cfg_path)
+        gid = getattr(self, '_active_guild_id', None)
+        cfg = load_guild_config(self._repo_root, "leveling.json", guild_id=gid)
 
         default_rewards = {
             "5": "Bronze",

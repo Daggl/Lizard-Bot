@@ -256,7 +256,9 @@ class DashboardControllerMixin:
             self._log_language_event("_populate_language_controls found no guilds; added placeholder")
             return
         guild_combo.setCurrentIndex(0)
-        self._populate_language_combo()
+        # Explicitly fire the handler because setCurrentIndex(0) may be a
+        # no-op if the index is already 0 after addItem inside the blocker.
+        self.on_language_guild_changed()
 
     def _selected_language_guild_id(self) -> str:
         combo = getattr(self, "language_guild_combo", None)

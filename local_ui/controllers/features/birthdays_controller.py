@@ -1,4 +1,5 @@
-from config.config_io import config_json_path, load_json_dict, save_json_merged
+from config.config_io import (config_json_path, load_guild_config,
+                              load_json_dict, save_json_merged)
 from PySide6 import QtGui, QtWidgets
 
 
@@ -7,7 +8,8 @@ class BirthdaysControllerMixin:
         return config_json_path(self._repo_root, "birthdays.json", guild_id=getattr(self, '_active_guild_id', None))
 
     def _load_birthdays_config(self):
-        cfg = load_json_dict(self._birthdays_config_path())
+        gid = getattr(self, '_active_guild_id', None)
+        cfg = load_guild_config(self._repo_root, "birthdays.json", guild_id=gid)
         if not isinstance(cfg, dict):
             cfg = {}
 
@@ -58,7 +60,8 @@ class BirthdaysControllerMixin:
                 reload_after = False
                 QtWidgets.QMessageBox.information(self, "Safe Mode", "Auto reload ist aus: Speichern ohne Reload.")
 
-            existing_cfg = load_json_dict(self._birthdays_config_path())
+            gid = getattr(self, '_active_guild_id', None)
+            existing_cfg = load_guild_config(self._repo_root, "birthdays.json", guild_id=gid)
             if not isinstance(existing_cfg, dict):
                 existing_cfg = {}
             existing_channel_id = existing_cfg.get("CHANNEL_ID", 0)

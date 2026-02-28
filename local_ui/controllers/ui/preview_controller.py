@@ -1,7 +1,8 @@
 import json
 import os
 
-from config.config_io import config_json_path, load_json_dict, save_json_merged
+from config.config_io import (config_json_path, load_guild_config,
+                              load_json_dict, save_json_merged)
 from PySide6 import QtCore, QtGui, QtWidgets
 from services.file_ops import (open_tracked_writer, prune_backups,
                                rotate_log_file)
@@ -58,6 +59,15 @@ class PreviewControllerMixin:
         """Return the welcome config path, guild-scoped when a guild is selected."""
         return config_json_path(self._repo_root, "welcome.json", guild_id=getattr(self, '_active_guild_id', None))
 
+    def _welcome_config_path_existing(self):
+        """Return the welcome config path that actually exists (guild or global fallback)."""
+        gid = getattr(self, '_active_guild_id', None)
+        if gid:
+            guild_path = config_json_path(self._repo_root, "welcome.json", guild_id=gid)
+            if os.path.isfile(guild_path):
+                return guild_path
+        return config_json_path(self._repo_root, "welcome.json")
+
     def _ui_settings_path(self):
         return config_json_path(self._repo_root, "local_ui.json")
 
@@ -100,7 +110,8 @@ class PreviewControllerMixin:
     def _load_rank_config(self):
         cfg_path = self._rank_config_paths()
         self._rank_config_path = cfg_path
-        cfg = load_json_dict(cfg_path)
+        gid = getattr(self, '_active_guild_id', None)
+        cfg = load_guild_config(self._repo_root, "rank.json", guild_id=gid)
         self._rank_config = cfg
         try:
             bg = str(cfg.get("BG_PATH", "") or "")
@@ -376,8 +387,10 @@ class PreviewControllerMixin:
                 pass
             repo_root = self._repo_root
             cfg_path = self._welcome_config_path()
+            # Read existing config from guild-specific file or fall back to global
+            existing_path = self._welcome_config_path_existing()
             try:
-                with open(cfg_path, "r", encoding="utf-8") as fh:
+                with open(existing_path, "r", encoding="utf-8") as fh:
                     cfg = json.load(fh)
             except Exception:
                 cfg = {}
@@ -540,7 +553,7 @@ class PreviewControllerMixin:
     def update_preview(self):
         try:
             repo_root = self._repo_root
-            cfg_path = self._welcome_config_path()
+            cfg_path = self._welcome_config_path_existing()
             if not os.path.exists(cfg_path):
                 try:
                     self.status_label.setText("No welcome config found")
@@ -648,7 +661,7 @@ class PreviewControllerMixin:
     def _load_welcome_message_from_file(self):
         try:
             repo_root = self._repo_root
-            cfg_path = self._welcome_config_path()
+            cfg_path = self._welcome_config_path_existing()
             if not os.path.exists(cfg_path):
                 return
             with open(cfg_path, "r", encoding="utf-8") as fh:
