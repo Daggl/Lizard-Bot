@@ -5,6 +5,7 @@ from core.repo_paths import get_repo_root
 
 try:
     from mybot.utils.config_store import config_json_path as _config_json_path
+    from mybot.utils.config_store import global_config_path as _global_config_path
     from mybot.utils.config_store import load_json_dict as _load_json_dict
     from mybot.utils.config_store import save_json_merged as _save_json_merged
     from mybot.utils.env_store import ensure_env_file as _ensure_env_file
@@ -18,6 +19,7 @@ except Exception:
     if os.path.isdir(src_dir) and src_dir not in sys.path:
         sys.path.insert(0, src_dir)
     from mybot.utils.config_store import config_json_path as _config_json_path
+    from mybot.utils.config_store import global_config_path as _global_config_path
     from mybot.utils.config_store import load_json_dict as _load_json_dict
     from mybot.utils.config_store import save_json_merged as _save_json_merged
     from mybot.utils.env_store import ensure_env_file as _ensure_env_file
@@ -29,6 +31,10 @@ except Exception:
 
 def config_json_path(repo_root: str, filename: str, guild_id: str | int | None = None) -> str:
     return _config_json_path(repo_root, filename, guild_id=guild_id)
+
+
+def global_config_path(repo_root: str, filename: str) -> str:
+    return _global_config_path(repo_root, filename)
 
 
 def load_json_dict(path: str) -> dict:

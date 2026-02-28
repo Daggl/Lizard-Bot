@@ -21,42 +21,39 @@ def _file_mtime(path: str) -> float:
 def load_cog_config(name: str, guild_id: str | int | None = None) -> dict:
     """Load and cache a cog config JSON file.
 
-    When *guild_id* is provided the guild-specific override at
-    ``config/guilds/{guild_id}/{name}.json`` is tried first; if that file is
-    missing the global ``config/{name}.json`` is used as fallback so that
-    guilds without their own overrides still operate normally.
+    When *guild_id* is provided, loads the guild-specific config at
+    ``config/guilds/{guild_id}/{name}.json``.  If that file is missing,
+    returns an empty dict.
+
+    When *guild_id* is None, returns an empty dict (no global fallback).
 
     Returns an empty dict if no file is found or cannot be parsed.
     """
 
     repo_root = REPO_ROOT
-    cache_key = f"{guild_id}:{name}" if guild_id is not None else name
 
-    # --- guild-specific path (if requested) ---
-    if guild_id is not None:
-        guild_path = config_json_path(repo_root, f"{name}.json", guild_id=guild_id)
-        guild_mtime = _file_mtime(guild_path)
-        if guild_mtime >= 0:
-            # Guild file exists — use it.
-            if cache_key in _CACHE and _CACHE_MTIME.get(cache_key, -2.0) == guild_mtime:
-                return copy.deepcopy(_CACHE[cache_key])
-            data = load_json_dict(guild_path)
-            _CACHE[cache_key] = data
-            _CACHE_MTIME[cache_key] = guild_mtime
-            return copy.deepcopy(data)
+    # No guild = no config (pure per-guild system)
+    if guild_id is None:
+        return {}
 
-    # --- global path (default) ---
-    cfg_path = config_json_path(repo_root, f"{name}.json")
-    current_mtime = _file_mtime(cfg_path)
+    cache_key = f"{guild_id}:{name}"
 
-    if cache_key in _CACHE and _CACHE_MTIME.get(cache_key, -2.0) == current_mtime:
-        return copy.deepcopy(_CACHE[cache_key])
+    guild_path = config_json_path(repo_root, f"{name}.json", guild_id=guild_id)
+    if not guild_path:
+        return {}
 
-    data = load_json_dict(cfg_path)
+    guild_mtime = _file_mtime(guild_path)
+    if guild_mtime >= 0:
+        # Guild file exists — use it.
+        if cache_key in _CACHE and _CACHE_MTIME.get(cache_key, -2.0) == guild_mtime:
+            return copy.deepcopy(_CACHE[cache_key])
+        data = load_json_dict(guild_path)
+        _CACHE[cache_key] = data
+        _CACHE_MTIME[cache_key] = guild_mtime
+        return copy.deepcopy(data)
 
-    _CACHE[cache_key] = data
-    _CACHE_MTIME[cache_key] = current_mtime
-    return copy.deepcopy(data)
+    # File doesn't exist - return empty dict
+    return {}
 
 
 def clear_cog_config_cache(name: str = None) -> None:
@@ -82,106 +79,21 @@ def get_cached_configs() -> dict:
 
 
 def ensure_configs_from_example() -> List[str]:
-    """Create per-cog config files in `config/` from `config.example.json` if missing.
+    """DEPRECATED: Global configs are no longer used.
 
-    Returns a list of created file paths (relative to repo root).
+    Configs are now per-guild and created by the UI when a guild is selected.
+    Returns an empty list for backward compatibility.
     """
-
-    repo_root = REPO_ROOT
-    example_path = os.path.join(repo_root, "data", "config.example.json")
-    config_dir = os.path.join(repo_root, "config")
-
-    created: List[str] = []
-
-    if not os.path.exists(example_path):
-        return created
-
-    try:
-        with open(example_path, "r", encoding="utf-8") as fh:
-            example = json.load(fh)
-    except Exception:
-        return created
-
-    os.makedirs(config_dir, exist_ok=True)
-
-    if isinstance(example, dict):
-        for key, val in example.items():
-            target = config_json_path(repo_root, f"{key}.json")
-            if os.path.exists(target):
-                continue
-            try:
-                if save_json(target, val or {}, indent=2):
-                    created.append(os.path.relpath(target, repo_root))
-            except Exception:
-                continue
-
-    return created
+    return []
 
 
 def sync_cog_configs_from_example() -> dict:
-    """Ensure config files exist and backfill missing top-level keys from example.
+    """DEPRECATED: Global configs are no longer used.
 
-    Returns a dict with lists: {"created": [...], "updated": [...]} where each
-    item is a path relative to repository root.
+    Configs are now per-guild and created by the UI when a guild is selected.
+    Returns empty result for backward compatibility.
     """
-
-    repo_root = REPO_ROOT
-    example_path = os.path.join(repo_root, "data", "config.example.json")
-    config_dir = os.path.join(repo_root, "config")
-
-    result = {"created": [], "updated": []}
-
-    if not os.path.exists(example_path):
-        return result
-
-    try:
-        with open(example_path, "r", encoding="utf-8") as fh:
-            example = json.load(fh)
-    except Exception:
-        return result
-
-    os.makedirs(config_dir, exist_ok=True)
-
-    if not isinstance(example, dict):
-        return result
-
-    for key, val in example.items():
-        target = config_json_path(repo_root, f"{key}.json")
-        rel_target = os.path.relpath(target, repo_root)
-
-        if not os.path.exists(target):
-            try:
-                if save_json(target, val or {}, indent=2):
-                    result["created"].append(rel_target)
-                    _CACHE[key] = val or {}
-                    _CACHE_MTIME[key] = _file_mtime(target)
-            except Exception:
-                continue
-            continue
-
-        # Backfill missing top-level keys for existing files.
-        existing = load_json_dict(target)
-
-        if not isinstance(existing, dict):
-            existing = {}
-
-        changed = False
-        if isinstance(val, dict):
-            for sub_key, sub_val in val.items():
-                if sub_key not in existing:
-                    existing[sub_key] = sub_val
-                    changed = True
-
-        if changed:
-            try:
-                if save_json(target, existing, indent=2):
-                    result["updated"].append(rel_target)
-                    _CACHE[key] = existing
-                    _CACHE_MTIME[key] = _file_mtime(target)
-            except Exception:
-                pass
-
-    return result
+    return {"created": [], "updated": []}
 
 
 def write_cog_config(name: str, data: dict, guild_id: str | int | None = None) -> bool:
@@ -190,11 +102,19 @@ def write_cog_config(name: str, data: dict, guild_id: str | int | None = None) -
     When *guild_id* is provided the data is written to the guild-specific
     override at ``config/guilds/{guild_id}/{name}.json``.
 
+    When *guild_id* is None, returns False (no global config writes).
+
     Returns True on success, False on failure.
     """
+    if guild_id is None:
+        return False
+
     repo_root = REPO_ROOT
     cfg_path = config_json_path(repo_root, f"{name}.json", guild_id=guild_id)
-    cache_key = f"{guild_id}:{name}" if guild_id is not None else name
+    if not cfg_path:
+        return False
+
+    cache_key = f"{guild_id}:{name}"
     try:
         existing = save_json_merged(cfg_path, data or {})
 

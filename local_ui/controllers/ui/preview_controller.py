@@ -1,8 +1,9 @@
 import json
 import os
 
-from config.config_io import (config_json_path, load_guild_config,
-                              load_json_dict, save_json_merged)
+from config.config_io import (config_json_path, global_config_path,
+                              load_guild_config, load_json_dict,
+                              save_json_merged)
 from PySide6 import QtCore, QtGui, QtWidgets
 from services.file_ops import (open_tracked_writer, prune_backups,
                                rotate_log_file)
@@ -73,7 +74,7 @@ class PreviewControllerMixin:
         return ""
 
     def _ui_settings_path(self):
-        return config_json_path(self._repo_root, "local_ui.json")
+        return global_config_path(self._repo_root, "local_ui.json")
 
     def _load_ui_settings(self):
         path = self._ui_settings_path()
