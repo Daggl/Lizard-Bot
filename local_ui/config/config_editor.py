@@ -12,6 +12,9 @@ _HIDDEN_ENV_KEYS = {"LOCAL_UI_ENABLE"}
 class ConfigEditor(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Store a direct reference to the main window; self.parent() will
+        # change once this widget is added to a QTabWidget.
+        self._main_window = parent
         self.setWindowTitle("Edit Cog Configs")
         self.resize(700, 420)
 
@@ -56,11 +59,11 @@ class ConfigEditor(QtWidgets.QDialog):
     # ------------------------------------------------------------------
 
     def _active_guild_id(self) -> str | None:
-        """Return the currently selected guild ID from the parent window."""
+        """Return the currently selected guild ID from the main window."""
         try:
-            parent = self.parent()
-            if parent is not None:
-                gid = getattr(parent, "_active_guild_id", None)
+            win = self._main_window
+            if win is not None:
+                gid = getattr(win, "_active_guild_id", None)
                 return str(gid) if gid else None
         except Exception:
             pass
@@ -220,9 +223,9 @@ class ConfigEditor(QtWidgets.QDialog):
                     json.dump(data, fh, indent=2, ensure_ascii=False)
             QtWidgets.QMessageBox.information(self, "Saved", f"Saved {name}")
             try:
-                parent = self.parent()
-                if parent and hasattr(parent, "update_preview"):
-                    parent.update_preview()
+                win = self._main_window
+                if win and hasattr(win, "update_preview"):
+                    win.update_preview()
             except Exception:
                 pass
         except Exception as e:
