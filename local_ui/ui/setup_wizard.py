@@ -92,7 +92,7 @@ class GuildSnapshotPickerDialog(QtWidgets.QDialog):
         ch_form = QtWidgets.QFormLayout(ch_box)
         for file_name, key, label in CHANNEL_FIELD_KEYS:
             combo = QtWidgets.QComboBox()
-            combo.addItem("(keep current)", None)
+            combo.addItem("Pick...", None)
             self._channel_combos[(file_name, key)] = combo
             ch_form.addRow(label, combo)
         content_layout.addWidget(ch_box)
@@ -101,7 +101,7 @@ class GuildSnapshotPickerDialog(QtWidgets.QDialog):
         role_form = QtWidgets.QFormLayout(role_box)
         for file_name, key, label in ROLE_FIELD_KEYS:
             combo = QtWidgets.QComboBox()
-            combo.addItem("(keep current)", None)
+            combo.addItem("Pick...", None)
             self._role_combos[(file_name, key)] = combo
             role_form.addRow(label, combo)
         content_layout.addWidget(role_box)
@@ -134,7 +134,7 @@ class GuildSnapshotPickerDialog(QtWidgets.QDialog):
 
         for (file_name, key), combo in self._channel_combos.items():
             combo.clear()
-            combo.addItem("(keep current)", None)
+            combo.addItem("Pick...", None)
             key_upper = str(key).upper()
             if "CATEGORY" in key_upper:
                 filtered = [c for c in channels if "category" in str(c.get("type") or "").lower()]
@@ -142,17 +142,16 @@ class GuildSnapshotPickerDialog(QtWidgets.QDialog):
                 filtered = [c for c in channels if "category" not in str(c.get("type") or "").lower()]
             for channel in filtered:
                 cid = channel.get("id")
-                ctype = channel.get("type")
                 cname = channel.get("name")
-                combo.addItem(f"{cname} [{ctype}] ({cid})", cid)
+                combo.addItem(f"# {cname}", cid)
 
         for _field_key, combo in self._role_combos.items():
             combo.clear()
-            combo.addItem("(keep current)", None)
+            combo.addItem("Pick...", None)
             for role in roles:
                 rid = role.get("id")
                 rname = role.get("name")
-                combo.addItem(f"{rname} ({rid})", rid)
+                combo.addItem(f"@ {rname}", rid)
 
     def selected_mapping(self) -> dict:
         out = {}

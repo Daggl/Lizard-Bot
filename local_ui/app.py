@@ -61,13 +61,25 @@ class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysCont
 
         build_dashboard_tab(self, tabs)
         build_features_tab(self, tabs)
+
+        # --- Customization group (sub-tabs) ---
+        custom_tabs = QtWidgets.QTabWidget()
+        custom_tabs.setDocumentMode(True)
+        custom_tabs.setObjectName("subTabs")
+        build_welcome_and_rank_tabs(self, custom_tabs, QtCore)
+        tabs.addTab(custom_tabs, "Customization")
+
+        # --- Notifications & Tools group (sub-tabs) ---
+        notif_tabs = QtWidgets.QTabWidget()
+        notif_tabs.setDocumentMode(True)
+        notif_tabs.setObjectName("subTabs")
+        build_freestuff_tab(self, notif_tabs)
+        build_socials_tab(self, notif_tabs)
+        build_purge_tab(self, notif_tabs)
+        tabs.addTab(notif_tabs, "Notifications")
+
         build_logs_tab(self, tabs)
         build_configs_tab(self, tabs, ConfigEditor)
-
-        build_welcome_and_rank_tabs(self, tabs, QtCore)
-        build_purge_tab(self, tabs)
-        build_freestuff_tab(self, tabs)
-        build_socials_tab(self, tabs)
 
         self.setCentralWidget(tabs)
 
@@ -110,6 +122,34 @@ class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysCont
         }
         QTabBar::tab:hover {
             background: #222A35;
+        }
+        /* Sub-tabs (nested tab groups) */
+        QTabWidget#subTabs::pane {
+            border: none;
+            border-top: 1px solid #2A3240;
+            border-radius: 0;
+            background: #171C23;
+            top: 0;
+        }
+        QTabWidget#subTabs > QTabBar::tab {
+            background: transparent;
+            color: #8899B0;
+            border: none;
+            border-bottom: 2px solid transparent;
+            border-radius: 0;
+            padding: 6px 16px;
+            margin-right: 2px;
+            min-width: 70px;
+            font-size: 12px;
+        }
+        QTabWidget#subTabs > QTabBar::tab:selected {
+            color: #FFFFFF;
+            background: transparent;
+            border-bottom: 2px solid #4A76C9;
+        }
+        QTabWidget#subTabs > QTabBar::tab:hover {
+            color: #C9D8F0;
+            background: rgba(74, 118, 201, 0.08);
         }
         #statusLabel {
             font-weight: 700;
