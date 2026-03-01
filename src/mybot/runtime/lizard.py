@@ -10,6 +10,7 @@ import traceback
 from typing import Optional
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -279,6 +280,20 @@ async def on_guild_join(guild):
 async def on_command_error(ctx, error):
     print(f"[CMD ERROR] Error running command {getattr(ctx, 'command', None)}: {error}")
     traceback.print_exception(type(error), error, error.__traceback__)
+
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    cmd_name = getattr(getattr(interaction, "command", None), "qualified_name", "unknown")
+    print(f"[APP CMD ERROR] Error running slash command {cmd_name}: {error}")
+    traceback.print_exception(type(error), error, error.__traceback__)
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send("❌ Command failed. Check logs for details.", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Command failed. Check logs for details.", ephemeral=True)
+    except Exception:
+        pass
 
 
 # ==========================================================

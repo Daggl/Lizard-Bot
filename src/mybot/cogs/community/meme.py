@@ -10,6 +10,7 @@ import io
 import json
 import os
 import re
+import traceback
 from datetime import datetime, timezone
 
 import discord
@@ -120,7 +121,19 @@ class MemeCog(commands.Cog, name="Memes"):
             )
             return
 
-        await interaction.response.defer()
+        # Optional safety guard for very large attachments.
+        try:
+            guild_limit = int(getattr(guild, "filesize_limit", 0) or 0)
+        except Exception:
+            guild_limit = 0
+        if guild_limit > 0 and int(getattr(image, "size", 0) or 0) > guild_limit:
+            await interaction.response.send_message(
+                f"❌ Datei ist zu groß (Limit: {guild_limit // (1024 * 1024)} MB).",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.defer(thinking=True)
 
         # Download and save
         ext = "gif" if "gif" in ct else "png"
@@ -230,14 +243,34 @@ class MemeCog(commands.Cog, name="Memes"):
 
         lines = []
         for meme_name, entry in sorted(index.items()):
-            caption_preview = (entry.get("caption", "") or "")[:60]
-            if len(entry.get("caption", "")) > 60:
+            if not isinstance(entry, dict):
+                entry = {}
+            raw_caption = entry.get("caption", "")
+            caption_text = str(raw_caption or "")
+            caption_preview = caption_text[:60]
+            if len(caption_text) > 60:
                 caption_preview += "…"
             lines.append(f"**{meme_name}** — {caption_preview}")
 
+        # Discord embed descriptions are limited to 4096 chars.
+        description = "\n".join(lines)
+        if len(description) > 3900:
+            shown = []
+            total = 0
+            for line in lines:
+                add = len(line) + (1 if shown else 0)
+                if total + add > 3700:
+                    break
+                shown.append(line)
+                total += add
+            remaining = max(0, len(lines) - len(shown))
+            if remaining:
+                shown.append(f"… (+{remaining} weitere)")
+            description = "\n".join(shown)
+
         embed = discord.Embed(
             title=t("meme.list.title", guild_id=guild_id),
-            description="\n".join(lines),
+            description=description,
             color=discord.Color.gold(),
         )
         embed.set_footer(
@@ -245,6 +278,22 @@ class MemeCog(commands.Cog, name="Memes"):
         )
 
         await interaction.response.send_message(embed=embed)
+
+    @meme_group.error
+    async def meme_group_error(
+        self,
+        interaction: discord.Interaction,
+        error: app_commands.AppCommandError,
+    ):
+        print(f"[APP CMD ERROR] /meme failed: {error}")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send("❌ Meme command failed. Please try again.", ephemeral=True)
+            else:
+                await interaction.response.send_message("❌ Meme command failed. Please try again.", ephemeral=True)
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # /meme delete <name>  (admin only)
