@@ -201,6 +201,17 @@ class AdminHelpView(discord.ui.View):
                 inline=False,
             )
 
+        if _fe("socials"):
+            embed.add_field(
+                name="📡 Social Media",
+                value=(
+                    "`/socialcheck` ↳ Manually check all social media feeds\n"
+                    "`/socialsources` ↳ Show configured social media sources\n"
+                    "↳ Sources are configured in the UI per guild"
+                ),
+                inline=False,
+            )
+
         await interaction.response.edit_message(embed=embed)
 
     # ======================================================
@@ -303,6 +314,7 @@ class AdminHelpView(discord.ui.View):
             ("/testbirthday [DD.MM]", "Tests birthday save flow (uses today if no date is provided).", "birthdays"),
             ("/testbirthdaypanel", "Posts the birthday overview panel for testing.", "birthdays"),
             ("/testfreestuff", "Triggers a manual free stuff check for the current guild.", "freestuff"),
+            ("/testsocials", "Triggers a manual social media feed check for the current guild.", "socials"),
             ("/testpoll [seconds] [question]", "Starts a guided poll smoke test via the normal poll wizard.", "polls"),
             ("/testticketpanel", "Validates ticket system availability.", "tickets"),
             ("/testmusic", "Smoke-tests music voice pipeline (join + leave).", "music"),

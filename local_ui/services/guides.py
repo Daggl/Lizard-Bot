@@ -86,10 +86,23 @@ Use this tab to configure which free game/software sources the bot monitors.
 
 - **Channel ID**: Where free stuff announcements are posted.
 - **Sources**: Toggle Epic Games, Steam, GOG, Humble Bundle and Misc sources on/off.
-- The bot checks for free items every 6 hours automatically.
+- The bot checks for free items every 30 minutes automatically.
 - Use `/freestuff` in Discord to manually trigger a check.
 
 Saved to: `config/freestuff.json`
+
+## 6a) Social Media Tab
+
+Use this tab to configure social media notifications (Twitch, YouTube, Twitter/X).
+
+- **Per-source settings**: Each source has its own enable toggle, Discord channel, and credentials.
+- **Twitch**: Requires a Twitch App Client ID and OAuth Token. Monitors usernames for live streams.
+- **YouTube**: Uses public RSS feeds. Provide YouTube Channel IDs (UCxxxx format).
+- **Twitter/X**: Requires a Bearer Token (placeholder for future implementation).
+- The bot checks every 5 minutes automatically.
+- Use `/socialcheck` in Discord to manually trigger a check.
+
+Saved to: `config/social_media.json`
 
 ## 5) Configs Tab (manual JSON editing)
 
@@ -121,6 +134,7 @@ Use this tab when you want direct control over JSON values.
 - `count.json` — counting game channel
 - `birthdays.json` — birthday channel/settings
 - `freestuff.json` — free stuff channel/sources
+- `social_media.json` — social media feed config (Twitch, YouTube, Twitter/X)
 
 If you are unsure which key is required, compare with `data/config.example.json`.
 
@@ -162,6 +176,7 @@ Use this as a practical checklist to verify the bot after config changes.
 - Birthdays: `/testbirthday 21.08` (stores a birthday date and confirms persistence)
 - Birthday panel: `/testbirthdaypanel` (posts the birthday overview panel)
 - Free Stuff: `/testfreestuff` (triggers a manual free stuff check for the guild)
+- Social Media: `/testsocials` (triggers a manual social media feed check for the guild)
 - Polls: `/testpoll 45 Quick system check` (starts guided interactive poll wizard; test buttons/votes manually)
 - Tickets: `/testticketpanel`, then `/ticket` (posts panel and validates ticket creation path)
 - Music: `/testmusic` (voice smoke test: join your voice channel, then leave; requires voice dependencies such as `PyNaCl`)
@@ -199,6 +214,7 @@ Use these commands as the fastest per-feature smoke test:
 - Music: `/testmusic` — validates voice connect/disconnect basics (requires you in voice and voice dependencies such as `PyNaCl`).
 - Utility/Admin: `/testsay Hello world`, `/adminpanel` — validates admin embed send + status panel rendering.
 - Logs: `/testlog system Quick check` + real events — validates DB log write plus channel log pipelines.
+- Social Media: `/testsocials` — validates social media feed check for the guild.
 
 ---
 
@@ -330,6 +346,20 @@ Use these commands as the fastest per-feature smoke test:
 
 ---
 
+## Social Media
+
+### `/socialcheck`
+- **What it does:** Manually triggers a social media feed check for the current guild.
+- **Usage:** `/socialcheck`
+- **Permission:** Administrator
+
+### `/socialsources`
+- **What it does:** Shows configured social media sources and their status.
+- **Usage:** `/socialsources`
+- **Permission:** Everyone
+
+---
+
 ## Polls
 
 ### `/poll`
@@ -451,6 +481,11 @@ Use these commands as the fastest per-feature smoke test:
 - **Usage:** `/testfreestuff`
 - **Permission:** Administrator
 
+### `/testsocials`
+- **What it does:** Triggers a manual social media feed check for the current guild.
+- **Usage:** `/testsocials`
+- **Permission:** Administrator
+
 ### `/testpoll [seconds] [question]`
 - **What it does:** Starts the regular interactive poll flow and provides suggested input so poll UI/buttons can be tested quickly.
 - **Usage:** `/testpoll 45 Quick check`
@@ -493,6 +528,7 @@ Use these commands as the fastest per-feature smoke test:
 - Logging channels: `config/log_*.json`
 - Birthday channel: `config/birthdays.json`
 - Free stuff channel/sources: `config/freestuff.json`
+- Social media feeds: `config/social_media.json`
 - Counter channel/settings: `config/count.json`
 
 If a command seems inactive, check:

@@ -96,6 +96,31 @@
     "SOURCE_HUMBLE": true,
     "SOURCE_MISC": true
   },
+  "social_media": {
+    "TWITCH": {
+      "ENABLED": false,
+      "CHANNEL_ID": 0,
+      "USERNAMES": "",
+      "CLIENT_ID": "",
+      "OAUTH_TOKEN": ""
+    },
+    "YOUTUBE": {
+      "ENABLED": false,
+      "CHANNEL_ID": 0,
+      "YOUTUBE_CHANNEL_IDS": ""
+    },
+    "TWITTER": {
+      "ENABLED": false,
+      "CHANNEL_ID": 0,
+      "BEARER_TOKEN": "",
+      "USERNAMES": ""
+    },
+    "CUSTOM": {
+      "ENABLED": false,
+      "CHANNEL_ID": 0,
+      "FEED_URLS": ""
+    }
+  },
   "language": {
     "DEFAULT_LANGUAGE": "",
     "GUILD_LANGUAGES": {}

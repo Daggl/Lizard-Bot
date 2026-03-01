@@ -83,6 +83,10 @@ class RenameModal(discord.ui.Modal):
             return
         try:
             await channel.edit(name=new_name, reason=f"TempVoice rename by {interaction.user}")
+            # Save the new name for next session
+            guild_id = getattr(interaction.guild, "id", None)
+            if guild_id:
+                self.cog._save_channel_name(guild_id, interaction.user.id, new_name)
             await interaction.response.send_message(
                 translate_for_interaction(
                     interaction,
@@ -267,6 +271,120 @@ class TransferModal(discord.ui.Modal):
             )
 
 
+class WhitelistModal(discord.ui.Modal):
+    def __init__(self, cog: "TempVoice", guild_id: Optional[int] = None):
+        title = translate("tempvoice.modal.whitelist.title", guild_id=guild_id, default="Whitelist User")
+        super().__init__(title=title)
+        self.cog = cog
+        self.guild_id = guild_id
+        self.member_value = discord.ui.TextInput(
+            label=translate(
+                "tempvoice.modal.whitelist.label",
+                guild_id=guild_id,
+                default="User (ID or @mention)",
+            ),
+            max_length=40,
+        )
+        self.add_item(self.member_value)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        channel, err = self.cog._owned_channel_for_interaction(interaction)
+        if channel is None:
+            await interaction.response.send_message(err, ephemeral=True)
+            return
+        raw = str(self.member_value.value or "").strip()
+        target_id = self.cog._extract_int(raw)
+        if not target_id:
+            await interaction.response.send_message(
+                translate_for_interaction(interaction, "tempvoice.error.member_parse",
+                                          default="❌ Could not parse member ID."),
+                ephemeral=True,
+            )
+            return
+        target = interaction.guild.get_member(target_id) if interaction.guild else None
+        if target is None:
+            await interaction.response.send_message(
+                translate_for_interaction(interaction, "tempvoice.error.member_missing",
+                                          default="❌ Member not found in this server."),
+                ephemeral=True,
+            )
+            return
+        try:
+            await channel.set_permissions(target, connect=True, view_channel=True)
+            await interaction.response.send_message(
+                translate_for_interaction(interaction, "tempvoice.msg.whitelisted",
+                                          default="✅ {member} has been whitelisted.",
+                                          member=target.mention),
+                ephemeral=True,
+            )
+        except Exception as exc:
+            await interaction.response.send_message(
+                translate_for_interaction(interaction, "tempvoice.error.generic",
+                                          default="❌ Failed: {error}", error=str(exc)),
+                ephemeral=True,
+            )
+
+
+class BlacklistModal(discord.ui.Modal):
+    def __init__(self, cog: "TempVoice", guild_id: Optional[int] = None):
+        title = translate("tempvoice.modal.blacklist.title", guild_id=guild_id, default="Blacklist User")
+        super().__init__(title=title)
+        self.cog = cog
+        self.guild_id = guild_id
+        self.member_value = discord.ui.TextInput(
+            label=translate(
+                "tempvoice.modal.blacklist.label",
+                guild_id=guild_id,
+                default="User (ID or @mention)",
+            ),
+            max_length=40,
+        )
+        self.add_item(self.member_value)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        channel, err = self.cog._owned_channel_for_interaction(interaction)
+        if channel is None:
+            await interaction.response.send_message(err, ephemeral=True)
+            return
+        raw = str(self.member_value.value or "").strip()
+        target_id = self.cog._extract_int(raw)
+        if not target_id:
+            await interaction.response.send_message(
+                translate_for_interaction(interaction, "tempvoice.error.member_parse",
+                                          default="❌ Could not parse member ID."),
+                ephemeral=True,
+            )
+            return
+        target = interaction.guild.get_member(target_id) if interaction.guild else None
+        if target is None:
+            await interaction.response.send_message(
+                translate_for_interaction(interaction, "tempvoice.error.member_missing",
+                                          default="❌ Member not found in this server."),
+                ephemeral=True,
+            )
+            return
+        try:
+            await channel.set_permissions(target, connect=False, view_channel=False)
+            # Disconnect the user if currently in the channel
+            if target in channel.members:
+                try:
+                    await target.move_to(None, reason=f"TempVoice blacklist by {interaction.user}")
+                except Exception:
+                    pass
+            await interaction.response.send_message(
+                translate_for_interaction(interaction, "tempvoice.msg.blacklisted",
+                                          default="✅ {member} has been blacklisted.",
+                                          member=target.mention),
+                ephemeral=True,
+            )
+        except Exception as exc:
+            await interaction.response.send_message(
+                translate_for_interaction(interaction, "tempvoice.error.generic",
+                                          default="❌ Failed: {error}", error=str(exc)),
+                ephemeral=True,
+            )
+
+
 class TempVoicePanelView(discord.ui.View):
     def __init__(self, cog: "TempVoice", guild_id: Optional[int] = None):
         super().__init__(timeout=None)
@@ -282,6 +400,8 @@ class TempVoicePanelView(discord.ui.View):
             "tempvoice:unhide": ("tempvoice.button.unhide", "Unhide"),
             "tempvoice:rename": ("tempvoice.button.rename", "Rename"),
             "tempvoice:limit": ("tempvoice.button.limit", "Limit"),
+            "tempvoice:whitelist": ("tempvoice.button.whitelist", "Whitelist"),
+            "tempvoice:blacklist": ("tempvoice.button.blacklist", "Blacklist"),
             "tempvoice:transfer": ("tempvoice.button.transfer", "Transfer"),
             "tempvoice:claim": ("tempvoice.button.claim", "Claim"),
             "tempvoice:delete": ("tempvoice.button.delete", "Delete"),
@@ -292,23 +412,23 @@ class TempVoicePanelView(discord.ui.View):
                 key, default = mapping[custom_id]
                 child.label = translate(key, guild_id=self.guild_id, default=default)
 
-    @discord.ui.button(label="Lock", style=discord.ButtonStyle.secondary, emoji="🔒", custom_id="tempvoice:lock")
+    @discord.ui.button(label="Lock", style=discord.ButtonStyle.secondary, emoji="🔒", custom_id="tempvoice:lock", row=0)
     async def lock_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.cog._handle_lock(interaction, True)
 
-    @discord.ui.button(label="Unlock", style=discord.ButtonStyle.secondary, emoji="🔓", custom_id="tempvoice:unlock")
+    @discord.ui.button(label="Unlock", style=discord.ButtonStyle.secondary, emoji="🔓", custom_id="tempvoice:unlock", row=0)
     async def unlock_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.cog._handle_lock(interaction, False)
 
-    @discord.ui.button(label="Hide", style=discord.ButtonStyle.secondary, emoji="🙈", custom_id="tempvoice:hide")
+    @discord.ui.button(label="Hide", style=discord.ButtonStyle.secondary, emoji="🙈", custom_id="tempvoice:hide", row=0)
     async def hide_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.cog._handle_hide(interaction, True)
 
-    @discord.ui.button(label="Unhide", style=discord.ButtonStyle.secondary, emoji="👁️", custom_id="tempvoice:unhide")
+    @discord.ui.button(label="Unhide", style=discord.ButtonStyle.secondary, emoji="👁️", custom_id="tempvoice:unhide", row=0)
     async def unhide_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.cog._handle_hide(interaction, False)
 
-    @discord.ui.button(label="Rename", style=discord.ButtonStyle.primary, emoji="✏️", custom_id="tempvoice:rename")
+    @discord.ui.button(label="Rename", style=discord.ButtonStyle.primary, emoji="✏️", custom_id="tempvoice:rename", row=1)
     async def rename_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
         channel, err = self.cog._owned_channel_for_interaction(interaction)
         if channel is None:
@@ -318,7 +438,7 @@ class TempVoicePanelView(discord.ui.View):
             RenameModal(self.cog, getattr(interaction.guild, "id", None))
         )
 
-    @discord.ui.button(label="Limit", style=discord.ButtonStyle.primary, emoji="👥", custom_id="tempvoice:limit")
+    @discord.ui.button(label="Limit", style=discord.ButtonStyle.primary, emoji="👥", custom_id="tempvoice:limit", row=1)
     async def limit_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
         channel, err = self.cog._owned_channel_for_interaction(interaction)
         if channel is None:
@@ -328,7 +448,27 @@ class TempVoicePanelView(discord.ui.View):
             LimitModal(self.cog, getattr(interaction.guild, "id", None))
         )
 
-    @discord.ui.button(label="Transfer", style=discord.ButtonStyle.primary, emoji="🎯", custom_id="tempvoice:transfer")
+    @discord.ui.button(label="Whitelist", style=discord.ButtonStyle.success, emoji="✅", custom_id="tempvoice:whitelist", row=1)
+    async def whitelist_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
+        channel, err = self.cog._owned_channel_for_interaction(interaction)
+        if channel is None:
+            await interaction.response.send_message(err, ephemeral=True)
+            return
+        await interaction.response.send_modal(
+            WhitelistModal(self.cog, getattr(interaction.guild, "id", None))
+        )
+
+    @discord.ui.button(label="Blacklist", style=discord.ButtonStyle.danger, emoji="🚫", custom_id="tempvoice:blacklist", row=1)
+    async def blacklist_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
+        channel, err = self.cog._owned_channel_for_interaction(interaction)
+        if channel is None:
+            await interaction.response.send_message(err, ephemeral=True)
+            return
+        await interaction.response.send_modal(
+            BlacklistModal(self.cog, getattr(interaction.guild, "id", None))
+        )
+
+    @discord.ui.button(label="Transfer", style=discord.ButtonStyle.primary, emoji="🎯", custom_id="tempvoice:transfer", row=2)
     async def transfer_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
         channel, err = self.cog._owned_channel_for_interaction(interaction)
         if channel is None:
@@ -338,11 +478,11 @@ class TempVoicePanelView(discord.ui.View):
             TransferModal(self.cog, getattr(interaction.guild, "id", None))
         )
 
-    @discord.ui.button(label="Claim", style=discord.ButtonStyle.success, emoji="👑", custom_id="tempvoice:claim")
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.success, emoji="👑", custom_id="tempvoice:claim", row=2)
     async def claim_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.cog._handle_claim(interaction)
 
-    @discord.ui.button(label="Delete", style=discord.ButtonStyle.danger, emoji="🗑️", custom_id="tempvoice:delete")
+    @discord.ui.button(label="Delete", style=discord.ButtonStyle.danger, emoji="🗑️", custom_id="tempvoice:delete", row=2)
     async def delete_btn(self, interaction: discord.Interaction, _button: discord.ui.Button):
         await self.cog._handle_delete(interaction)
 
@@ -372,6 +512,17 @@ class TempVoice(commands.Cog):
                 hidden INTEGER DEFAULT 0,
                 user_limit INTEGER DEFAULT 0,
                 created_at TEXT
+            )
+            """
+        )
+        # User preferences table — stores last channel name per user/guild
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_prefs (
+                guild_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                last_channel_name TEXT DEFAULT '',
+                PRIMARY KEY (guild_id, user_id)
             )
             """
         )
@@ -457,8 +608,46 @@ class TempVoice(commands.Cog):
         cur.execute("DELETE FROM temp_channels WHERE channel_id = ?", (int(channel_id),))
         self.db.commit()
 
+    # ------------------------------------------------------------------
+    # User preferences (saved channel name)
+    # ------------------------------------------------------------------
+
+    def _get_saved_channel_name(self, guild_id: int, user_id: int) -> str:
+        """Return the last channel name the user set, or empty string."""
+        try:
+            cur = self.db.cursor()
+            cur.execute(
+                "SELECT last_channel_name FROM user_prefs WHERE guild_id = ? AND user_id = ?",
+                (int(guild_id), int(user_id)),
+            )
+            row = cur.fetchone()
+            return str(row[0]) if row and row[0] else ""
+        except Exception:
+            return ""
+
+    def _save_channel_name(self, guild_id: int, user_id: int, name: str):
+        """Persist the channel name so it can be reused next time."""
+        try:
+            cur = self.db.cursor()
+            cur.execute(
+                """
+                INSERT INTO user_prefs (guild_id, user_id, last_channel_name)
+                VALUES (?, ?, ?)
+                ON CONFLICT(guild_id, user_id) DO UPDATE SET last_channel_name = excluded.last_channel_name
+                """,
+                (int(guild_id), int(user_id), str(name)[:95]),
+            )
+            self.db.commit()
+        except Exception:
+            pass
+
     def _channel_name_for(self, member: discord.Member) -> str:
         guild_id = getattr(getattr(member, "guild", None), "id", None)
+        # Check for a saved name from last session
+        if guild_id:
+            saved = self._get_saved_channel_name(guild_id, member.id)
+            if saved:
+                return saved[:95]
         template = _cfg_str("CHANNEL_NAME_TEMPLATE", "🔊 {display_name}", guild_id=guild_id)
         try:
             return template.format(
@@ -902,7 +1091,8 @@ class TempVoice(commands.Cog):
                 "tempvoice.panel.description",
                 default=(
                     "Manage your temporary voice channel with the buttons below.\n\n"
-                    "Features: lock/unlock, hide/unhide, rename, user limit, transfer, claim, delete.\n"
+                    "Features: lock/unlock, hide/unhide, rename, user limit, whitelist/blacklist, transfer, claim, delete.\n"
+                    "Your channel name is saved and restored automatically.\n"
                     "{hint}"
                 ),
                 hint=hub_hint,

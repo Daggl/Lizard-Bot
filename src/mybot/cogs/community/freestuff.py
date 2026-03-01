@@ -220,9 +220,9 @@ class FreeStuff(commands.Cog):
     # Automated loop
     # ------------------------------------------------------------------
 
-    @tasks.loop(hours=6)
+    @tasks.loop(minutes=30)
     async def check_free_stuff(self):
-        """Periodically check all guilds for free stuff."""
+        """Periodically check all guilds for free stuff (every 30 minutes)."""
         for guild in self.bot.guilds:
             try:
                 await self._check_guild(guild)

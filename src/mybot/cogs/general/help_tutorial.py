@@ -38,6 +38,7 @@ class HelpTutorial(commands.Cog):
             ("help.section.memes.title", "help.section.memes.body", "memes"),
             ("help.section.membercount.title", "help.section.membercount.body", "membercount"),
             ("help.section.freestuff.title", "help.section.freestuff.body", "freestuff"),
+            ("help.section.socials.title", "help.section.socials.body", "socials"),
         )
 
         for title_key, body_key, fkey in sections:

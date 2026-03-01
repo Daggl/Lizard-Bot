@@ -106,6 +106,7 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.event_test_combo.addItem("Log (testlog)", "testlog")
     window.event_test_combo.addItem("Welcome (testwelcome)", "testwelcome")
     window.event_test_combo.addItem("Ticket Panel (testticketpanel)", "testticketpanel")
+    window.event_test_combo.addItem("Social Media (testsocials)", "testsocials")
     # --- Regular Commands ---
     window.event_test_combo.addItem("─── Regular Commands ───", "")
     window.event_test_combo.addItem("Rank Card (rank)", "rank")
@@ -120,6 +121,7 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.event_test_combo.addItem("Birthday", "birthday")
     window.event_test_combo.addItem("Birthday Panel", "birthdaypanel")
     window.event_test_combo.addItem("Free Stuff Sources", "freestuffsources")
+    window.event_test_combo.addItem("Social Media Sources", "socialsources")
     window.event_test_combo.addItem("Help", "help")
     window.event_test_channel_id = QtWidgets.QLineEdit()
     window.event_test_channel_id.setPlaceholderText("Channel ID (optional)")
@@ -1294,6 +1296,116 @@ def build_freestuff_tab(window, tabs: QtWidgets.QTabWidget):
     window.fs_save_reload.clicked.connect(lambda: window._save_freestuff_settings(reload_after=True))
 
     tabs.addTab(fs, "Free Stuff")
+
+
+# =====================================================================
+# Social Media tab
+# =====================================================================
+
+def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
+    """Build the 'Social Media' tab for configuring Twitch/YouTube/Twitter notifications."""
+    sm = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(sm)
+    layout.setContentsMargins(12, 12, 12, 12)
+    layout.setSpacing(10)
+
+    header = QtWidgets.QLabel("Social Media Configuration")
+    header.setObjectName("sectionLabel")
+    header.setStyleSheet("font-size: 15px; font-weight: bold; margin-bottom: 6px;")
+    layout.addWidget(header)
+
+    desc = QtWidgets.QLabel(
+        "Configure social media feeds. The bot checks every 5 minutes and posts\n"
+        "notifications to the configured Discord channels per source."
+    )
+    desc.setWordWrap(True)
+    desc.setStyleSheet("color: #9AA5B4; font-size: 12px; margin-bottom: 10px;")
+    layout.addWidget(desc)
+
+    # --- Twitch ---
+    twitch_box = QtWidgets.QGroupBox("Twitch")
+    twitch_form = QtWidgets.QFormLayout(twitch_box)
+    twitch_form.setHorizontalSpacing(10)
+    twitch_form.setVerticalSpacing(6)
+
+    window.sm_twitch_enabled = QtWidgets.QCheckBox("Enabled")
+    twitch_form.addRow("", window.sm_twitch_enabled)
+    window.sm_twitch_channel_id = QtWidgets.QLineEdit()
+    window.sm_twitch_channel_id.setPlaceholderText("Discord Channel ID")
+    window.sm_twitch_channel_id.setMaximumWidth(280)
+    twitch_form.addRow("Channel ID:", window.sm_twitch_channel_id)
+    window.sm_twitch_usernames = QtWidgets.QLineEdit()
+    window.sm_twitch_usernames.setPlaceholderText("Comma-separated Twitch usernames")
+    twitch_form.addRow("Usernames:", window.sm_twitch_usernames)
+    window.sm_twitch_client_id = QtWidgets.QLineEdit()
+    window.sm_twitch_client_id.setPlaceholderText("Twitch App Client ID")
+    twitch_form.addRow("Client ID:", window.sm_twitch_client_id)
+    window.sm_twitch_oauth = QtWidgets.QLineEdit()
+    window.sm_twitch_oauth.setPlaceholderText("Twitch OAuth Token")
+    window.sm_twitch_oauth.setEchoMode(QtWidgets.QLineEdit.Password)
+    twitch_form.addRow("OAuth Token:", window.sm_twitch_oauth)
+    layout.addWidget(twitch_box)
+
+    # --- YouTube ---
+    yt_box = QtWidgets.QGroupBox("YouTube")
+    yt_form = QtWidgets.QFormLayout(yt_box)
+    yt_form.setHorizontalSpacing(10)
+    yt_form.setVerticalSpacing(6)
+
+    window.sm_youtube_enabled = QtWidgets.QCheckBox("Enabled")
+    yt_form.addRow("", window.sm_youtube_enabled)
+    window.sm_youtube_channel_id = QtWidgets.QLineEdit()
+    window.sm_youtube_channel_id.setPlaceholderText("Discord Channel ID")
+    window.sm_youtube_channel_id.setMaximumWidth(280)
+    yt_form.addRow("Channel ID:", window.sm_youtube_channel_id)
+    window.sm_youtube_ids = QtWidgets.QLineEdit()
+    window.sm_youtube_ids.setPlaceholderText("Comma-separated YouTube Channel IDs (e.g. UCxxxx)")
+    yt_form.addRow("YT Channel IDs:", window.sm_youtube_ids)
+    layout.addWidget(yt_box)
+
+    # --- Twitter/X ---
+    tw_box = QtWidgets.QGroupBox("Twitter / X")
+    tw_form = QtWidgets.QFormLayout(tw_box)
+    tw_form.setHorizontalSpacing(10)
+    tw_form.setVerticalSpacing(6)
+
+    window.sm_twitter_enabled = QtWidgets.QCheckBox("Enabled")
+    tw_form.addRow("", window.sm_twitter_enabled)
+    window.sm_twitter_channel_id = QtWidgets.QLineEdit()
+    window.sm_twitter_channel_id.setPlaceholderText("Discord Channel ID")
+    window.sm_twitter_channel_id.setMaximumWidth(280)
+    tw_form.addRow("Channel ID:", window.sm_twitter_channel_id)
+    window.sm_twitter_bearer = QtWidgets.QLineEdit()
+    window.sm_twitter_bearer.setPlaceholderText("Twitter API Bearer Token")
+    window.sm_twitter_bearer.setEchoMode(QtWidgets.QLineEdit.Password)
+    tw_form.addRow("Bearer Token:", window.sm_twitter_bearer)
+    window.sm_twitter_usernames = QtWidgets.QLineEdit()
+    window.sm_twitter_usernames.setPlaceholderText("Comma-separated Twitter usernames")
+    tw_form.addRow("Usernames:", window.sm_twitter_usernames)
+    layout.addWidget(tw_box)
+
+    # Buttons
+    btn_row = QtWidgets.QHBoxLayout()
+    btn_row.addStretch()
+    window.sm_save = QtWidgets.QPushButton("Save")
+    window.sm_save_reload = QtWidgets.QPushButton("Save + Reload")
+    for _btn in (window.sm_save, window.sm_save_reload):
+        try:
+            _btn.setMinimumWidth(_btn.sizeHint().width() + 18)
+            _btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        except Exception:
+            pass
+    btn_row.addWidget(window.sm_save)
+    btn_row.addWidget(window.sm_save_reload)
+    layout.addLayout(btn_row)
+
+    layout.addStretch()
+
+    # Wire signals
+    window.sm_save.clicked.connect(lambda: window._save_socials_settings(reload_after=False))
+    window.sm_save_reload.clicked.connect(lambda: window._save_socials_settings(reload_after=True))
+
+    tabs.addTab(sm, "Social Media")
 
 
 # =====================================================================

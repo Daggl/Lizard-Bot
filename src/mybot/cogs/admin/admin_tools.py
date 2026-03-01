@@ -234,6 +234,12 @@ class AdminTools(commands.Cog):
     async def testfreestuff(self, ctx):
         await self._invoke_or_error(ctx, "freestuff")
 
+    @commands.hybrid_command(description="Test social media check command.")
+    @app_commands.default_permissions(administrator=True)
+    @commands.has_permissions(administrator=True)
+    async def testsocials(self, ctx):
+        await self._invoke_or_error(ctx, "socialcheck")
+
     @commands.hybrid_command(description="Testpoll command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)

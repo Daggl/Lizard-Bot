@@ -57,13 +57,17 @@ FEATURE_DEFS = {
         "label": "Free Stuff",
         "desc": "Automatically posts free game and software giveaways (Epic Games, Steam, GOG, etc.) to a configured channel.",
     },
+    "socials": {
+        "label": "Social Media",
+        "desc": "Posts notifications for Twitch streams, YouTube uploads and other social media activity to configured channels.",
+    },
 }
 
 # Order for display
 FEATURE_ORDER = [
     "leveling", "achievements", "birthdays", "polls", "counting",
     "welcome", "tickets", "tempvoice", "music", "logging", "memes",
-    "membercount", "freestuff",
+    "membercount", "freestuff", "socials",
 ]
 
 
@@ -152,6 +156,7 @@ class FeaturesControllerMixin:
         "Leveling": "leveling",
         "Birthdays": "birthdays",
         "Free Stuff": "freestuff",
+        "Social Media": "socials",
     }
 
     def _update_feature_tab_visibility(self, features: dict):

@@ -168,6 +168,31 @@ _CONFIG_DEFAULTS: dict[str, dict] = {
         "SOURCE_HUMBLE": True,
         "SOURCE_MISC": True,
     },
+    "social_media.json": {
+        "TWITCH": {
+            "ENABLED": False,
+            "CHANNEL_ID": 0,
+            "USERNAMES": "",
+            "CLIENT_ID": "",
+            "OAUTH_TOKEN": "",
+        },
+        "YOUTUBE": {
+            "ENABLED": False,
+            "CHANNEL_ID": 0,
+            "YOUTUBE_CHANNEL_IDS": "",
+        },
+        "TWITTER": {
+            "ENABLED": False,
+            "CHANNEL_ID": 0,
+            "BEARER_TOKEN": "",
+            "USERNAMES": "",
+        },
+        "CUSTOM": {
+            "ENABLED": False,
+            "CHANNEL_ID": 0,
+            "FEED_URLS": "",
+        },
+    },
     "rank.json": {
         "BG_PATH": "",
         "EXAMPLE_NAME": "",
@@ -242,6 +267,7 @@ _DATA_DEFAULTS: dict[str, dict] = {
     "birthdays_data.json": {},
     "birthdays_sent.json": {},
     "freestuff_data.json": {"posted": []},
+    "social_media_data.json": {"twitch": [], "youtube": [], "twitter": [], "custom": []},
 }
 
 # Combined for convenience

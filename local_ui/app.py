@@ -17,6 +17,7 @@ from controllers.features.birthdays_controller import BirthdaysControllerMixin
 from controllers.features.features_controller import FeaturesControllerMixin
 from controllers.features.freestuff_controller import FreeStuffControllerMixin
 from controllers.features.leveling_controller import LevelingControllerMixin
+from controllers.features.socials_controller import SocialsControllerMixin
 from controllers.monitoring.dashboard_controller import \
     DashboardControllerMixin
 from controllers.monitoring.logs_controller import LogsControllerMixin
@@ -33,7 +34,7 @@ from core.startup_trace import write_startup_trace
 from PySide6 import QtCore, QtWidgets
 from ui.ui_tabs import (build_configs_tab, build_dashboard_tab, build_features_tab,
                         build_freestuff_tab, build_logs_tab, build_purge_tab,
-                        build_welcome_and_rank_tabs)
+                        build_socials_tab, build_welcome_and_rank_tabs)
 
 write_startup_trace()
 
@@ -41,7 +42,7 @@ write_startup_trace()
 install_exception_hook()
 
 
-class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysControllerMixin, FreeStuffControllerMixin, LogsControllerMixin, DashboardControllerMixin, AdminControllerMixin, EmojiControllerMixin, PreviewControllerMixin, PreviewApiControllerMixin, PurgeControllerMixin, LifecycleControllerMixin, RuntimeCoreControllerMixin, QtWidgets.QMainWindow):
+class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysControllerMixin, FreeStuffControllerMixin, SocialsControllerMixin, LogsControllerMixin, DashboardControllerMixin, AdminControllerMixin, EmojiControllerMixin, PreviewControllerMixin, PreviewApiControllerMixin, PurgeControllerMixin, LifecycleControllerMixin, RuntimeCoreControllerMixin, QtWidgets.QMainWindow):
     _async_done = QtCore.Signal(object)
 
     def __init__(self):
@@ -66,6 +67,7 @@ class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysCont
         build_welcome_and_rank_tabs(self, tabs, QtCore)
         build_purge_tab(self, tabs)
         build_freestuff_tab(self, tabs)
+        build_socials_tab(self, tabs)
 
         self.setCentralWidget(tabs)
 
@@ -349,6 +351,14 @@ class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysCont
             pass
         try:
             self._load_features_config()
+        except Exception:
+            pass
+        try:
+            self._load_freestuff_config()
+        except Exception:
+            pass
+        try:
+            self._load_socials_config()
         except Exception:
             pass
         try:

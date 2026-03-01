@@ -72,6 +72,7 @@ DEFAULT_EXTENSIONS = [
     "mybot.cogs.community.meme",
     "mybot.cogs.community.membercount",
     "mybot.cogs.community.freestuff",
+    "mybot.cogs.community.socials",
 ]
 
 # ==========================================================

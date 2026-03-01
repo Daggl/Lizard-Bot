@@ -22,6 +22,7 @@ FEATURES = {
     "memes":        "Meme storage & retrieval",
     "membercount":  "Member count display channel",
     "freestuff":    "Free stuff / game giveaway posts",
+    "socials":      "Social media notifications (Twitch, YouTube, etc.)",
 }
 
 # Mapping: Cog class name → feature key.
@@ -59,6 +60,8 @@ COG_FEATURE_MAP = {
     "MemberCount":  "membercount",
     # Free Stuff
     "FreeStuff":    "freestuff",
+    # Social Media
+    "SocialMedia":  "socials",
 }
 
 

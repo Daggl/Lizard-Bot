@@ -24,6 +24,9 @@ CHANNEL_FIELD_KEYS = [
     ("log_voice", "CHANNEL_ID", "Log voice channel"),
     ("membercount", "CHANNEL_ID", "Member count channel"),
     ("freestuff", "CHANNEL_ID", "Free stuff channel"),
+    ("social_media", "TWITCH.CHANNEL_ID", "Social: Twitch channel"),
+    ("social_media", "YOUTUBE.CHANNEL_ID", "Social: YouTube channel"),
+    ("social_media", "TWITTER.CHANNEL_ID", "Social: Twitter/X channel"),
 ]
 
 ROLE_FIELD_KEYS = [
@@ -54,6 +57,7 @@ _WIZARD_FILE_TO_FEATURE = {
     "log_voice": "logging",
     "membercount": "membercount",
     "freestuff": "freestuff",
+    "social_media": "socials",
 }
 
 class GuildSnapshotPickerDialog(QtWidgets.QDialog):
