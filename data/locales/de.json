@@ -8,7 +8,7 @@
   "help.section.polls.title": "📊 Umfragen",
   "help.section.polls.body": "**Erstelle Umfragen für den Server**\n\n`/poll <frage>`\n➡ Beispiel:\n`/poll Mögt ihr Pizza?`",
   "help.section.birthdays.title": "🎂 Geburtstage",
-  "help.section.birthdays.body": "**Speichere deinen Geburtstag**\n\n`/birthday <TT.MM>`\n➡ Der Bot erinnert automatisch",
+  "help.section.birthdays.body": "**Speichere deinen Geburtstag**\n\n`/birthday <TT.MM>`\n➡ Der Bot erinnert automatisch\n\n`/birthdaypanel`\n➡ Admin: Ein interaktives Geburtstags-Panel posten",
   "help.section.earn_xp.title": "⭐ XP verdienen",
   "help.section.earn_xp.body": "Du bekommst XP durch:\n• Nachrichten schreiben\n• Zeit im Voice\n• Errungenschaften freischalten",
   "help.section.achievements.title": "🏅 Errungenschaften",
@@ -193,5 +193,16 @@
   "membercount.msg.set": "✅ Mitgliederzahl-Kanal auf {channel} gesetzt.",
   "membercount.msg.template": "✅ Vorlage aktualisiert: `{template}`",
   "membercount.msg.removed": "🗑 Mitgliederzahl-Kanal entfernt.",
-  "membercount.error.no_channel": "❌ Kein Mitgliederzahl-Kanal konfiguriert."
+  "membercount.error.no_channel": "❌ Kein Mitgliederzahl-Kanal konfiguriert.",
+  "help.section.freestuff.title": "🎁 Gratis Sachen",
+  "help.section.freestuff.body": "Werde über kostenlose Spiele und Software benachrichtigt!\n\n`/freestuffsources` → Zeigt aktivierte Quellen\n`/freestuff` → Admin: manuell nach neuen Gratis-Angeboten suchen",
+  "birthdays.panel.title": "🎂 Geburtstags-Panel",
+  "birthdays.panel.description": "Klicke die Buttons unten, um alle gespeicherten Geburtstage zu sehen oder bevorstehende Geburtstage anzuzeigen!",
+  "birthdays.panel.all_title": "🎂 Alle Geburtstage",
+  "birthdays.panel.upcoming_title": "🔜 Anstehende Geburtstage",
+  "birthdays.panel.no_birthdays": "📭 Noch keine Geburtstage gespeichert.",
+  "freestuff.error.no_channel": "❌ Kein Free-Stuff-Kanal konfiguriert. Setze CHANNEL_ID in der freestuff-Config.",
+  "freestuff.msg.checking": "🔍 Suche nach Gratis-Angeboten...",
+  "freestuff.msg.check_done": "✅ Prüfung abgeschlossen. {count} neue(s) Angebot(e) gepostet.",
+  "freestuff.sources.title": "🎁 Gratis-Quellen"
 }

@@ -71,6 +71,7 @@ DEFAULT_EXTENSIONS = [
     "mybot.cogs.media.music",
     "mybot.cogs.community.meme",
     "mybot.cogs.community.membercount",
+    "mybot.cogs.community.freestuff",
 ]
 
 # ==========================================================

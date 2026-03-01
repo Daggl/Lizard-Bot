@@ -82,10 +82,19 @@
   },
   "birthdays": {
     "CHANNEL_ID": 0,
+    "ROLE_ID": 0,
     "EMBED_TITLE": "",
     "EMBED_DESCRIPTION": "",
     "EMBED_FOOTER": "",
     "EMBED_COLOR": ""
+  },
+  "freestuff": {
+    "CHANNEL_ID": 0,
+    "SOURCE_EPIC": true,
+    "SOURCE_STEAM": true,
+    "SOURCE_GOG": true,
+    "SOURCE_HUMBLE": true,
+    "SOURCE_MISC": true
   },
   "language": {
     "DEFAULT_LANGUAGE": "",

@@ -21,6 +21,7 @@ FEATURES = {
     "logging":      "Server logging (chat, voice, mod, member, server)",
     "memes":        "Meme storage & retrieval",
     "membercount":  "Member count display channel",
+    "freestuff":    "Free stuff / game giveaway posts",
 }
 
 # Mapping: Cog class name → feature key.
@@ -56,6 +57,8 @@ COG_FEATURE_MAP = {
     "ServerLog":    "logging",
     # Member count
     "MemberCount":  "membercount",
+    # Free Stuff
+    "FreeStuff":    "freestuff",
 }
 
 

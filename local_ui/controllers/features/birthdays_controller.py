@@ -17,6 +17,7 @@ class BirthdaysControllerMixin:
         embed_desc = str(cfg.get("EMBED_DESCRIPTION", "") or "")
         embed_footer = str(cfg.get("EMBED_FOOTER", "") or "")
         embed_color = str(cfg.get("EMBED_COLOR", "") or "").strip()
+        role_id = str(cfg.get("ROLE_ID", "") or "").strip()
 
         try:
             if hasattr(self, "bd_embed_title") and not self.bd_embed_title.hasFocus():
@@ -27,6 +28,8 @@ class BirthdaysControllerMixin:
                 self.bd_embed_footer.setText(embed_footer)
             if hasattr(self, "bd_embed_color") and not self.bd_embed_color.hasFocus():
                 self.bd_embed_color.setText(embed_color)
+            if hasattr(self, "bd_role_id") and not self.bd_role_id.hasFocus():
+                self.bd_role_id.setText(role_id if role_id and role_id != "0" else "")
         except Exception:
             pass
 
@@ -75,8 +78,18 @@ class BirthdaysControllerMixin:
                 QtWidgets.QMessageBox.warning(self, "Birthdays", "Embed color must be a valid color (e.g. #F1C40F).")
                 return
 
+            # Parse role ID
+            role_id_raw = (self.bd_role_id.text() or "").strip()
+            role_id = 0
+            if role_id_raw:
+                if not role_id_raw.isdigit():
+                    QtWidgets.QMessageBox.warning(self, "Birthdays", "Role ID must contain only digits.")
+                    return
+                role_id = int(role_id_raw)
+
             payload = {
                 "CHANNEL_ID": existing_channel_id,
+                "ROLE_ID": role_id,
                 "EMBED_TITLE": (self.bd_embed_title.text() or "").strip(),
                 "EMBED_DESCRIPTION": (self.bd_embed_description.toPlainText() or "").strip(),
                 "EMBED_FOOTER": (self.bd_embed_footer.text() or "").strip(),

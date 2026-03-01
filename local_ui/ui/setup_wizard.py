@@ -23,6 +23,7 @@ CHANNEL_FIELD_KEYS = [
     ("log_server", "CHANNEL_ID", "Log server channel"),
     ("log_voice", "CHANNEL_ID", "Log voice channel"),
     ("membercount", "CHANNEL_ID", "Member count channel"),
+    ("freestuff", "CHANNEL_ID", "Free stuff channel"),
 ]
 
 ROLE_FIELD_KEYS = [
@@ -31,6 +32,7 @@ ROLE_FIELD_KEYS = [
     ("autorole", "VERIFY_ROLE_ID", "Verify role"),
     ("autorole", "DEFAULT_ROLE_ID", "Default role"),
     ("tickets", "SUPPORT_ROLE_ID", "Support role"),
+    ("birthdays", "ROLE_ID", "Birthday role"),
 ]
 
 HIDDEN_WIZARD_ENV_KEYS = {"APP_ENV", "LOCAL_UI_ENABLE"}
@@ -51,6 +53,7 @@ _WIZARD_FILE_TO_FEATURE = {
     "log_server": "logging",
     "log_voice": "logging",
     "membercount": "membercount",
+    "freestuff": "freestuff",
 }
 
 class GuildSnapshotPickerDialog(QtWidgets.QDialog):

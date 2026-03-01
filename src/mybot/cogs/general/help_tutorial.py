@@ -37,6 +37,7 @@ class HelpTutorial(commands.Cog):
             ("help.section.music.title", "help.section.music.body", "music"),
             ("help.section.memes.title", "help.section.memes.body", "memes"),
             ("help.section.membercount.title", "help.section.membercount.body", "membercount"),
+            ("help.section.freestuff.title", "help.section.freestuff.body", "freestuff"),
         )
 
         for title_key, body_key, fkey in sections:

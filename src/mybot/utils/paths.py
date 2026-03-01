@@ -154,10 +154,19 @@ _CONFIG_DEFAULTS: dict[str, dict] = {
     },
     "birthdays.json": {
         "CHANNEL_ID": 0,
+        "ROLE_ID": 0,
         "EMBED_TITLE": "",
         "EMBED_DESCRIPTION": "",
         "EMBED_FOOTER": "",
         "EMBED_COLOR": "",
+    },
+    "freestuff.json": {
+        "CHANNEL_ID": 0,
+        "SOURCE_EPIC": True,
+        "SOURCE_STEAM": True,
+        "SOURCE_GOG": True,
+        "SOURCE_HUMBLE": True,
+        "SOURCE_MISC": True,
     },
     "rank.json": {
         "BG_PATH": "",
@@ -232,6 +241,7 @@ _DATA_DEFAULTS: dict[str, dict] = {
     },
     "birthdays_data.json": {},
     "birthdays_sent.json": {},
+    "freestuff_data.json": {"posted": []},
 }
 
 # Combined for convenience

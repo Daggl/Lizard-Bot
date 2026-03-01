@@ -180,6 +180,27 @@ class AdminHelpView(discord.ui.View):
                 inline=False,
             )
 
+        if _fe("birthdays"):
+            embed.add_field(
+                name="🎂 Birthdays",
+                value=(
+                    "`/birthdaypanel` ↳ Post the birthday overview panel\n"
+                    "↳ Users can view all birthdays and upcoming ones via buttons"
+                ),
+                inline=False,
+            )
+
+        if _fe("freestuff"):
+            embed.add_field(
+                name="🎁 Free Stuff",
+                value=(
+                    "`/freestuff` ↳ Manually check for new free games/offers\n"
+                    "`/freestuffsources` ↳ Show which sources are enabled\n"
+                    "↳ Sources are toggled in the UI per guild"
+                ),
+                inline=False,
+            )
+
         await interaction.response.edit_message(embed=embed)
 
     # ======================================================
@@ -280,6 +301,8 @@ class AdminHelpView(discord.ui.View):
             ("/testrank [@user]", "Tests rank card rendering for yourself or a target user.", "leveling"),
             ("/testcount", "Runs counting feature checks (stats + leaderboard).", "counting"),
             ("/testbirthday [DD.MM]", "Tests birthday save flow (uses today if no date is provided).", "birthdays"),
+            ("/testbirthdaypanel", "Posts the birthday overview panel for testing.", "birthdays"),
+            ("/testfreestuff", "Triggers a manual free stuff check for the current guild.", "freestuff"),
             ("/testpoll [seconds] [question]", "Starts a guided poll smoke test via the normal poll wizard.", "polls"),
             ("/testticketpanel", "Validates ticket system availability.", "tickets"),
             ("/testmusic", "Smoke-tests music voice pipeline (join + leave).", "music"),

@@ -8,7 +8,7 @@
   "help.section.polls.title": "📊 Polls",
   "help.section.polls.body": "**Create polls for the server**\n\n`/poll <question>`\n➡ Example:\n`/poll Do you like pizza?`",
   "help.section.birthdays.title": "🎂 Birthdays",
-  "help.section.birthdays.body": "**Save your birthday**\n\n`/birthday <DD.MM>`\n➡ The bot will remind automatically",
+  "help.section.birthdays.body": "**Save your birthday**\n\n`/birthday <DD.MM>`\n➡ The bot will remind automatically\n\n`/birthdaypanel`\n➡ Admin: Post an interactive birthday overview panel",
   "help.section.earn_xp.title": "⭐ Earn XP",
   "help.section.earn_xp.body": "You gain XP by:\n• Sending messages\n• Voice chat time\n• Unlocking achievements",
   "help.section.achievements.title": "🏅 Achievements",
@@ -193,5 +193,16 @@
   "membercount.msg.set": "✅ Member count channel set to {channel}.",
   "membercount.msg.template": "✅ Template updated: `{template}`",
   "membercount.msg.removed": "🗑 Member count channel removed.",
-  "membercount.error.no_channel": "❌ No member count channel configured."
+  "membercount.error.no_channel": "❌ No member count channel configured.",
+  "help.section.freestuff.title": "🎁 Free Stuff",
+  "help.section.freestuff.body": "Get notified about free games and software giveaways!\n\n`/freestuffsources` → Show which sources are enabled\n`/freestuff` → Admin: manually check for new free items",
+  "birthdays.panel.title": "🎂 Birthday Panel",
+  "birthdays.panel.description": "Click the buttons below to view all saved birthdays or see who has a birthday coming up!",
+  "birthdays.panel.all_title": "🎂 All Birthdays",
+  "birthdays.panel.upcoming_title": "🔜 Upcoming Birthdays",
+  "birthdays.panel.no_birthdays": "📭 No birthdays saved yet.",
+  "freestuff.error.no_channel": "❌ No free stuff channel configured. Set CHANNEL_ID in freestuff config.",
+  "freestuff.msg.checking": "🔍 Checking for free stuff...",
+  "freestuff.msg.check_done": "✅ Check complete. {count} new item(s) posted.",
+  "freestuff.sources.title": "🎁 Free Stuff Sources"
 }

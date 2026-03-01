@@ -222,6 +222,18 @@ class AdminTools(commands.Cog):
         target_date = date or datetime.now().strftime("%d.%m")
         await self._invoke_or_error(ctx, "birthday", date=target_date)
 
+    @commands.hybrid_command(description="Test birthday panel command.")
+    @app_commands.default_permissions(administrator=True)
+    @commands.has_permissions(administrator=True)
+    async def testbirthdaypanel(self, ctx):
+        await self._invoke_or_error(ctx, "birthdaypanel")
+
+    @commands.hybrid_command(description="Test free stuff check command.")
+    @app_commands.default_permissions(administrator=True)
+    @commands.has_permissions(administrator=True)
+    async def testfreestuff(self, ctx):
+        await self._invoke_or_error(ctx, "freestuff")
+
     @commands.hybrid_command(description="Testpoll command.")
     @app_commands.default_permissions(administrator=True)
     @commands.has_permissions(administrator=True)

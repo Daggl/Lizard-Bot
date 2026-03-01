@@ -96,6 +96,7 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.event_test_combo.addItem("Rank (testrank)", "testrank")
     window.event_test_combo.addItem("Count (testcount)", "testcount")
     window.event_test_combo.addItem("Birthday (testbirthday)", "testbirthday")
+    window.event_test_combo.addItem("Free Stuff (testfreestuff)", "testfreestuff")
     window.event_test_combo.addItem("Poll (testpoll)", "testpoll")
     window.event_test_combo.addItem("Music (testmusic)", "testmusic")
     window.event_test_combo.addItem("Say (testsay)", "testsay")
@@ -117,6 +118,8 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.event_test_combo.addItem("Count Stats", "countstats")
     window.event_test_combo.addItem("Count Top", "counttop")
     window.event_test_combo.addItem("Birthday", "birthday")
+    window.event_test_combo.addItem("Birthday Panel", "birthdaypanel")
+    window.event_test_combo.addItem("Free Stuff Sources", "freestuffsources")
     window.event_test_combo.addItem("Help", "help")
     window.event_test_channel_id = QtWidgets.QLineEdit()
     window.event_test_channel_id.setPlaceholderText("Channel ID (optional)")
@@ -1013,6 +1016,13 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     bd_color_row.addWidget(window.bd_embed_color_pick, 0)
     bd_form.addRow("Embed color:", bd_color_row)
 
+    window.bd_role_id = QtWidgets.QLineEdit()
+    window.bd_role_id.setPlaceholderText("Discord Role ID (digits)")
+    bd_form.addRow("Birthday role ID:", window.bd_role_id)
+    bd_role_hint = QtWidgets.QLabel("If set, this role is assigned on the birthday and removed the next day.")
+    bd_role_hint.setStyleSheet("color:#9aa0a6; font-size:11px;")
+    bd_form.addRow("", bd_role_hint)
+
     bd_hint = QtWidgets.QLabel("Message is sent as embed once per birthday/day.")
     bd_hint.setStyleSheet("color:#9aa0a6;")
     bd_form.addRow("", bd_hint)
@@ -1197,6 +1207,93 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
         window.rk_bar_fill_color,
     ):
         _line.textChanged.connect(lambda: window._preview_debounce.start())
+
+
+# =====================================================================
+# Free Stuff tab
+# =====================================================================
+
+def build_freestuff_tab(window, tabs: QtWidgets.QTabWidget):
+    """Build the 'Free Stuff' tab for configuring free game/offer posts."""
+    fs = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(fs)
+    layout.setContentsMargins(12, 12, 12, 12)
+    layout.setSpacing(10)
+
+    header = QtWidgets.QLabel("Free Stuff Configuration")
+    header.setObjectName("sectionLabel")
+    header.setStyleSheet("font-size: 15px; font-weight: bold; margin-bottom: 6px;")
+    layout.addWidget(header)
+
+    desc = QtWidgets.QLabel(
+        "Configure which free game/software sources the bot monitors.\n"
+        "New free items are automatically posted to the configured channel."
+    )
+    desc.setWordWrap(True)
+    desc.setStyleSheet("color: #9AA5B4; font-size: 12px; margin-bottom: 10px;")
+    layout.addWidget(desc)
+
+    form = QtWidgets.QFormLayout()
+    form.setFieldGrowthPolicy(QtWidgets.QFormLayout.ExpandingFieldsGrow)
+    form.setHorizontalSpacing(10)
+    form.setVerticalSpacing(8)
+
+    window.fs_channel_id = QtWidgets.QLineEdit()
+    window.fs_channel_id.setPlaceholderText("Discord Channel ID (digits)")
+    window.fs_channel_id.setMaximumWidth(280)
+    form.addRow("Channel ID:", window.fs_channel_id)
+
+    sources_box = QtWidgets.QGroupBox("Sources")
+    sources_layout = QtWidgets.QVBoxLayout(sources_box)
+    sources_layout.setSpacing(4)
+
+    window.fs_source_epic = QtWidgets.QCheckBox("Epic Games Store")
+    window.fs_source_epic.setChecked(True)
+    window.fs_source_steam = QtWidgets.QCheckBox("Steam")
+    window.fs_source_steam.setChecked(True)
+    window.fs_source_gog = QtWidgets.QCheckBox("GOG")
+    window.fs_source_gog.setChecked(True)
+    window.fs_source_humble = QtWidgets.QCheckBox("Humble Bundle")
+    window.fs_source_humble.setChecked(True)
+    window.fs_source_misc = QtWidgets.QCheckBox("Misc / Other")
+    window.fs_source_misc.setChecked(True)
+
+    for chk in (
+        window.fs_source_epic,
+        window.fs_source_steam,
+        window.fs_source_gog,
+        window.fs_source_humble,
+        window.fs_source_misc,
+    ):
+        chk.setStyleSheet("font-size: 13px;")
+        sources_layout.addWidget(chk)
+
+    form.addRow("", sources_box)
+
+    layout.addLayout(form)
+
+    # Buttons
+    btn_row = QtWidgets.QHBoxLayout()
+    btn_row.addStretch()
+    window.fs_save = QtWidgets.QPushButton("Save")
+    window.fs_save_reload = QtWidgets.QPushButton("Save + Reload")
+    for _btn in (window.fs_save, window.fs_save_reload):
+        try:
+            _btn.setMinimumWidth(_btn.sizeHint().width() + 18)
+            _btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        except Exception:
+            pass
+    btn_row.addWidget(window.fs_save)
+    btn_row.addWidget(window.fs_save_reload)
+    layout.addLayout(btn_row)
+
+    layout.addStretch()
+
+    # Wire signals
+    window.fs_save.clicked.connect(lambda: window._save_freestuff_settings(reload_after=False))
+    window.fs_save_reload.clicked.connect(lambda: window._save_freestuff_settings(reload_after=True))
+
+    tabs.addTab(fs, "Free Stuff")
 
 
 # =====================================================================

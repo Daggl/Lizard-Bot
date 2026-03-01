@@ -69,6 +69,28 @@ Saved to:
 - Visual rank settings: `config/rank.json`
 - Leveling text/emoji settings: `config/leveling.json`
 
+## 5) Birthdays Tab
+
+Use this tab to configure birthday announcements.
+
+- **Embed title / description / footer / color**: customize the birthday announcement embed.
+- **Birthday Role ID**: A role that is automatically assigned on the user's birthday and removed the next day.
+- **Birthday Panel**: Use `/birthdaypanel` in Discord to post a persistent panel where users can view all saved birthdays and upcoming ones via buttons.
+- **Placeholders**: `{mention}`, `{user_name}`, `{display_name}`, `{user_id}`, `{date}`
+
+Saved to: `config/birthdays.json`
+
+## 6) Free Stuff Tab
+
+Use this tab to configure which free game/software sources the bot monitors.
+
+- **Channel ID**: Where free stuff announcements are posted.
+- **Sources**: Toggle Epic Games, Steam, GOG, Humble Bundle and Misc sources on/off.
+- The bot checks for free items every 6 hours automatically.
+- Use `/freestuff` in Discord to manually trigger a check.
+
+Saved to: `config/freestuff.json`
+
 ## 5) Configs Tab (manual JSON editing)
 
 Use this tab when you want direct control over JSON values.
@@ -98,6 +120,7 @@ Use this tab when you want direct control over JSON values.
 - `log_voice.json` — destination channel for voice activity logs
 - `count.json` — counting game channel
 - `birthdays.json` — birthday channel/settings
+- `freestuff.json` — free stuff channel/sources
 
 If you are unsure which key is required, compare with `data/config.example.json`.
 
@@ -137,6 +160,8 @@ Use this as a practical checklist to verify the bot after config changes.
 - Leveling admin flow: `/testlevel @User 50`, `/testlevelup @User [bonus_xp]`, `/testachievement @User Veteran` (writes XP/achievement data, forces level-up output, and verifies achievement flow)
 - Counting: `/testcount` (executes `/countstats` and `/counttop` to verify stats + leaderboard reads)
 - Birthdays: `/testbirthday 21.08` (stores a birthday date and confirms persistence)
+- Birthday panel: `/testbirthdaypanel` (posts the birthday overview panel)
+- Free Stuff: `/testfreestuff` (triggers a manual free stuff check for the guild)
 - Polls: `/testpoll 45 Quick system check` (starts guided interactive poll wizard; test buttons/votes manually)
 - Tickets: `/testticketpanel`, then `/ticket` (posts panel and validates ticket creation path)
 - Music: `/testmusic` (voice smoke test: join your voice channel, then leave; requires voice dependencies such as `PyNaCl`)
@@ -284,6 +309,25 @@ Use these commands as the fastest per-feature smoke test:
 - **Usage:** `/birthday 21.08`
 - **Permission:** Everyone
 
+### `/birthdaypanel`
+- **What it does:** Posts a persistent birthday overview panel with buttons to view all birthdays and upcoming ones.
+- **Usage:** `/birthdaypanel`
+- **Permission:** Administrator
+
+---
+
+## Free Stuff
+
+### `/freestuff`
+- **What it does:** Manually triggers a free stuff check for the current guild.
+- **Usage:** `/freestuff`
+- **Permission:** Administrator
+
+### `/freestuffsources`
+- **What it does:** Shows which free stuff sources are enabled for the guild.
+- **Usage:** `/freestuffsources`
+- **Permission:** Everyone
+
 ---
 
 ## Polls
@@ -397,6 +441,16 @@ Use these commands as the fastest per-feature smoke test:
 - **Usage:** `/testbirthday 21.08`
 - **Permission:** Administrator
 
+### `/testbirthdaypanel`
+- **What it does:** Posts the birthday overview panel for testing.
+- **Usage:** `/testbirthdaypanel`
+- **Permission:** Administrator
+
+### `/testfreestuff`
+- **What it does:** Triggers a manual free stuff check to verify the feature works correctly.
+- **Usage:** `/testfreestuff`
+- **Permission:** Administrator
+
 ### `/testpoll [seconds] [question]`
 - **What it does:** Starts the regular interactive poll flow and provides suggested input so poll UI/buttons can be tested quickly.
 - **Usage:** `/testpoll 45 Quick check`
@@ -438,6 +492,7 @@ Use these commands as the fastest per-feature smoke test:
 - Tickets: `config/tickets.json`
 - Logging channels: `config/log_*.json`
 - Birthday channel: `config/birthdays.json`
+- Free stuff channel/sources: `config/freestuff.json`
 - Counter channel/settings: `config/count.json`
 
 If a command seems inactive, check:

@@ -53,13 +53,17 @@ FEATURE_DEFS = {
         "label": "Member Count Channel",
         "desc": "A voice channel that displays the current member count. Updates automatically when members join or leave.",
     },
+    "freestuff": {
+        "label": "Free Stuff",
+        "desc": "Automatically posts free game and software giveaways (Epic Games, Steam, GOG, etc.) to a configured channel.",
+    },
 }
 
 # Order for display
 FEATURE_ORDER = [
     "leveling", "achievements", "birthdays", "polls", "counting",
     "welcome", "tickets", "tempvoice", "music", "logging", "memes",
-    "membercount",
+    "membercount", "freestuff",
 ]
 
 
@@ -147,6 +151,7 @@ class FeaturesControllerMixin:
         "Rankcard": "leveling",
         "Leveling": "leveling",
         "Birthdays": "birthdays",
+        "Free Stuff": "freestuff",
     }
 
     def _update_feature_tab_visibility(self, features: dict):
