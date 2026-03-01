@@ -27,6 +27,7 @@ CHANNEL_FIELD_KEYS = [
     ("social_media", "TWITCH.CHANNEL_ID", "Social: Twitch channel"),
     ("social_media", "YOUTUBE.CHANNEL_ID", "Social: YouTube channel"),
     ("social_media", "TWITTER.CHANNEL_ID", "Social: Twitter/X channel"),
+    ("social_media", "TIKTOK.CHANNEL_ID", "Social: TikTok channel"),
 ]
 
 ROLE_FIELD_KEYS = [
@@ -304,30 +305,102 @@ class SetupWizardDialog(QtWidgets.QDialog):
         # Load enabled features for the active guild
         enabled_features = self._load_enabled_features()
 
+        # --- Page 1: Environment ---
         form_env = self._make_page(
-            "1/3 • Environment",
-            "Configure runtime tokens saved to .env in the repository root.",
+            "Step 1 — Environment",
+            "Configure runtime tokens saved to .env in the repository root.\n"
+            "Without DISCORD_TOKEN the bot stays offline.",
         )
         for key in self._env_keys_for_wizard():
             self._add_env_row(form_env, key, key)
 
-        form_channels = self._make_page(
-            "2/3 • Channel IDs",
-            "Set key channels used by welcome, logs, counting, birthdays, leveling and tickets.",
+        # --- Page 2: Channels & Roles grouped by feature ---
+        page2 = QtWidgets.QWidget()
+        page2_outer = QtWidgets.QVBoxLayout(page2)
+        title2 = QtWidgets.QLabel("Step 2 — Channels & Roles")
+        title2.setStyleSheet("font-size: 16px; font-weight: 700;")
+        page2_outer.addWidget(title2)
+        sub2 = QtWidgets.QLabel(
+            "Set channels and roles per feature. Only enabled features are shown.\n"
+            "Right-click a channel/role in Discord (developer mode) to copy its ID."
         )
-        for file_name, key, label in CHANNEL_FIELD_KEYS:
-            if not self._is_field_visible(file_name, enabled_features):
-                continue
-            self._add_id_row(form_channels, file_name, key, label)
+        sub2.setWordWrap(True)
+        sub2.setStyleSheet("color:#9aa0a6;")
+        page2_outer.addWidget(sub2)
 
-        form_roles = self._make_page(
-            "3/3 • Role IDs",
-            "Configure verification/default/support roles used by autorole and tickets.",
-        )
-        for file_name, key, label in ROLE_FIELD_KEYS:
-            if not self._is_field_visible(file_name, enabled_features):
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        scroll_content = QtWidgets.QWidget()
+        scroll_layout = QtWidgets.QVBoxLayout(scroll_content)
+        scroll_layout.setSpacing(12)
+
+        # Feature groups: (group_label, [(file, key, label), ...])
+        _GROUPS = [
+            ("Welcome & Verification", [
+                ("welcome", "WELCOME_CHANNEL_ID", "Welcome channel"),
+                ("welcome", "VERIFY_CHANNEL_ID", "Verify channel"),
+                ("welcome", "RULES_CHANNEL_ID", "Rules channel"),
+                ("welcome", "ABOUTME_CHANNEL_ID", "About-me channel"),
+                ("welcome", "ROLE_ID", "Welcome role"),
+                ("autorole", "STARTER_ROLE_ID", "Starter role"),
+                ("autorole", "VERIFY_ROLE_ID", "Verify role"),
+                ("autorole", "DEFAULT_ROLE_ID", "Default role"),
+            ]),
+            ("Community", [
+                ("count", "COUNT_CHANNEL_ID", "Count channel"),
+                ("birthdays", "CHANNEL_ID", "Birthday channel"),
+                ("birthdays", "ROLE_ID", "Birthday role"),
+                ("leveling", "ACHIEVEMENT_CHANNEL_ID", "Achievement channel"),
+            ]),
+            ("TempVoice", [
+                ("tempvoice", "CREATE_CHANNEL_ID", "Create-join channel (Voice)"),
+                ("tempvoice", "CONTROL_CHANNEL_ID", "Control panel channel (Text)"),
+                ("tempvoice", "CATEGORY_ID", "TempVoice category"),
+            ]),
+            ("Tickets", [
+                ("tickets", "TICKET_CATEGORY_ID", "Ticket category"),
+                ("tickets", "TICKET_LOG_CHANNEL_ID", "Ticket log channel"),
+                ("tickets", "SUPPORT_ROLE_ID", "Support role"),
+            ]),
+            ("Logging", [
+                ("log_chat", "CHANNEL_ID", "Chat log channel"),
+                ("log_member", "CHANNEL_ID", "Member log channel"),
+                ("log_mod", "CHANNEL_ID", "Moderation log channel"),
+                ("log_server", "CHANNEL_ID", "Server log channel"),
+                ("log_voice", "CHANNEL_ID", "Voice log channel"),
+            ]),
+            ("Member Count", [
+                ("membercount", "CHANNEL_ID", "Member count channel"),
+            ]),
+            ("Notifications", [
+                ("freestuff", "CHANNEL_ID", "Free stuff channel"),
+                ("social_media", "TWITCH.CHANNEL_ID", "Social: Twitch channel"),
+                ("social_media", "YOUTUBE.CHANNEL_ID", "Social: YouTube channel"),
+                ("social_media", "TWITTER.CHANNEL_ID", "Social: Twitter/X channel"),
+                ("social_media", "TIKTOK.CHANNEL_ID", "Social: TikTok channel"),
+            ]),
+        ]
+
+        for group_label, fields in _GROUPS:
+            visible = [
+                (f, k, l) for f, k, l in fields
+                if self._is_field_visible(f, enabled_features)
+            ]
+            if not visible:
                 continue
-            self._add_id_row(form_roles, file_name, key, label)
+            group_box = QtWidgets.QGroupBox(group_label)
+            group_form = QtWidgets.QFormLayout(group_box)
+            group_form.setHorizontalSpacing(12)
+            group_form.setVerticalSpacing(8)
+            for file_name, key, label in visible:
+                self._add_id_row(group_form, file_name, key, label)
+            scroll_layout.addWidget(group_box)
+
+        scroll_layout.addStretch()
+        scroll.setWidget(scroll_content)
+        page2_outer.addWidget(scroll, 1)
+        self.stack.addWidget(page2)
 
     def _load_enabled_features(self) -> dict:
         """Load features.json for the active guild.
@@ -544,28 +617,20 @@ class SetupWizardDialog(QtWidgets.QDialog):
 
         if page_index == 1:
             return (
-                "Help • Channel IDs",
-                "Hier setzt du Channel-IDs für Welcome, Logs, Count, Birthdays, TempVoice, Tickets und Achievements.\n\n"
+                "Help • Channels & Roles",
+                "Hier setzt du Channel- und Rollen-IDs, gruppiert nach Feature.\n\n"
                 "Woher bekommst du die IDs?\n"
                 "- In Discord Entwicklermodus aktivieren\n"
-                "- Rechtsklick auf Kanal → ID kopieren\n"
+                "- Rechtsklick auf Kanal/Rolle → ID kopieren\n"
                 "- Nur Zahlen eintragen (keine #, keine Namen)\n\n"
-                "TempVoice Hinweise:\n"
-                "- CREATE_CHANNEL_ID: Join-to-create Hub Voicechannel\n"
-                "- CONTROL_CHANNEL_ID: Textchannel für /tempvoicepanel\n"
-                "- CATEGORY_ID: Kategorie für neue TempVoice-Channels\n\n"
+                "Feature-Gruppen:\n"
+                "• Welcome & Verification: Channels + Rollen für Begrüßung\n"
+                "• Community: Count, Birthdays, Leveling Channels\n"
+                "• TempVoice: Join-to-create Hub, Control Panel, Kategorie\n"
+                "• Tickets: Kategorie, Log Channel, Support Rolle\n"
+                "• Logging: Chat/Member/Mod/Server/Voice Log Channels\n"
+                "• Notifications: Free Stuff + Social Media Channels\n\n"
                 "Tipp: Über 'Guild Snapshot Picker' kannst du viele IDs automatisch übernehmen.",
-            )
-
-        if page_index == 2:
-            return (
-                "Help • Role IDs",
-                "Hier setzt du Rollen-IDs für Verifizierung, Default/Starter und Support.\n\n"
-                "Woher bekommst du die IDs?\n"
-                "- In Discord Entwicklermodus aktivieren\n"
-                "- Rechtsklick auf Rolle → ID kopieren\n"
-                "- Nur Zahlen eintragen\n\n"
-                "Tipp: Auch Rollen können über den 'Guild Snapshot Picker' vorausgefüllt werden.",
             )
 
         return (

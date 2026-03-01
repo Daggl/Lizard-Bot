@@ -5,6 +5,30 @@ from config.config_io import (config_json_path, load_guild_config,
 from PySide6 import QtWidgets
 
 
+# ---------------------------------------------------------------------------
+# Table helpers
+# ---------------------------------------------------------------------------
+
+def _read_table_entries(table: QtWidgets.QTableWidget) -> str:
+    """Read all non-empty entries from a single-column QTableWidget as comma-separated string."""
+    entries = []
+    for row in range(table.rowCount()):
+        item = table.item(row, 0)
+        if item:
+            text = item.text().strip()
+            if text:
+                entries.append(text)
+    return ",".join(entries)
+
+
+def _populate_table_from_csv(table: QtWidgets.QTableWidget, csv_value: str):
+    """Populate a single-column QTableWidget from a comma-separated string."""
+    entries = [e.strip() for e in str(csv_value or "").split(",") if e.strip()]
+    table.setRowCount(len(entries))
+    for i, entry in enumerate(entries):
+        table.setItem(i, 0, QtWidgets.QTableWidgetItem(entry))
+
+
 class SocialsControllerMixin:
     """Mixin that adds Social Media config load/save to the main window."""
 
@@ -28,8 +52,8 @@ class SocialsControllerMixin:
             if hasattr(self, "sm_twitch_channel_id") and not self.sm_twitch_channel_id.hasFocus():
                 cid = str(twitch.get("CHANNEL_ID", "") or "").strip()
                 self.sm_twitch_channel_id.setText(cid if cid and cid != "0" else "")
-            if hasattr(self, "sm_twitch_usernames") and not self.sm_twitch_usernames.hasFocus():
-                self.sm_twitch_usernames.setText(str(twitch.get("USERNAMES", "") or ""))
+            if hasattr(self, "sm_twitch_usernames_table") and not self.sm_twitch_usernames_table.hasFocus():
+                _populate_table_from_csv(self.sm_twitch_usernames_table, twitch.get("USERNAMES", ""))
             if hasattr(self, "sm_twitch_client_id") and not self.sm_twitch_client_id.hasFocus():
                 self.sm_twitch_client_id.setText(str(twitch.get("CLIENT_ID", "") or ""))
             if hasattr(self, "sm_twitch_oauth") and not self.sm_twitch_oauth.hasFocus():
@@ -42,8 +66,8 @@ class SocialsControllerMixin:
             if hasattr(self, "sm_youtube_channel_id") and not self.sm_youtube_channel_id.hasFocus():
                 cid = str(youtube.get("CHANNEL_ID", "") or "").strip()
                 self.sm_youtube_channel_id.setText(cid if cid and cid != "0" else "")
-            if hasattr(self, "sm_youtube_ids") and not self.sm_youtube_ids.hasFocus():
-                self.sm_youtube_ids.setText(str(youtube.get("YOUTUBE_CHANNEL_IDS", "") or ""))
+            if hasattr(self, "sm_youtube_ids_table") and not self.sm_youtube_ids_table.hasFocus():
+                _populate_table_from_csv(self.sm_youtube_ids_table, youtube.get("YOUTUBE_CHANNEL_IDS", ""))
 
             # Twitter/X
             twitter = cfg.get("TWITTER", {}) if isinstance(cfg.get("TWITTER"), dict) else {}
@@ -54,8 +78,18 @@ class SocialsControllerMixin:
                 self.sm_twitter_channel_id.setText(cid if cid and cid != "0" else "")
             if hasattr(self, "sm_twitter_bearer") and not self.sm_twitter_bearer.hasFocus():
                 self.sm_twitter_bearer.setText(str(twitter.get("BEARER_TOKEN", "") or ""))
-            if hasattr(self, "sm_twitter_usernames") and not self.sm_twitter_usernames.hasFocus():
-                self.sm_twitter_usernames.setText(str(twitter.get("USERNAMES", "") or ""))
+            if hasattr(self, "sm_twitter_usernames_table") and not self.sm_twitter_usernames_table.hasFocus():
+                _populate_table_from_csv(self.sm_twitter_usernames_table, twitter.get("USERNAMES", ""))
+
+            # TikTok
+            tiktok = cfg.get("TIKTOK", {}) if isinstance(cfg.get("TIKTOK"), dict) else {}
+            if hasattr(self, "sm_tiktok_enabled"):
+                self.sm_tiktok_enabled.setChecked(bool(tiktok.get("ENABLED", False)))
+            if hasattr(self, "sm_tiktok_channel_id") and not self.sm_tiktok_channel_id.hasFocus():
+                cid = str(tiktok.get("CHANNEL_ID", "") or "").strip()
+                self.sm_tiktok_channel_id.setText(cid if cid and cid != "0" else "")
+            if hasattr(self, "sm_tiktok_usernames_table") and not self.sm_tiktok_usernames_table.hasFocus():
+                _populate_table_from_csv(self.sm_tiktok_usernames_table, tiktok.get("USERNAMES", ""))
         except Exception:
             pass
 
@@ -108,6 +142,7 @@ class SocialsControllerMixin:
                 twitch_cid = _parse_cid(self.sm_twitch_channel_id)
                 youtube_cid = _parse_cid(self.sm_youtube_channel_id)
                 twitter_cid = _parse_cid(self.sm_twitter_channel_id)
+                tiktok_cid = _parse_cid(self.sm_tiktok_channel_id)
             except ValueError as exc:
                 QtWidgets.QMessageBox.warning(self, "Social Media", str(exc))
                 return
@@ -116,20 +151,25 @@ class SocialsControllerMixin:
                 "TWITCH": {
                     "ENABLED": self.sm_twitch_enabled.isChecked(),
                     "CHANNEL_ID": twitch_cid,
-                    "USERNAMES": (self.sm_twitch_usernames.text() or "").strip(),
+                    "USERNAMES": _read_table_entries(self.sm_twitch_usernames_table),
                     "CLIENT_ID": (self.sm_twitch_client_id.text() or "").strip(),
                     "OAUTH_TOKEN": (self.sm_twitch_oauth.text() or "").strip(),
                 },
                 "YOUTUBE": {
                     "ENABLED": self.sm_youtube_enabled.isChecked(),
                     "CHANNEL_ID": youtube_cid,
-                    "YOUTUBE_CHANNEL_IDS": (self.sm_youtube_ids.text() or "").strip(),
+                    "YOUTUBE_CHANNEL_IDS": _read_table_entries(self.sm_youtube_ids_table),
                 },
                 "TWITTER": {
                     "ENABLED": self.sm_twitter_enabled.isChecked(),
                     "CHANNEL_ID": twitter_cid,
                     "BEARER_TOKEN": (self.sm_twitter_bearer.text() or "").strip(),
-                    "USERNAMES": (self.sm_twitter_usernames.text() or "").strip(),
+                    "USERNAMES": _read_table_entries(self.sm_twitter_usernames_table),
+                },
+                "TIKTOK": {
+                    "ENABLED": self.sm_tiktok_enabled.isChecked(),
+                    "CHANNEL_ID": tiktok_cid,
+                    "USERNAMES": _read_table_entries(self.sm_tiktok_usernames_table),
                 },
                 "CUSTOM": {
                     "ENABLED": False,

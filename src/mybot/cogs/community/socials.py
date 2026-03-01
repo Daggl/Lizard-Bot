@@ -5,6 +5,7 @@ All settings are per-guild and stored in social_media.json.
 """
 
 import asyncio
+import re as _re
 import traceback
 from datetime import datetime, timezone
 
@@ -42,8 +43,8 @@ def _source_cfg(guild_id: int | str | None, source: str) -> dict:
 def _load_posted(guild_id: int | str | None) -> dict:
     path = guild_data_path(guild_id, "social_media_data.json")
     if not path:
-        return {"twitch": [], "youtube": [], "twitter": [], "custom": []}
-    data = safe_load_json(path, default={"twitch": [], "youtube": [], "twitter": [], "custom": []})
+        return {"twitch": [], "youtube": [], "twitter": [], "tiktok": [], "custom": []}
+    data = safe_load_json(path, default={"twitch": [], "youtube": [], "twitter": [], "tiktok": [], "custom": []})
     return data
 
 
@@ -51,7 +52,7 @@ def _save_posted(guild_id: int | str | None, data: dict):
     path = guild_data_path(guild_id, "social_media_data.json")
     if path:
         # Keep only last 100 entries per source
-        for key in ("twitch", "youtube", "twitter", "custom"):
+        for key in ("twitch", "youtube", "twitter", "tiktok", "custom"):
             if key in data and isinstance(data[key], list):
                 data[key] = data[key][-100:]
         safe_save_json(path, data)
@@ -160,6 +161,66 @@ def _xml_tag(text: str, tag: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# TikTok (public page scraping — no API key needed)
+# ---------------------------------------------------------------------------
+
+async def _fetch_tiktok_latest(usernames: list[str]) -> list[dict]:
+    """Fetch latest TikTok video IDs by parsing the public profile page.
+
+    This extracts video links embedded in the page HTML for SEO purposes.
+    No API key is required but TikTok may rate-limit automated requests.
+    """
+    items = []
+    try:
+        async with aiohttp.ClientSession() as session:
+            for username in usernames[:10]:
+                username = username.strip().lstrip("@")
+                if not username:
+                    continue
+                url = f"https://www.tiktok.com/@{username}"
+                try:
+                    headers = {
+                        "User-Agent": (
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/120.0.0.0 Safari/537.36"
+                        ),
+                        "Accept-Language": "en-US,en;q=0.9",
+                    }
+                    async with session.get(
+                        url,
+                        headers=headers,
+                        timeout=aiohttp.ClientTimeout(total=20),
+                        allow_redirects=True,
+                    ) as resp:
+                        if resp.status != 200:
+                            continue
+                        text = await resp.text()
+                    # Extract video IDs from profile page links
+                    pattern = rf'/@{_re.escape(username)}/video/(\d+)'
+                    video_ids = _re.findall(pattern, text, _re.IGNORECASE)
+                    seen = set()
+                    for vid in video_ids:
+                        if vid in seen:
+                            continue
+                        seen.add(vid)
+                        items.append({
+                            "source": "tiktok",
+                            "id": f"tiktok:{vid}",
+                            "username": username,
+                            "title": f"New TikTok from @{username}",
+                            "url": f"https://www.tiktok.com/@{username}/video/{vid}",
+                        })
+                        if len(seen) >= 5:
+                            break
+                except Exception:
+                    continue
+    except Exception:
+        traceback.print_exc()
+    return items
+
+
+# ---------------------------------------------------------------------------
 # Cog
 # ---------------------------------------------------------------------------
 
@@ -207,7 +268,7 @@ class SocialMedia(commands.Cog):
         cfg = _cfg(guild_id)
 
         lines = []
-        for source_name in ("TWITCH", "YOUTUBE", "TWITTER", "CUSTOM"):
+        for source_name in ("TWITCH", "YOUTUBE", "TWITTER", "TIKTOK", "CUSTOM"):
             src = cfg.get(source_name, {})
             if not isinstance(src, dict):
                 continue
@@ -319,6 +380,34 @@ class SocialMedia(commands.Cog):
         if isinstance(twitter_cfg, dict) and twitter_cfg.get("ENABLED"):
             # Twitter/X API requires Bearer token; placeholder for future implementation
             pass
+
+        # --- TikTok ---
+        tiktok_cfg = cfg.get("TIKTOK", {})
+        if isinstance(tiktok_cfg, dict) and tiktok_cfg.get("ENABLED"):
+            ch_id = int(tiktok_cfg.get("CHANNEL_ID", 0) or 0)
+            usernames = [u.strip() for u in str(tiktok_cfg.get("USERNAMES", "")).split(",") if u.strip()]
+            if ch_id and usernames:
+                channel = self.bot.get_channel(ch_id) or guild.get_channel(ch_id)
+                if channel:
+                    videos = await _fetch_tiktok_latest(usernames)
+                    posted_set = set(posted_data.get("tiktok", []))
+                    for video in videos:
+                        vid = video["id"]
+                        if vid in posted_set:
+                            continue
+                        embed = discord.Embed(
+                            title=f"\U0001f3b5 {video['username']} posted a new TikTok!",
+                            description=f"**{video['title']}**",
+                            url=video["url"],
+                            color=discord.Color.from_rgb(0, 0, 0),
+                            timestamp=datetime.now(timezone.utc),
+                        )
+                        try:
+                            await channel.send(embed=embed)
+                            posted_data.setdefault("tiktok", []).append(vid)
+                            total_new += 1
+                        except Exception as exc:
+                            print(f"[SocialMedia] TikTok post failed: {exc}")
 
         # --- Custom webhooks/feeds ---
         custom_cfg = cfg.get("CUSTOM", {})

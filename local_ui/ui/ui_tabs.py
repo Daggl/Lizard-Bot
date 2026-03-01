@@ -133,7 +133,11 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     test_layout.addWidget(window.event_test_channel_id)
     test_layout.addWidget(window.run_event_test_btn)
     test_layout.addStretch()
+    dash_layout.addWidget(monitor_box)
     dash_layout.addWidget(test_box)
+
+    # Compact row: Safe Mode + Help & Links
+    compact_footer = QtWidgets.QHBoxLayout()
 
     safe_box = QtWidgets.QGroupBox("Safe Mode")
     safe_layout = QtWidgets.QHBoxLayout(safe_box)
@@ -144,14 +148,9 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     safe_layout.addWidget(window.safe_debug_logging_chk)
     safe_layout.addWidget(window.safe_auto_reload_off_chk)
     safe_layout.addStretch()
-    dash_layout.addWidget(safe_box)
+    compact_footer.addWidget(safe_box)
 
-    dash_layout.addWidget(monitor_box)
-    dash_layout.addWidget(console_box)
-
-    dash_layout.addStretch()
-
-    help_box = QtWidgets.QGroupBox("Help")
+    help_box = QtWidgets.QGroupBox("Help & Links")
     help_layout = QtWidgets.QHBoxLayout(help_box)
     window.tutorial_btn = QtWidgets.QPushButton("Bot Tutorial")
     window.commands_btn = QtWidgets.QPushButton("Commands")
@@ -161,7 +160,10 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     help_layout.addWidget(window.tutorial_btn)
     help_layout.addWidget(window.commands_btn)
     help_layout.addStretch()
-    dash_layout.addWidget(help_box)
+    compact_footer.addWidget(help_box)
+
+    dash_layout.addLayout(compact_footer)
+    dash_layout.addWidget(console_box, 1)
 
     window.refresh_btn.clicked.connect(window.on_refresh)
     window.reload_btn.clicked.connect(window.on_reload)
@@ -1303,7 +1305,7 @@ def build_freestuff_tab(window, tabs: QtWidgets.QTabWidget):
 # =====================================================================
 
 def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
-    """Build the 'Social Media' tab for configuring Twitch/YouTube/Twitter notifications."""
+    """Build the 'Social Media' tab with table-based entry management and TikTok support."""
     sm = QtWidgets.QWidget()
     layout = QtWidgets.QVBoxLayout(sm)
     layout.setContentsMargins(12, 12, 12, 12)
@@ -1322,9 +1324,56 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
     desc.setStyleSheet("color: #9AA5B4; font-size: 12px; margin-bottom: 10px;")
     layout.addWidget(desc)
 
+    scroll = QtWidgets.QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+    scroll_content = QtWidgets.QWidget()
+    scroll_layout = QtWidgets.QVBoxLayout(scroll_content)
+    scroll_layout.setSpacing(10)
+
+    def _make_entry_table(parent_layout, col_header):
+        """Create a single-column table with Add / Remove buttons."""
+        table = QtWidgets.QTableWidget(0, 1)
+        table.setHorizontalHeaderLabels([col_header])
+        table.horizontalHeader().setStretchLastSection(True)
+        table.verticalHeader().setVisible(False)
+        table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        table.setMinimumHeight(90)
+        table.setMaximumHeight(150)
+
+        btn_row = QtWidgets.QHBoxLayout()
+        add_btn = QtWidgets.QPushButton("+ Add")
+        remove_btn = QtWidgets.QPushButton("\u2212 Remove")
+        add_btn.setFixedWidth(90)
+        remove_btn.setFixedWidth(90)
+        btn_row.addWidget(add_btn)
+        btn_row.addWidget(remove_btn)
+        btn_row.addStretch()
+
+        parent_layout.addWidget(table)
+        parent_layout.addLayout(btn_row)
+
+        def _on_add():
+            row = table.rowCount()
+            table.insertRow(row)
+            table.setItem(row, 0, QtWidgets.QTableWidgetItem(""))
+            table.editItem(table.item(row, 0))
+
+        def _on_remove():
+            sel = table.currentRow()
+            if sel >= 0:
+                table.removeRow(sel)
+
+        add_btn.clicked.connect(_on_add)
+        remove_btn.clicked.connect(_on_remove)
+
+        return table
+
     # --- Twitch ---
     twitch_box = QtWidgets.QGroupBox("Twitch")
-    twitch_form = QtWidgets.QFormLayout(twitch_box)
+    twitch_vbox = QtWidgets.QVBoxLayout(twitch_box)
+    twitch_form = QtWidgets.QFormLayout()
     twitch_form.setHorizontalSpacing(10)
     twitch_form.setVerticalSpacing(6)
 
@@ -1334,9 +1383,6 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
     window.sm_twitch_channel_id.setPlaceholderText("Discord Channel ID")
     window.sm_twitch_channel_id.setMaximumWidth(280)
     twitch_form.addRow("Channel ID:", window.sm_twitch_channel_id)
-    window.sm_twitch_usernames = QtWidgets.QLineEdit()
-    window.sm_twitch_usernames.setPlaceholderText("Comma-separated Twitch usernames")
-    twitch_form.addRow("Usernames:", window.sm_twitch_usernames)
     window.sm_twitch_client_id = QtWidgets.QLineEdit()
     window.sm_twitch_client_id.setPlaceholderText("Twitch App Client ID")
     twitch_form.addRow("Client ID:", window.sm_twitch_client_id)
@@ -1344,11 +1390,16 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
     window.sm_twitch_oauth.setPlaceholderText("Twitch OAuth Token")
     window.sm_twitch_oauth.setEchoMode(QtWidgets.QLineEdit.Password)
     twitch_form.addRow("OAuth Token:", window.sm_twitch_oauth)
-    layout.addWidget(twitch_box)
+    twitch_vbox.addLayout(twitch_form)
+
+    twitch_vbox.addWidget(QtWidgets.QLabel("Monitored Twitch Usernames:"))
+    window.sm_twitch_usernames_table = _make_entry_table(twitch_vbox, "Username")
+    scroll_layout.addWidget(twitch_box)
 
     # --- YouTube ---
     yt_box = QtWidgets.QGroupBox("YouTube")
-    yt_form = QtWidgets.QFormLayout(yt_box)
+    yt_vbox = QtWidgets.QVBoxLayout(yt_box)
+    yt_form = QtWidgets.QFormLayout()
     yt_form.setHorizontalSpacing(10)
     yt_form.setVerticalSpacing(6)
 
@@ -1358,14 +1409,16 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
     window.sm_youtube_channel_id.setPlaceholderText("Discord Channel ID")
     window.sm_youtube_channel_id.setMaximumWidth(280)
     yt_form.addRow("Channel ID:", window.sm_youtube_channel_id)
-    window.sm_youtube_ids = QtWidgets.QLineEdit()
-    window.sm_youtube_ids.setPlaceholderText("Comma-separated YouTube Channel IDs (e.g. UCxxxx)")
-    yt_form.addRow("YT Channel IDs:", window.sm_youtube_ids)
-    layout.addWidget(yt_box)
+    yt_vbox.addLayout(yt_form)
+
+    yt_vbox.addWidget(QtWidgets.QLabel("Monitored YouTube Channel IDs:"))
+    window.sm_youtube_ids_table = _make_entry_table(yt_vbox, "YouTube Channel ID (UCxxxx)")
+    scroll_layout.addWidget(yt_box)
 
     # --- Twitter/X ---
     tw_box = QtWidgets.QGroupBox("Twitter / X")
-    tw_form = QtWidgets.QFormLayout(tw_box)
+    tw_vbox = QtWidgets.QVBoxLayout(tw_box)
+    tw_form = QtWidgets.QFormLayout()
     tw_form.setHorizontalSpacing(10)
     tw_form.setVerticalSpacing(6)
 
@@ -1379,10 +1432,34 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
     window.sm_twitter_bearer.setPlaceholderText("Twitter API Bearer Token")
     window.sm_twitter_bearer.setEchoMode(QtWidgets.QLineEdit.Password)
     tw_form.addRow("Bearer Token:", window.sm_twitter_bearer)
-    window.sm_twitter_usernames = QtWidgets.QLineEdit()
-    window.sm_twitter_usernames.setPlaceholderText("Comma-separated Twitter usernames")
-    tw_form.addRow("Usernames:", window.sm_twitter_usernames)
-    layout.addWidget(tw_box)
+    tw_vbox.addLayout(tw_form)
+
+    tw_vbox.addWidget(QtWidgets.QLabel("Monitored Twitter Usernames:"))
+    window.sm_twitter_usernames_table = _make_entry_table(tw_vbox, "Username")
+    scroll_layout.addWidget(tw_box)
+
+    # --- TikTok ---
+    tt_box = QtWidgets.QGroupBox("TikTok")
+    tt_vbox = QtWidgets.QVBoxLayout(tt_box)
+    tt_form = QtWidgets.QFormLayout()
+    tt_form.setHorizontalSpacing(10)
+    tt_form.setVerticalSpacing(6)
+
+    window.sm_tiktok_enabled = QtWidgets.QCheckBox("Enabled")
+    tt_form.addRow("", window.sm_tiktok_enabled)
+    window.sm_tiktok_channel_id = QtWidgets.QLineEdit()
+    window.sm_tiktok_channel_id.setPlaceholderText("Discord Channel ID")
+    window.sm_tiktok_channel_id.setMaximumWidth(280)
+    tt_form.addRow("Channel ID:", window.sm_tiktok_channel_id)
+    tt_vbox.addLayout(tt_form)
+
+    tt_vbox.addWidget(QtWidgets.QLabel("Monitored TikTok Usernames (without @):"))
+    window.sm_tiktok_usernames_table = _make_entry_table(tt_vbox, "Username")
+    scroll_layout.addWidget(tt_box)
+
+    scroll_layout.addStretch()
+    scroll.setWidget(scroll_content)
+    layout.addWidget(scroll, 1)
 
     # Buttons
     btn_row = QtWidgets.QHBoxLayout()
@@ -1398,8 +1475,6 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
     btn_row.addWidget(window.sm_save)
     btn_row.addWidget(window.sm_save_reload)
     layout.addLayout(btn_row)
-
-    layout.addStretch()
 
     # Wire signals
     window.sm_save.clicked.connect(lambda: window._save_socials_settings(reload_after=False))
