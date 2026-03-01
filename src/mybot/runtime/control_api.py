@@ -82,8 +82,9 @@ _TESTALL_VERIFY_ONLY = {
     # interactive (sends views/wizards that need user input)
     "poll", "admin_help", "adminpanel", "ticketpanel",
     "tempvoicepanel", "spotify",
-    # requires voice channel
+    # requires voice channel – verify only (do NOT join/play)
     "join", "play", "skip", "stop", "now", "queue",
+    "testmusic",
     # creates discord resources
     "ticket", "transcript",
 }

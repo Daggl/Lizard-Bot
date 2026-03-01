@@ -91,80 +91,80 @@ class MemeCog(commands.Cog, name="Memes"):
         caption: str,
         image: discord.Attachment,
     ):
-        guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message("❌ Server-only command.", ephemeral=True)
-            return
-        guild_id = guild.id
-
-        if not is_feature_enabled(guild_id, "memes"):
-            await interaction.response.send_message("❌ Memes feature is disabled.", ephemeral=True)
-            return
-
-        safe_name = _sanitise_name(name)
-        index = _load_index(guild_id)
-        t = translate
-
-        if safe_name in index:
-            await interaction.response.send_message(
-                t("meme.error.exists", guild_id=guild_id, name=safe_name),
-                ephemeral=True,
-            )
-            return
-
-        # Validate attachment is an image/gif
-        ct = (image.content_type or "").lower()
-        if not ct.startswith("image/"):
-            await interaction.response.send_message(
-                t("meme.error.no_image", guild_id=guild_id),
-                ephemeral=True,
-            )
-            return
-
-        # Optional safety guard for very large attachments.
+        print(f"[MEME] /meme create invoked by {interaction.user} in guild {getattr(interaction.guild, 'id', '?')}")
         try:
-            guild_limit = int(getattr(guild, "filesize_limit", 0) or 0)
-        except Exception:
-            guild_limit = 0
-        if guild_limit > 0 and int(getattr(image, "size", 0) or 0) > guild_limit:
-            await interaction.response.send_message(
-                f"❌ Datei ist zu groß (Limit: {guild_limit // (1024 * 1024)} MB).",
-                ephemeral=True,
+            guild = interaction.guild
+            if guild is None:
+                await interaction.response.send_message("❌ Server-only command.", ephemeral=True)
+                return
+            guild_id = guild.id
+
+            if not is_feature_enabled(guild_id, "memes"):
+                await interaction.response.send_message("❌ Memes feature is disabled.", ephemeral=True)
+                return
+
+            safe_name = _sanitise_name(name)
+            index = _load_index(guild_id)
+            t = translate
+
+            if safe_name in index:
+                await interaction.response.send_message(
+                    t("meme.error.exists", guild_id=guild_id, name=safe_name),
+                    ephemeral=True,
+                )
+                return
+
+            # Validate attachment is an image/gif
+            ct = (image.content_type or "").lower()
+            if not ct.startswith("image/"):
+                await interaction.response.send_message(
+                    t("meme.error.no_image", guild_id=guild_id),
+                    ephemeral=True,
+                )
+                return
+
+            await interaction.response.defer(thinking=True)
+
+            # Download and save
+            ext = "gif" if "gif" in ct else "png"
+            if ct.startswith("image/jpeg"):
+                ext = "jpg"
+            elif ct.startswith("image/webp"):
+                ext = "webp"
+
+            filename = f"{safe_name}.{ext}"
+            save_path = os.path.join(_guild_memes_dir(guild_id), filename)
+
+            try:
+                data = await image.read()
+                with open(save_path, "wb") as fh:
+                    fh.write(data)
+            except Exception as exc:
+                await interaction.followup.send(f"❌ Failed to save image: {exc}", ephemeral=True)
+                return
+
+            index[safe_name] = {
+                "caption": caption,
+                "filename": filename,
+                "author_id": interaction.user.id,
+                "author_name": str(interaction.user),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            _save_index(guild_id, index)
+
+            await interaction.followup.send(
+                t("meme.msg.saved", guild_id=guild_id, name=safe_name)
             )
-            return
-
-        await interaction.response.defer(thinking=True)
-
-        # Download and save
-        ext = "gif" if "gif" in ct else "png"
-        if ct.startswith("image/jpeg"):
-            ext = "jpg"
-        elif ct.startswith("image/webp"):
-            ext = "webp"
-
-        filename = f"{safe_name}.{ext}"
-        save_path = os.path.join(_guild_memes_dir(guild_id), filename)
-
-        try:
-            data = await image.read()
-            with open(save_path, "wb") as fh:
-                fh.write(data)
         except Exception as exc:
-            await interaction.followup.send(f"❌ Failed to save image: {exc}", ephemeral=True)
-            return
-
-        index[safe_name] = {
-            "caption": caption,
-            "filename": filename,
-            "author_id": interaction.user.id,
-            "author_name": str(interaction.user),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        _save_index(guild_id, index)
-
-        await interaction.followup.send(
-            t("meme.msg.saved", guild_id=guild_id, name=safe_name)
-        )
+            print(f"[MEME][ERROR] /meme create failed: {exc}")
+            traceback.print_exc()
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send(f"❌ Meme create failed: {exc}", ephemeral=True)
+                else:
+                    await interaction.response.send_message(f"❌ Meme create failed: {exc}", ephemeral=True)
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # /meme show <name>
@@ -173,48 +173,60 @@ class MemeCog(commands.Cog, name="Memes"):
     @meme_group.command(name="show", description="Display a saved meme by name.")
     @app_commands.describe(name="Name of the meme to show.")
     async def meme_show(self, interaction: discord.Interaction, name: str):
-        guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message("❌ Server-only command.", ephemeral=True)
-            return
-        guild_id = guild.id
+        print(f"[MEME] /meme show invoked by {interaction.user} in guild {getattr(interaction.guild, 'id', '?')}")
+        try:
+            guild = interaction.guild
+            if guild is None:
+                await interaction.response.send_message("❌ Server-only command.", ephemeral=True)
+                return
+            guild_id = guild.id
 
-        if not is_feature_enabled(guild_id, "memes"):
-            await interaction.response.send_message("❌ Memes feature is disabled.", ephemeral=True)
-            return
+            if not is_feature_enabled(guild_id, "memes"):
+                await interaction.response.send_message("❌ Memes feature is disabled.", ephemeral=True)
+                return
 
-        safe_name = _sanitise_name(name)
-        index = _load_index(guild_id)
-        t = translate
+            safe_name = _sanitise_name(name)
+            index = _load_index(guild_id)
+            t = translate
 
-        if safe_name not in index:
-            await interaction.response.send_message(
-                t("meme.error.not_found", guild_id=guild_id, name=safe_name),
-                ephemeral=True,
+            if safe_name not in index:
+                await interaction.response.send_message(
+                    t("meme.error.not_found", guild_id=guild_id, name=safe_name),
+                    ephemeral=True,
+                )
+                return
+
+            entry = index[safe_name]
+            file_path = os.path.join(_guild_memes_dir(guild_id), entry["filename"])
+
+            if not os.path.isfile(file_path):
+                await interaction.response.send_message(
+                    t("meme.error.not_found", guild_id=guild_id, name=safe_name),
+                    ephemeral=True,
+                )
+                return
+
+            embed = discord.Embed(
+                title=f"😂 {safe_name}",
+                description=entry.get("caption", ""),
+                color=discord.Color.gold(),
             )
-            return
+            embed.set_footer(text=f"by {entry.get('author_name', 'Unknown')}")
 
-        entry = index[safe_name]
-        file_path = os.path.join(_guild_memes_dir(guild_id), entry["filename"])
+            file = discord.File(file_path, filename=entry["filename"])
+            embed.set_image(url=f"attachment://{entry['filename']}")
 
-        if not os.path.isfile(file_path):
-            await interaction.response.send_message(
-                t("meme.error.not_found", guild_id=guild_id, name=safe_name),
-                ephemeral=True,
-            )
-            return
-
-        embed = discord.Embed(
-            title=f"😂 {safe_name}",
-            description=entry.get("caption", ""),
-            color=discord.Color.gold(),
-        )
-        embed.set_footer(text=f"by {entry.get('author_name', 'Unknown')}")
-
-        file = discord.File(file_path, filename=entry["filename"])
-        embed.set_image(url=f"attachment://{entry['filename']}")
-
-        await interaction.response.send_message(embed=embed, file=file)
+            await interaction.response.send_message(embed=embed, file=file)
+        except Exception as exc:
+            print(f"[MEME][ERROR] /meme show failed: {exc}")
+            traceback.print_exc()
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send(f"❌ Meme show failed: {exc}", ephemeral=True)
+                else:
+                    await interaction.response.send_message(f"❌ Meme show failed: {exc}", ephemeral=True)
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # /meme list
@@ -222,78 +234,74 @@ class MemeCog(commands.Cog, name="Memes"):
 
     @meme_group.command(name="list", description="List all saved memes.")
     async def meme_list(self, interaction: discord.Interaction):
-        guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message("❌ Server-only command.", ephemeral=True)
-            return
-        guild_id = guild.id
-
-        if not is_feature_enabled(guild_id, "memes"):
-            await interaction.response.send_message("❌ Memes feature is disabled.", ephemeral=True)
-            return
-
-        index = _load_index(guild_id)
-        t = translate
-
-        if not index:
-            await interaction.response.send_message(
-                t("meme.error.no_memes", guild_id=guild_id), ephemeral=True
-            )
-            return
-
-        lines = []
-        for meme_name, entry in sorted(index.items()):
-            if not isinstance(entry, dict):
-                entry = {}
-            raw_caption = entry.get("caption", "")
-            caption_text = str(raw_caption or "")
-            caption_preview = caption_text[:60]
-            if len(caption_text) > 60:
-                caption_preview += "…"
-            lines.append(f"**{meme_name}** — {caption_preview}")
-
-        # Discord embed descriptions are limited to 4096 chars.
-        description = "\n".join(lines)
-        if len(description) > 3900:
-            shown = []
-            total = 0
-            for line in lines:
-                add = len(line) + (1 if shown else 0)
-                if total + add > 3700:
-                    break
-                shown.append(line)
-                total += add
-            remaining = max(0, len(lines) - len(shown))
-            if remaining:
-                shown.append(f"… (+{remaining} weitere)")
-            description = "\n".join(shown)
-
-        embed = discord.Embed(
-            title=t("meme.list.title", guild_id=guild_id),
-            description=description,
-            color=discord.Color.gold(),
-        )
-        embed.set_footer(
-            text=t("meme.list.footer", guild_id=guild_id, count=len(index))
-        )
-
-        await interaction.response.send_message(embed=embed)
-
-    @meme_group.error
-    async def meme_group_error(
-        self,
-        interaction: discord.Interaction,
-        error: app_commands.AppCommandError,
-    ):
-        print(f"[APP CMD ERROR] /meme failed: {error}")
-        traceback.print_exception(type(error), error, error.__traceback__)
+        print(f"[MEME] /meme list invoked by {interaction.user} in guild {getattr(interaction.guild, 'id', '?')}")
         try:
-            if interaction.response.is_done():
-                await interaction.followup.send("❌ Meme command failed. Please try again.", ephemeral=True)
-            else:
-                await interaction.response.send_message("❌ Meme command failed. Please try again.", ephemeral=True)
-        except Exception:
-            pass
+            guild = interaction.guild
+            if guild is None:
+                await interaction.response.send_message("❌ Server-only command.", ephemeral=True)
+                return
+            guild_id = guild.id
+
+            if not is_feature_enabled(guild_id, "memes"):
+                await interaction.response.send_message("❌ Memes feature is disabled.", ephemeral=True)
+                return
+
+            index = _load_index(guild_id)
+            t = translate
+
+            if not index:
+                await interaction.response.send_message(
+                    t("meme.error.no_memes", guild_id=guild_id), ephemeral=True
+                )
+                return
+
+            lines = []
+            for meme_name, entry in sorted(index.items()):
+                if not isinstance(entry, dict):
+                    entry = {}
+                raw_caption = entry.get("caption", "")
+                caption_text = str(raw_caption or "")
+                caption_preview = caption_text[:60]
+                if len(caption_text) > 60:
+                    caption_preview += "…"
+                lines.append(f"**{meme_name}** — {caption_preview}")
+
+            # Discord embed descriptions are limited to 4096 chars.
+            description = "\n".join(lines)
+            if len(description) > 3900:
+                shown = []
+                total = 0
+                for line in lines:
+                    add = len(line) + (1 if shown else 0)
+                    if total + add > 3700:
+                        break
+                    shown.append(line)
+                    total += add
+                remaining = max(0, len(lines) - len(shown))
+                if remaining:
+                    shown.append(f"… (+{remaining} weitere)")
+                description = "\n".join(shown)
+
+            embed = discord.Embed(
+                title=t("meme.list.title", guild_id=guild_id),
+                description=description,
+                color=discord.Color.gold(),
+            )
+            embed.set_footer(
+                text=t("meme.list.footer", guild_id=guild_id, count=len(index))
+            )
+
+            await interaction.response.send_message(embed=embed)
+        except Exception as exc:
+            print(f"[MEME][ERROR] /meme list failed: {exc}")
+            traceback.print_exc()
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send(f"❌ Meme list failed: {exc}", ephemeral=True)
+                else:
+                    await interaction.response.send_message(f"❌ Meme list failed: {exc}", ephemeral=True)
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # /meme delete <name>  (admin only)
@@ -303,37 +311,49 @@ class MemeCog(commands.Cog, name="Memes"):
     @app_commands.describe(name="Name of the meme to delete.")
     @app_commands.default_permissions(administrator=True)
     async def meme_delete(self, interaction: discord.Interaction, name: str):
-        guild = interaction.guild
-        if guild is None:
-            await interaction.response.send_message("❌ Server-only command.", ephemeral=True)
-            return
-        guild_id = guild.id
-
-        safe_name = _sanitise_name(name)
-        index = _load_index(guild_id)
-        t = translate
-
-        if safe_name not in index:
-            await interaction.response.send_message(
-                t("meme.error.not_found", guild_id=guild_id, name=safe_name),
-                ephemeral=True,
-            )
-            return
-
-        entry = index.pop(safe_name)
-        _save_index(guild_id, index)
-
-        # Remove image file
-        file_path = os.path.join(_guild_memes_dir(guild_id), entry.get("filename", ""))
+        print(f"[MEME] /meme delete invoked by {interaction.user} in guild {getattr(interaction.guild, 'id', '?')}")
         try:
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-        except Exception:
-            pass
+            guild = interaction.guild
+            if guild is None:
+                await interaction.response.send_message("❌ Server-only command.", ephemeral=True)
+                return
+            guild_id = guild.id
 
-        await interaction.response.send_message(
-            t("meme.msg.deleted", guild_id=guild_id, name=safe_name)
-        )
+            safe_name = _sanitise_name(name)
+            index = _load_index(guild_id)
+            t = translate
+
+            if safe_name not in index:
+                await interaction.response.send_message(
+                    t("meme.error.not_found", guild_id=guild_id, name=safe_name),
+                    ephemeral=True,
+                )
+                return
+
+            entry = index.pop(safe_name)
+            _save_index(guild_id, index)
+
+            # Remove image file
+            file_path = os.path.join(_guild_memes_dir(guild_id), entry.get("filename", ""))
+            try:
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+            except Exception:
+                pass
+
+            await interaction.response.send_message(
+                t("meme.msg.deleted", guild_id=guild_id, name=safe_name)
+            )
+        except Exception as exc:
+            print(f"[MEME][ERROR] /meme delete failed: {exc}")
+            traceback.print_exc()
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send(f"❌ Meme delete failed: {exc}", ephemeral=True)
+                else:
+                    await interaction.response.send_message(f"❌ Meme delete failed: {exc}", ephemeral=True)
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # Autocomplete for meme names

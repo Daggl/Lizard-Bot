@@ -205,7 +205,7 @@ class AdminControllerMixin:
                 req["channel_id"] = channel_id
             self.send_cmd_async(
                 req,
-                timeout=25.0,
+                timeout=90.0,
                 cb=lambda r, lbl=label: self._on_event_test_result(lbl, r),
             )
         except Exception as e:

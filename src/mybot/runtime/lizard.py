@@ -4,6 +4,7 @@
 
 import asyncio
 import importlib
+import logging
 import os
 import sys
 import traceback
@@ -13,6 +14,14 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
+
+# Route discord.py library logs to stdout so interaction errors are visible
+logging.basicConfig(
+    level=logging.WARNING,
+    format="[%(name)s] %(levelname)s: %(message)s",
+    stream=sys.stdout,
+)
+logging.getLogger("discord").setLevel(logging.WARNING)
 
 from mybot.utils.env_store import ensure_env_file
 from mybot.utils.feature_flags import (
@@ -123,43 +132,47 @@ _original_tree_interaction_check = getattr(bot.tree, "interaction_check", None)
 
 async def _tree_feature_check(interaction: discord.Interaction) -> bool:
     """Global app-command check: block if the feature is disabled for the guild."""
-    # Find the cog from the command
-    cmd = interaction.command
-    cog = None
-    if cmd is not None:
-        # For group commands, walk up to find the cog
-        binding = getattr(cmd, "binding", None)
-        if binding is not None and isinstance(binding, commands.Cog):
-            cog = binding
-        elif hasattr(cmd, "parent") and cmd.parent is not None:
-            binding = getattr(cmd.parent, "binding", None)
+    try:
+        cmd = interaction.command
+        cog = None
+        if cmd is not None:
+            # For group commands, walk up to find the cog
+            binding = getattr(cmd, "binding", None)
             if binding is not None and isinstance(binding, commands.Cog):
                 cog = binding
-        # Try module-based lookup as fallback
+            elif hasattr(cmd, "parent") and cmd.parent is not None:
+                binding = getattr(cmd.parent, "binding", None)
+                if binding is not None and isinstance(binding, commands.Cog):
+                    cog = binding
+            # Try module-based lookup as fallback
+            if cog is None:
+                module = getattr(cmd, "module", None) or ""
+                for registered_cog in bot.cogs.values():
+                    if getattr(type(registered_cog), "__module__", "") == module:
+                        cog = registered_cog
+                        break
         if cog is None:
-            module = getattr(cmd, "module", None) or ""
-            for registered_cog in bot.cogs.values():
-                if getattr(type(registered_cog), "__module__", "") == module:
-                    cog = registered_cog
-                    break
-    if cog is None:
+            return True
+        cog_name = cog.qualified_name
+        fkey = feature_key_for_cog(cog_name)
+        if fkey is None:
+            return True
+        guild_id = getattr(getattr(interaction, "guild", None), "id", None)
+        if not is_feature_enabled(guild_id, fkey):
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(
+                        "❌ This feature is currently disabled on this server.",
+                        ephemeral=True,
+                    )
+            except Exception:
+                pass
+            return False
         return True
-    cog_name = cog.qualified_name
-    fkey = feature_key_for_cog(cog_name)
-    if fkey is None:
-        return True
-    guild_id = getattr(getattr(interaction, "guild", None), "id", None)
-    if not is_feature_enabled(guild_id, fkey):
-        try:
-            if not interaction.response.is_done():
-                await interaction.response.send_message(
-                    "❌ This feature is currently disabled on this server.",
-                    ephemeral=True,
-                )
-        except Exception:
-            pass
-        return False
-    return True
+    except Exception as exc:
+        print(f"[INTERACTION CHECK ERROR] {exc}")
+        traceback.print_exc()
+        return True  # allow command through on check error
 
 
 bot.tree.interaction_check = _tree_feature_check
