@@ -58,12 +58,12 @@ class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysCont
         tabs.setDocumentMode(True)
 
         build_dashboard_tab(self, tabs)
+        build_features_tab(self, tabs)
         build_logs_tab(self, tabs)
         build_configs_tab(self, tabs, ConfigEditor)
 
         build_welcome_and_rank_tabs(self, tabs, QtCore)
         build_purge_tab(self, tabs)
-        build_features_tab(self, tabs)
 
         self.setCentralWidget(tabs)
 

@@ -8,6 +8,30 @@ from .config_io import config_json_path, ensure_env_file, load_env_dict, save_en
 
 _HIDDEN_ENV_KEYS = {"LOCAL_UI_ENABLE"}
 
+# Mapping from config file basename (without .json) to feature key.
+# Files not in this mapping are always shown regardless of feature toggles.
+_CONFIG_FILE_TO_FEATURE = {
+    "welcome": "welcome",
+    "autorole": "welcome",
+    "birthdays": "birthdays",
+    "birthdays_data": "birthdays",
+    "birthdays_sent": "birthdays",
+    "count": "counting",
+    "count_data": "counting",
+    "leveling": "leveling",
+    "levels_data": "leveling",
+    "rank": "leveling",
+    "tickets": "tickets",
+    "tempvoice": "tempvoice",
+    "log_chat": "logging",
+    "log_member": "logging",
+    "log_mod": "logging",
+    "log_server": "logging",
+    "log_voice": "logging",
+    "membercount": "membercount",
+    "polls_data": "polls",
+}
+
 
 class ConfigEditor(QtWidgets.QDialog):
     def __init__(self, parent=None):
@@ -77,7 +101,35 @@ class ConfigEditor(QtWidgets.QDialog):
             os.makedirs(d, exist_ok=True)
             return d
         return os.path.join(self.repo_root, "config")
+    def _load_enabled_features(self) -> dict:
+        """Load the features.json for the active guild.
 
+        Returns a dict of feature_key -> bool.  Missing keys default to True.
+        """
+        gid = self._active_guild_id()
+        if not gid:
+            return {}
+        features_path = os.path.join(
+            self.repo_root, "config", "guilds", gid, "features.json"
+        )
+        try:
+            with open(features_path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+        return {}
+
+    def _is_config_file_visible(self, filename: str, features: dict) -> bool:
+        """Return True if a config file should be shown given enabled features."""
+        if not features:
+            return True  # No features file → show everything
+        basename = filename.replace(".json", "")
+        feature_key = _CONFIG_FILE_TO_FEATURE.get(basename)
+        if feature_key is None:
+            return True  # Not mapped → always show
+        return bool(features.get(feature_key, True))
     def _config_path_for(self, filename: str) -> str:
         """Return the full path to a config file for the active guild.
 
@@ -113,13 +165,15 @@ class ConfigEditor(QtWidgets.QDialog):
         self.list.clear()
         self.list.addItem(".env")
         gid = self._active_guild_id()
+        features = self._load_enabled_features()
         if gid:
             # Guild selected → show only guild-specific files
             guild_dir = os.path.join(self.repo_root, "config", "guilds", gid)
             try:
                 for fn in sorted(os.listdir(guild_dir)):
                     if fn.endswith(".json"):
-                        self.list.addItem(fn)
+                        if self._is_config_file_visible(fn, features):
+                            self.list.addItem(fn)
             except Exception:
                 pass
         else:
@@ -128,7 +182,8 @@ class ConfigEditor(QtWidgets.QDialog):
             try:
                 for fn in sorted(os.listdir(global_dir)):
                     if fn.endswith(".json"):
-                        self.list.addItem(fn)
+                        if self._is_config_file_visible(fn, features):
+                            self.list.addItem(fn)
             except Exception:
                 pass
 

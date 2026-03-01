@@ -85,6 +85,9 @@ class FeaturesControllerMixin:
                 enabled = bool(cfg.get(key, True))  # default enabled
                 chk.setChecked(enabled)
 
+        # Update tab visibility based on features
+        self._update_feature_tab_visibility(cfg)
+
     def _save_features_config(self):
         """Collect checkbox states and persist to features.json."""
         data = {}
@@ -125,6 +128,41 @@ class FeaturesControllerMixin:
 
         try:
             self._set_status("Feature flags saved")
+        except Exception:
+            pass
+
+        # Refresh the config editor so disabled features' files are hidden
+        try:
+            if hasattr(self, "cfg_editor") and self.cfg_editor is not None:
+                self.cfg_editor.refresh_list()
+        except Exception:
+            pass
+
+        # Update tab visibility
+        self._update_feature_tab_visibility(data)
+
+    # Mapping from tab title to feature key
+    _TAB_TO_FEATURE = {
+        "Welcome": "welcome",
+        "Rankcard": "leveling",
+        "Leveling": "leveling",
+        "Birthdays": "birthdays",
+    }
+
+    def _update_feature_tab_visibility(self, features: dict):
+        """Show/hide tabs whose feature is disabled."""
+        if not features:
+            return
+        try:
+            tabs = self.centralWidget()
+            if not isinstance(tabs, QtWidgets.QTabWidget):
+                return
+            for i in range(tabs.count()):
+                tab_title = tabs.tabText(i)
+                feature_key = self._TAB_TO_FEATURE.get(tab_title)
+                if feature_key is not None:
+                    visible = bool(features.get(feature_key, True))
+                    tabs.setTabVisible(i, visible)
         except Exception:
             pass
 

@@ -72,6 +72,25 @@ ADMIN_TEST_COMMANDS = {
     "testall",
 }
 
+# Commands that are only verified to exist (not invoked) during testall.
+# Reasons: destructive, interactive (requires user input), or needs voice.
+_TESTALL_VERIFY_ONLY = {
+    # destructive
+    "purge", "purgeall", "countreset", "reset",
+    "removexp", "setxp", "setlevel", "removeachievement",
+    "delete_poll", "close_ticket",
+    # interactive (sends views/wizards that need user input)
+    "poll", "admin_help", "adminpanel", "ticketpanel",
+    "tempvoicepanel", "spotify",
+    # requires voice channel
+    "join", "play", "skip", "stop", "now", "queue",
+    # creates discord resources
+    "ticket", "transcript",
+}
+
+# Internal commands to exclude from testall
+_TESTALL_EXCLUDE = {"testall"}
+
 
 def _repo_root() -> str:
     try:
@@ -343,14 +362,28 @@ def _test_command_kwargs(command_name: str, member):
         return {"member": member, "bonus_xp": 0}
     if command_name == "testlog":
         return {"category": "system", "message": "Manual log test from UI Event Tester"}
+    # --- Regular commands ---
+    if command_name == "rank":
+        return {"member": member}
+    if command_name == "rankuser":
+        return {"member": member}
+    if command_name == "leaderboard":
+        return {"top": 5}
+    if command_name == "givexp":
+        return {"member": member, "amount": 1}
+    if command_name == "addxp":
+        return {"member": member, "amount": 1}
+    if command_name == "giveachievement":
+        return {"member": member, "name": "TestAll Achievement"}
+    if command_name == "say":
+        return {"text": "✅ TestAll: say command works"}
+    if command_name == "birthday":
+        from datetime import datetime as _dt
+        return {"date": _dt.now().strftime("%d.%m")}
     return {}
 
 
 async def _run_admin_test(bot, command_name: str, requested_channel_id=None):
-    admin_cog = bot.get_cog("AdminTools") or bot.cogs.get("AdminTools")
-    if admin_cog is None:
-        return {"ok": False, "error": "AdminTools cog not loaded"}
-
     command = bot.get_command(command_name)
     if command is None:
         return {"ok": False, "error": f"Command not found: {command_name}"}
@@ -408,25 +441,12 @@ async def _run_admin_test(bot, command_name: str, requested_channel_id=None):
     return {"ok": True, "details": "\n".join(lines)}
 
 
-# The ordered list of tests to run for ``testall``.
-_TESTALL_SEQUENCE = [
-    "testping",
-    "testrank",
-    "testcount",
-    "testbirthday",
-    "testpoll",
-    "testsay",
-    "testlevel",
-    "testlevelup",
-    "testachievement",
-    "testlog",
-    "testwelcome",
-    "testticketpanel",
-]
-
-
 async def _run_admin_test_all(bot, requested_channel_id=None):
-    """Run every admin test command sequentially.
+    """Run every bot command sequentially.
+
+    Dynamically discovers ALL commands from the bot and either executes
+    them (with safe defaults) or verifies their existence for commands
+    that are destructive, interactive, or require voice.
 
     When *requested_channel_id* is given, ``bot._ui_test_channel_override``
     is set for the duration so that cogs that normally send to a configured
@@ -444,32 +464,93 @@ async def _run_admin_test_all(bot, requested_channel_id=None):
     if channel is None:
         return {"ok": False, "error": f"Requested channel not available: {requested_channel_id}"}
 
+    member = _pick_test_member(guild)
+
     # Set channel override so cogs route ALL messages here
     bot._ui_test_channel_override = channel
 
+    # Discover ALL commands dynamically
+    all_commands = []
+    seen_names = set()
+    try:
+        for cmd in bot.commands:
+            name = cmd.name
+            if name in seen_names or name in _TESTALL_EXCLUDE:
+                continue
+            seen_names.add(name)
+            all_commands.append(name)
+    except Exception:
+        pass
+
+    # Also discover slash-only commands (app_commands)
+    slash_only = []
+    try:
+        for app_cmd in bot.tree.get_commands():
+            name = getattr(app_cmd, "name", None)
+            if name and name not in seen_names and name not in _TESTALL_EXCLUDE:
+                seen_names.add(name)
+                # App command groups (like /meme) have sub-commands
+                if hasattr(app_cmd, "commands"):
+                    for sub in app_cmd.commands:
+                        slash_only.append(f"{name} {sub.name}")
+                else:
+                    slash_only.append(name)
+    except Exception:
+        pass
+
     results = []
     passed = 0
+    total = 0
     failed_list = []
 
     try:
-        for test_name in _TESTALL_SEQUENCE:
-            try:
-                r = await _run_admin_test(bot, test_name, requested_channel_id=requested_channel_id)
-                if r.get("ok"):
+        # Phase 1: Execute or verify all prefix/hybrid commands
+        for cmd_name in all_commands:
+            total += 1
+            if cmd_name in _TESTALL_VERIFY_ONLY:
+                # Verify-only: just check the command exists
+                command = bot.get_command(cmd_name)
+                if command is not None:
+                    # Send a verification message to the channel
+                    try:
+                        await channel.send(f"✅ `{cmd_name}` — command registered (skipped: verify only)")
+                    except Exception:
+                        pass
                     passed += 1
-                    results.append(f"✅ {test_name}")
+                    results.append(f"✅ {cmd_name} (verify only)")
                 else:
-                    failed_list.append(test_name)
-                    error = r.get("error", "unknown")
-                    results.append(f"❌ {test_name}: {error}")
-            except Exception as exc:
-                failed_list.append(test_name)
-                results.append(f"❌ {test_name}: {exc}")
+                    failed_list.append(cmd_name)
+                    results.append(f"❌ {cmd_name}: command not found")
+            else:
+                # Execute the command
+                try:
+                    r = await _run_admin_test(bot, cmd_name, requested_channel_id=requested_channel_id)
+                    if r.get("ok"):
+                        passed += 1
+                        results.append(f"✅ {cmd_name}")
+                    else:
+                        failed_list.append(cmd_name)
+                        error = r.get("error", "unknown")
+                        results.append(f"❌ {cmd_name}: {error}")
+                except Exception as exc:
+                    failed_list.append(cmd_name)
+                    results.append(f"❌ {cmd_name}: {exc}")
+
+        # Phase 2: Verify slash-only commands
+        for slash_name in slash_only:
+            total += 1
+            passed += 1
+            try:
+                await channel.send(f"✅ `/{slash_name}` — slash command registered")
+            except Exception:
+                pass
+            results.append(f"✅ /{slash_name} (slash only)")
+
     finally:
         # Always clear the override
         bot._ui_test_channel_override = None
 
-    summary = f"Test All: {passed}/{len(_TESTALL_SEQUENCE)} passed"
+    summary = f"Test All: {passed}/{total} passed"
     if failed_list:
         summary += f" | Failed: {', '.join(failed_list)}"
 
@@ -821,12 +902,6 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             channel_id = req.get("channel_id")
             if not test_name:
                 resp = {"ok": False, "error": "missing test command"}
-            elif test_name not in ADMIN_TEST_COMMANDS:
-                resp = {
-                    "ok": False,
-                    "error": f"unsupported test command: {test_name}",
-                    "available": sorted(ADMIN_TEST_COMMANDS),
-                }
             elif test_name == "testall":
                 resp = await _run_admin_test_all(bot, requested_channel_id=channel_id)
             else:

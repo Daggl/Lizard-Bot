@@ -226,16 +226,18 @@ async def on_ready():
 
     if not _slash_synced:
         try:
-            # Clear stale global commands (we use per-guild sync now)
-            bot.tree.clear_commands(guild=None)
-            await bot.tree.sync()
-
-            # Per-guild sync — only enabled features visible per guild
+            # Per-guild sync FIRST — copy global commands into each guild
+            # tree while the global set is still populated, then filter by
+            # feature flags and sync each guild.
             for guild in getattr(bot, "guilds", []):
                 try:
                     await sync_guild_commands(guild.id)
                 except Exception as guild_sync_error:
                     print(f"Failed guild slash sync for guild ID {guild.id}: {guild_sync_error}")
+
+            # Now clear stale global commands (we use per-guild sync)
+            bot.tree.clear_commands(guild=None)
+            await bot.tree.sync()
 
             guild_count = len(getattr(bot, "guilds", []))
             print(f"Synced slash commands for {guild_count} guild(s) (feature-aware).")

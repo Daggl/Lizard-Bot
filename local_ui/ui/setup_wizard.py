@@ -35,6 +35,24 @@ ROLE_FIELD_KEYS = [
 
 HIDDEN_WIZARD_ENV_KEYS = {"APP_ENV", "LOCAL_UI_ENABLE"}
 
+# Mapping from wizard config file name to feature key.
+# Fields whose feature is disabled will be hidden in the wizard.
+_WIZARD_FILE_TO_FEATURE = {
+    "welcome": "welcome",
+    "autorole": "welcome",
+    "count": "counting",
+    "birthdays": "birthdays",
+    "leveling": "leveling",
+    "tempvoice": "tempvoice",
+    "tickets": "tickets",
+    "log_chat": "logging",
+    "log_member": "logging",
+    "log_mod": "logging",
+    "log_server": "logging",
+    "log_voice": "logging",
+    "membercount": "membercount",
+}
+
 class GuildSnapshotPickerDialog(QtWidgets.QDialog):
     def __init__(self, snapshot_payload: dict, parent=None):
         super().__init__(parent)
@@ -276,6 +294,9 @@ class SetupWizardDialog(QtWidgets.QDialog):
         return form
 
     def _build_pages(self):
+        # Load enabled features for the active guild
+        enabled_features = self._load_enabled_features()
+
         form_env = self._make_page(
             "1/3 • Environment",
             "Configure runtime tokens saved to .env in the repository root.",
@@ -288,6 +309,8 @@ class SetupWizardDialog(QtWidgets.QDialog):
             "Set key channels used by welcome, logs, counting, birthdays, leveling and tickets.",
         )
         for file_name, key, label in CHANNEL_FIELD_KEYS:
+            if not self._is_field_visible(file_name, enabled_features):
+                continue
             self._add_id_row(form_channels, file_name, key, label)
 
         form_roles = self._make_page(
@@ -295,7 +318,42 @@ class SetupWizardDialog(QtWidgets.QDialog):
             "Configure verification/default/support roles used by autorole and tickets.",
         )
         for file_name, key, label in ROLE_FIELD_KEYS:
+            if not self._is_field_visible(file_name, enabled_features):
+                continue
             self._add_id_row(form_roles, file_name, key, label)
+
+    def _load_enabled_features(self) -> dict:
+        """Load features.json for the active guild.
+
+        Returns a dict of feature_key -> bool.  If no guild or file,
+        returns empty dict (meaning everything is visible).
+        """
+        import json as _json
+        import os as _os
+
+        gid = self._guild_id
+        if not gid:
+            return {}
+        features_path = _os.path.join(
+            self._repo_root, "config", "guilds", str(gid), "features.json"
+        )
+        try:
+            with open(features_path, "r", encoding="utf-8") as fh:
+                data = _json.load(fh)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+        return {}
+
+    def _is_field_visible(self, file_name: str, features: dict) -> bool:
+        """Check if a wizard field should be visible given enabled features."""
+        if not features:
+            return True  # No features → show everything
+        feature_key = _WIZARD_FILE_TO_FEATURE.get(file_name)
+        if feature_key is None:
+            return True  # Not mapped → always show
+        return bool(features.get(feature_key, True))
 
     def _open_snapshot_picker(self):
         try:
