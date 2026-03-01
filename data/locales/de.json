@@ -177,5 +177,21 @@
   "music.msg.queue_now": "Jetzt: **{title}**",
   "music.msg.queue_entry": "{index}. {title} — angefragt von {requester}",
   "music.msg.now_playing": "Aktuell läuft: **{title}** — angefragt von {requester}",
-  "music.msg.stopped": "Gestoppt und Queue geleert."
+  "music.msg.stopped": "Gestoppt und Queue geleert.",
+  "help.section.memes.title": "😂 Memes",
+  "help.section.memes.body": "Erstelle und speichere Memes aus Bildern oder GIFs mit eigenen Texten.\n\n`/meme create <name> <caption>` → Poste ein Bild/GIF und füge eine Caption hinzu\n`/meme show <name>` → Zeigt ein gespeichertes Meme\n`/meme list` → Listet alle Memes auf\n`/meme delete <name>` → Löscht ein Meme (Admin)",
+  "meme.msg.saved": "✅ Meme **{name}** wurde gespeichert!",
+  "meme.msg.deleted": "🗑 Meme **{name}** wurde gelöscht.",
+  "meme.error.not_found": "❌ Meme **{name}** nicht gefunden.",
+  "meme.error.exists": "❌ Meme **{name}** existiert bereits.",
+  "meme.error.no_image": "❌ Bitte hänge ein Bild oder GIF an.",
+  "meme.error.no_memes": "📭 Keine Memes gespeichert.",
+  "meme.list.title": "😂 Meme-Sammlung",
+  "meme.list.footer": "{count} Meme(s) gespeichert",
+  "help.section.membercount.title": "👥 Mitgliederzahl",
+  "help.section.membercount.body": "Ein Sprachkanal, der automatisch die aktuelle Anzahl der Servermitglieder anzeigt.\n\nDieses Feature wird von Admins über den Setup-Wizard konfiguriert.",
+  "membercount.msg.set": "✅ Mitgliederzahl-Kanal auf {channel} gesetzt.",
+  "membercount.msg.template": "✅ Vorlage aktualisiert: `{template}`",
+  "membercount.msg.removed": "🗑 Mitgliederzahl-Kanal entfernt.",
+  "membercount.error.no_channel": "❌ Kein Mitgliederzahl-Kanal konfiguriert."
 }

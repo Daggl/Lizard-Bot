@@ -14,6 +14,12 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from mybot.utils.env_store import ensure_env_file
+from mybot.utils.feature_flags import (
+    feature_key_for_cog,
+    is_feature_enabled,
+    get_all_feature_flags,
+    COG_FEATURE_MAP,
+)
 from mybot.utils.paths import REPO_ROOT, ensure_guild_configs, ensure_runtime_storage
 
 # ensure project root's `src` is importable (when running as module)
@@ -53,6 +59,8 @@ DEFAULT_EXTENSIONS = [
     "mybot.cogs.community.say",
     "mybot.cogs.tickets.ticket",
     "mybot.cogs.media.music",
+    "mybot.cogs.community.meme",
+    "mybot.cogs.community.membercount",
 ]
 
 # ==========================================================
@@ -89,6 +97,112 @@ _slash_synced = False
 
 
 # ==========================================================
+# GLOBAL FEATURE-FLAG CHECKS
+# ==========================================================
+
+
+def _check_feature_for_command(ctx: commands.Context) -> bool:
+    """Global prefix-command check: block if the feature is disabled for the guild."""
+    cog = ctx.command.cog
+    if cog is None:
+        return True  # built-in commands always pass
+    cog_name = cog.qualified_name
+    fkey = feature_key_for_cog(cog_name)
+    if fkey is None:
+        return True  # cog not mapped → always allowed
+    guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+    return is_feature_enabled(guild_id, fkey)
+
+
+bot.add_check(_check_feature_for_command)
+
+
+_original_tree_interaction_check = getattr(bot.tree, "interaction_check", None)
+
+
+async def _tree_feature_check(interaction: discord.Interaction) -> bool:
+    """Global app-command check: block if the feature is disabled for the guild."""
+    # Find the cog from the command
+    cmd = interaction.command
+    cog = None
+    if cmd is not None:
+        # For group commands, walk up to find the cog
+        binding = getattr(cmd, "binding", None)
+        if binding is not None and isinstance(binding, commands.Cog):
+            cog = binding
+        elif hasattr(cmd, "parent") and cmd.parent is not None:
+            binding = getattr(cmd.parent, "binding", None)
+            if binding is not None and isinstance(binding, commands.Cog):
+                cog = binding
+        # Try module-based lookup as fallback
+        if cog is None:
+            module = getattr(cmd, "module", None) or ""
+            for registered_cog in bot.cogs.values():
+                if getattr(type(registered_cog), "__module__", "") == module:
+                    cog = registered_cog
+                    break
+    if cog is None:
+        return True
+    cog_name = cog.qualified_name
+    fkey = feature_key_for_cog(cog_name)
+    if fkey is None:
+        return True
+    guild_id = getattr(getattr(interaction, "guild", None), "id", None)
+    if not is_feature_enabled(guild_id, fkey):
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "❌ This feature is currently disabled on this server.",
+                    ephemeral=True,
+                )
+        except Exception:
+            pass
+        return False
+    return True
+
+
+bot.tree.interaction_check = _tree_feature_check
+
+
+# ==========================================================
+# PER-GUILD COMMAND SYNC (feature-flag aware)
+# ==========================================================
+
+
+async def sync_guild_commands(guild_id: int):
+    """Sync slash commands for a single guild, hiding disabled features.
+
+    1. Copies all globally-registered commands into the guild-specific tree.
+    2. Removes commands whose cog maps to a disabled feature for this guild.
+    3. Syncs the guild-specific tree to Discord.
+    """
+    guild_obj = discord.Object(id=guild_id)
+
+    # Copy the global command set into this guild's tree
+    bot.tree.copy_global_to(guild=guild_obj)
+
+    flags = get_all_feature_flags(guild_id)
+    disabled_features = {fkey for fkey, enabled in flags.items() if not enabled}
+
+    if disabled_features:
+        # Determine which cog names are disabled
+        disabled_cog_names = set()
+        for cog_name, fkey in COG_FEATURE_MAP.items():
+            if fkey in disabled_features:
+                disabled_cog_names.add(cog_name)
+
+        # Remove commands belonging to disabled cogs
+        guild_commands = bot.tree.get_commands(guild=guild_obj)
+        for cmd in list(guild_commands):
+            binding = getattr(cmd, "binding", None)
+            if binding is not None and isinstance(binding, commands.Cog):
+                if binding.qualified_name in disabled_cog_names:
+                    bot.tree.remove_command(cmd.name, guild=guild_obj)
+
+    await bot.tree.sync(guild=guild_obj)
+
+
+# ==========================================================
 # READY EVENT
 # ==========================================================
 
@@ -112,21 +226,19 @@ async def on_ready():
 
     if not _slash_synced:
         try:
-            guild_id_raw = str(os.getenv("DISCORD_GUILD_ID", "") or "").strip()
-            if guild_id_raw:
-                guild_obj = discord.Object(id=int(guild_id_raw))
-                await bot.tree.sync(guild=guild_obj)
-                synced_global = await bot.tree.sync()
-                print(f"Synced {len(synced_global)} global slash commands.")
-            else:
-                for guild in getattr(bot, "guilds", []):
-                    try:
-                        await bot.tree.sync(guild=guild)
-                    except Exception as guild_sync_error:
-                        print(f"Failed guild slash sync for guild ID {guild.id}: {guild_sync_error}")
+            # Clear stale global commands (we use per-guild sync now)
+            bot.tree.clear_commands(guild=None)
+            await bot.tree.sync()
 
-                synced_global = await bot.tree.sync()
-                print(f"Synced {len(synced_global)} global slash commands.")
+            # Per-guild sync — only enabled features visible per guild
+            for guild in getattr(bot, "guilds", []):
+                try:
+                    await sync_guild_commands(guild.id)
+                except Exception as guild_sync_error:
+                    print(f"Failed guild slash sync for guild ID {guild.id}: {guild_sync_error}")
+
+            guild_count = len(getattr(bot, "guilds", []))
+            print(f"Synced slash commands for {guild_count} guild(s) (feature-aware).")
             _slash_synced = True
         except Exception as e:
             print("Failed to sync slash commands:", e)
@@ -152,6 +264,13 @@ async def on_guild_join(guild):
         print(f"[GUILD JOIN] Created configs for guild {guild.name} ({guild.id})")
     except Exception as e:
         print(f"[WARN] Could not ensure configs for new guild {guild.id}: {e}")
+
+    # Sync slash commands for the new guild (feature-aware)
+    try:
+        await sync_guild_commands(guild.id)
+        print(f"[GUILD JOIN] Synced commands for guild {guild.name} ({guild.id})")
+    except Exception as e:
+        print(f"[WARN] Could not sync commands for new guild {guild.id}: {e}")
 
 
 @bot.event

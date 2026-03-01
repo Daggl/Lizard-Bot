@@ -372,6 +372,35 @@ class AdminTools(commands.Cog):
                 )
             )
 
+    @commands.hybrid_command(description="Testachievement command.")
+    @app_commands.default_permissions(administrator=True)
+    @commands.has_permissions(administrator=True)
+    async def testachievement(self, ctx, member: discord.Member = None, *, name: str = "UI Test Achievement"):
+        if member is None:
+            member = ctx.author
+        await self._invoke_or_error(ctx, "giveachievement", member=member, name=name)
+
+    @commands.hybrid_command(description="Testticketpanel command.")
+    @app_commands.default_permissions(administrator=True)
+    @commands.has_permissions(administrator=True)
+    async def testticketpanel(self, ctx):
+        if getattr(ctx, "is_ui_event_test", False):
+            # In UI test mode, just verify the ticket cog is loaded
+            ticket_cog = self.bot.get_cog("TicketCog")
+            if ticket_cog is None:
+                await ctx.send(
+                    translate_for_ctx(
+                        ctx,
+                        "admin.error.command_unavailable",
+                        default="❌ Command not available: `{command}`",
+                        command="ticketpanel",
+                    )
+                )
+            else:
+                await ctx.send("✅ Ticket system loaded. Panel command available.")
+            return
+        await self._invoke_or_error(ctx, "ticketpanel")
+
 
 async def setup(bot):
     await bot.add_cog(AdminTools(bot))

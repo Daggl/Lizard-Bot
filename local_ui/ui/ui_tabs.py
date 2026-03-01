@@ -1,3 +1,4 @@
+from controllers.features.features_controller import FEATURE_DEFS, FEATURE_ORDER
 from PySide6 import QtGui, QtWidgets
 
 
@@ -59,6 +60,15 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     tools_box = QtWidgets.QGroupBox("Tools")
     tools_layout = QtWidgets.QHBoxLayout(tools_box)
     tools_layout.addLayout(btn_row)
+
+    # Backup / Restore buttons
+    backup_layout = QtWidgets.QHBoxLayout()
+    window.backup_configs_btn = QtWidgets.QPushButton("Backup Configs")
+    window.restore_configs_btn = QtWidgets.QPushButton("Restore Configs")
+    backup_layout.addWidget(window.backup_configs_btn)
+    backup_layout.addWidget(window.restore_configs_btn)
+    tools_layout.addLayout(backup_layout)
+
     tools_layout.addStretch()
 
     language_layout = QtWidgets.QHBoxLayout()
@@ -80,6 +90,7 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     test_box = QtWidgets.QGroupBox("Event Tester")
     test_layout = QtWidgets.QHBoxLayout(test_box)
     window.event_test_combo = QtWidgets.QComboBox()
+    window.event_test_combo.addItem("--- Test All ---", "testall")
     window.event_test_combo.addItem("Ping (testping)", "testping")
     window.event_test_combo.addItem("Rank (testrank)", "testrank")
     window.event_test_combo.addItem("Count (testcount)", "testcount")
@@ -139,6 +150,8 @@ def build_dashboard_tab(window, tabs: QtWidgets.QTabWidget):
     window.restart_btn.clicked.connect(window.on_restart_and_restart_ui)
     window.setup_wizard_btn.clicked.connect(window.on_open_setup_wizard)
     window.run_event_test_btn.clicked.connect(window.on_run_admin_test_command)
+    window.backup_configs_btn.clicked.connect(window.on_backup_configs)
+    window.restore_configs_btn.clicked.connect(window.on_restore_configs)
     window.event_test_channel_id.editingFinished.connect(window.on_event_test_channel_changed)
     window.safe_read_only_chk.stateChanged.connect(window.on_safe_mode_flags_changed)
     window.safe_debug_logging_chk.stateChanged.connect(window.on_safe_mode_flags_changed)
@@ -154,11 +167,34 @@ def build_logs_tab(window, tabs: QtWidgets.QTabWidget):
     logs_layout = QtWidgets.QVBoxLayout(logs)
     top_row = QtWidgets.QHBoxLayout()
     window.choose_log_btn = QtWidgets.QPushButton("Choose Log...")
-    window.clear_log_btn = QtWidgets.QPushButton("Clear")
     top_row.addWidget(window.choose_log_btn)
-    top_row.addWidget(window.clear_log_btn)
     top_row.addStretch()
     logs_layout.addLayout(top_row)
+
+    # Filter row
+    filter_row = QtWidgets.QHBoxLayout()
+    filter_row.addWidget(QtWidgets.QLabel("Filter:"))
+    window.log_filter_input = QtWidgets.QLineEdit()
+    window.log_filter_input.setPlaceholderText("Text filter (e.g. voice, join, message, error...)")
+    window.log_filter_input.setMinimumWidth(260)
+    filter_row.addWidget(window.log_filter_input, 1)
+    window.log_filter_category = QtWidgets.QComboBox()
+    window.log_filter_category.setMinimumWidth(160)
+    window.log_filter_category.addItem("All Categories", "")
+    window.log_filter_category.addItem("Voice", "voice")
+    window.log_filter_category.addItem("Message / Chat", "message")
+    window.log_filter_category.addItem("Member", "member")
+    window.log_filter_category.addItem("Moderation", "mod")
+    window.log_filter_category.addItem("Server", "server")
+    window.log_filter_category.addItem("Ticket", "ticket")
+    window.log_filter_category.addItem("Leveling", "level")
+    window.log_filter_category.addItem("Error", "error")
+    filter_row.addWidget(window.log_filter_category)
+    window.log_filter_apply_btn = QtWidgets.QPushButton("Apply")
+    window.log_filter_clear_btn = QtWidgets.QPushButton("Reset")
+    filter_row.addWidget(window.log_filter_apply_btn)
+    filter_row.addWidget(window.log_filter_clear_btn)
+    logs_layout.addLayout(filter_row)
 
     window.log_text = QtWidgets.QPlainTextEdit()
     window.log_text.setReadOnly(True)
@@ -169,7 +205,9 @@ def build_logs_tab(window, tabs: QtWidgets.QTabWidget):
     logs_layout.addWidget(window.log_text)
 
     window.choose_log_btn.clicked.connect(window._choose_log_file)
-    window.clear_log_btn.clicked.connect(lambda: window.log_text.clear())
+    window.log_filter_apply_btn.clicked.connect(window._apply_log_filter)
+    window.log_filter_clear_btn.clicked.connect(window._clear_log_filter)
+    window.log_filter_input.returnPressed.connect(window._apply_log_filter)
     tabs.addTab(logs, "Logs")
 
 
@@ -1244,3 +1282,63 @@ def build_purge_tab(window, tabs: QtWidgets.QTabWidget):
     window.purge_execute_btn.clicked.connect(window.on_purge_execute)
 
     tabs.addTab(purge, "Purge")
+
+
+def build_features_tab(window, tabs: QtWidgets.QTabWidget):
+    features = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(features)
+    layout.setContentsMargins(12, 12, 12, 12)
+    layout.setSpacing(6)
+
+    header = QtWidgets.QLabel("Feature Toggles (per Guild)")
+    header.setObjectName("sectionLabel")
+    header.setStyleSheet("font-size: 15px; font-weight: bold; margin-bottom: 6px;")
+    layout.addWidget(header)
+
+    hint = QtWidgets.QLabel(
+        "Enable or disable individual bot features for the currently selected guild.\n"
+        "Changes take effect after saving and reloading."
+    )
+    hint.setWordWrap(True)
+    hint.setStyleSheet("color: #9AA5B4; font-size: 12px; margin-bottom: 10px;")
+    layout.addWidget(hint)
+
+    scroll = QtWidgets.QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setStyleSheet("QScrollArea { border: none; }")
+    scroll_content = QtWidgets.QWidget()
+    scroll_layout = QtWidgets.QVBoxLayout(scroll_content)
+    scroll_layout.setSpacing(4)
+
+    for key in FEATURE_ORDER:
+        info = FEATURE_DEFS.get(key, {})
+        label_text = info.get("label", key)
+        desc_text = info.get("desc", "")
+
+        row = QtWidgets.QHBoxLayout()
+        chk = QtWidgets.QCheckBox(label_text)
+        chk.setChecked(True)
+        chk.setMinimumWidth(180)
+        chk.setStyleSheet("font-size: 13px; font-weight: 600;")
+        setattr(window, f"feat_chk_{key}", chk)
+        row.addWidget(chk)
+
+        desc_label = QtWidgets.QLabel(desc_text)
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: #8B95A5; font-size: 11px;")
+        row.addWidget(desc_label, 1)
+        scroll_layout.addLayout(row)
+
+    scroll_layout.addStretch()
+    scroll.setWidget(scroll_content)
+    layout.addWidget(scroll, 1)
+
+    btn_row = QtWidgets.QHBoxLayout()
+    btn_row.addStretch()
+    window.feat_save_btn = QtWidgets.QPushButton("Save Features")
+    window.feat_save_btn.setMinimumWidth(160)
+    btn_row.addWidget(window.feat_save_btn)
+    layout.addLayout(btn_row)
+
+    window.feat_save_btn.clicked.connect(window._save_features_config)
+    tabs.addTab(features, "Features")

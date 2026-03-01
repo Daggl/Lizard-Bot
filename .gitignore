@@ -55,3 +55,6 @@ cogs/music/Lavalink.jar
 
 # Generated local UI assets
 assets/welcome_custom.*
+
+# Per-guild meme storage
+data/memes/

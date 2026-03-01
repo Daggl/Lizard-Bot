@@ -22,6 +22,7 @@ CHANNEL_FIELD_KEYS = [
     ("log_mod", "CHANNEL_ID", "Log moderation channel"),
     ("log_server", "CHANNEL_ID", "Log server channel"),
     ("log_voice", "CHANNEL_ID", "Log voice channel"),
+    ("membercount", "CHANNEL_ID", "Member count channel"),
 ]
 
 ROLE_FIELD_KEYS = [

@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from mybot.utils.i18n import translate
+from mybot.utils.feature_flags import is_feature_enabled
 
 
 class HelpTutorial(commands.Cog):
@@ -21,21 +22,26 @@ class HelpTutorial(commands.Cog):
             color=discord.Color.blurple(),
         )
 
+        # Each tuple: (title_key, body_key, feature_key_or_None)
         sections = (
-            ("help.section.level_system.title", "help.section.level_system.body"),
-            ("help.section.polls.title", "help.section.polls.body"),
-            ("help.section.birthdays.title", "help.section.birthdays.body"),
-            ("help.section.earn_xp.title", "help.section.earn_xp.body"),
-            ("help.section.achievements.title", "help.section.achievements.body"),
-            ("help.section.general.title", "help.section.general.body"),
-            ("help.section.misc.title", "help.section.misc.body"),
-            ("help.section.counting.title", "help.section.counting.body"),
-            ("help.section.tickets.title", "help.section.tickets.body"),
-            ("help.section.tempvoice.title", "help.section.tempvoice.body"),
-            ("help.section.music.title", "help.section.music.body"),
+            ("help.section.level_system.title", "help.section.level_system.body", "leveling"),
+            ("help.section.polls.title", "help.section.polls.body", "polls"),
+            ("help.section.birthdays.title", "help.section.birthdays.body", "birthdays"),
+            ("help.section.earn_xp.title", "help.section.earn_xp.body", "leveling"),
+            ("help.section.achievements.title", "help.section.achievements.body", "achievements"),
+            ("help.section.general.title", "help.section.general.body", None),
+            ("help.section.misc.title", "help.section.misc.body", None),
+            ("help.section.counting.title", "help.section.counting.body", "counting"),
+            ("help.section.tickets.title", "help.section.tickets.body", "tickets"),
+            ("help.section.tempvoice.title", "help.section.tempvoice.body", "tempvoice"),
+            ("help.section.music.title", "help.section.music.body", "music"),
+            ("help.section.memes.title", "help.section.memes.body", "memes"),
+            ("help.section.membercount.title", "help.section.membercount.body", "membercount"),
         )
 
-        for title_key, body_key in sections:
+        for title_key, body_key, fkey in sections:
+            if fkey is not None and not is_feature_enabled(guild_id, fkey):
+                continue
             embed.add_field(
                 name=translate(title_key, guild_id=guild_id),
                 value=translate(body_key, guild_id=guild_id),

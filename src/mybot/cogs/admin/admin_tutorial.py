@@ -4,6 +4,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from mybot.utils.feature_flags import is_feature_enabled
+
 # ==========================================================
 # ADMIN VIEW (ADMINS ONLY)
 # ==========================================================
@@ -14,9 +16,10 @@ ADMIN_HELP_TIMEOUT = 300
 class AdminHelpView(discord.ui.View):
     """Interactive view with buttons for admin help sections."""
 
-    def __init__(self, author):
+    def __init__(self, author, guild_id=None):
         super().__init__(timeout=ADMIN_HELP_TIMEOUT)
         self.author = author
+        self.guild_id = guild_id
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.user != self.author:
@@ -85,6 +88,8 @@ class AdminHelpView(discord.ui.View):
             "All commands below are admin-only and grouped by purpose."
         )
 
+        _fe = lambda key: is_feature_enabled(self.guild_id, key)
+
         embed.add_field(
             name="🧰 Messaging & Panels",
             value=(
@@ -98,40 +103,51 @@ class AdminHelpView(discord.ui.View):
             inline=False,
         )
 
-        embed.add_field(
-            name="🏆 Leveling & XP",
-            value=(
-                "`/rankuser @user` ↳ Show rank card for target user\n"
-                "`/addxp @user <amount>` ↳ Add XP (positive only) + trigger checks\n"
-                "`/removexp @user <amount>` ↳ Remove XP (positive amount, not below 0)\n"
-                "`/givexp @user <amount>` ↳ Direct admin XP utility\n"
-                "`/setxp @user <amount>` ↳ Set exact XP value\n"
-                "`/setlevel @user <level>` ↳ Set exact level\n"
-                "`/reset @user` ↳ Reset leveling stats completely"
-            ),
-            inline=False,
-        )
+        if _fe("leveling"):
+            embed.add_field(
+                name="🏆 Leveling & XP",
+                value=(
+                    "`/rankuser @user` ↳ Show rank card for target user\n"
+                    "`/addxp @user <amount>` ↳ Add XP (positive only) + trigger checks\n"
+                    "`/removexp @user <amount>` ↳ Remove XP (positive amount, not below 0)\n"
+                    "`/givexp @user <amount>` ↳ Direct admin XP utility\n"
+                    "`/setxp @user <amount>` ↳ Set exact XP value\n"
+                    "`/setlevel @user <level>` ↳ Set exact level\n"
+                    "`/reset @user` ↳ Reset leveling stats completely"
+                ),
+                inline=False,
+            )
 
-        embed.add_field(
-            name="🏅 Achievements",
-            value=(
-                "`/giveachievement @user <name>` ↳ Add achievement manually\n"
-                "`/removeachievement @user <name>` ↳ Remove achievement manually\n"
-                "`/testachievement @user <name>` ↳ Test helper for achievement grant"
-            ),
-            inline=False,
-        )
+        if _fe("achievements"):
+            embed.add_field(
+                name="🏅 Achievements",
+                value=(
+                    "`/giveachievement @user <name>` ↳ Add achievement manually\n"
+                    "`/removeachievement @user <name>` ↳ Remove achievement manually\n"
+                    "`/testachievement @user <name>` ↳ Test helper for achievement grant"
+                ),
+                inline=False,
+            )
 
-        embed.add_field(
-            name="🎫 Tickets & Polls",
-            value=(
-                "`/ticketpanel` ↳ Post ticket panel\n"
-                "`/transcript <#channel>` ↳ Export transcript file\n"
-                "`/close_ticket <#channel>` ↳ Force close ticket\n"
-                "`/delete_poll <poll_id>` ↳ Delete poll from database"
-            ),
-            inline=False,
-        )
+        if _fe("tickets"):
+            embed.add_field(
+                name="🎫 Tickets",
+                value=(
+                    "`/ticketpanel` ↳ Post ticket panel\n"
+                    "`/transcript <#channel>` ↳ Export transcript file\n"
+                    "`/close_ticket <#channel>` ↳ Force close ticket"
+                ),
+                inline=False,
+            )
+
+        if _fe("polls"):
+            embed.add_field(
+                name="📊 Polls",
+                value=(
+                    "`/delete_poll <poll_id>` ↳ Delete poll from database"
+                ),
+                inline=False,
+            )
 
         embed.add_field(
             name="🧹 Purge",
@@ -143,13 +159,26 @@ class AdminHelpView(discord.ui.View):
             inline=False,
         )
 
-        embed.add_field(
-            name="🔢 Counting",
-            value=(
-                "`/countreset` ↳ Reset counting stats/data"
-            ),
-            inline=False,
-        )
+        if _fe("counting"):
+            embed.add_field(
+                name="🔢 Counting",
+                value=(
+                    "`/countreset` ↳ Reset counting stats/data"
+                ),
+                inline=False,
+            )
+
+        if _fe("memes"):
+            embed.add_field(
+                name="😂 Memes",
+                value=(
+                    "`/meme create <name> <caption>` ↳ Save a meme from an attached image/GIF\n"
+                    "`/meme show <name>` ↳ Display a saved meme\n"
+                    "`/meme list` ↳ List all saved memes\n"
+                    "`/meme delete <name>` ↳ Delete a meme (Admin)"
+                ),
+                inline=False,
+            )
 
         await interaction.response.edit_message(embed=embed)
 
@@ -161,6 +190,14 @@ class AdminHelpView(discord.ui.View):
     async def log_system(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
+        if not is_feature_enabled(self.guild_id, "logging"):
+            embed = discord.Embed(
+                title="📁 Server Log System",
+                description="⚠️ The logging feature is currently disabled on this server.",
+                color=discord.Color.orange(),
+            )
+            await interaction.response.edit_message(embed=embed)
+            return
 
         embed = discord.Embed(
             title="📁 Server Log System", color=discord.Color.orange()
@@ -234,86 +271,29 @@ class AdminHelpView(discord.ui.View):
             "(Only where it makes practical sense.)"
         )
 
-        embed.add_field(
-            name="/testping",
-            value="Checks bot responsiveness and shows current latency.",
-            inline=False,
-        )
+        _fe = lambda key: is_feature_enabled(self.guild_id, key)
 
-        embed.add_field(
-            name="/testwelcome",
-            value="Tests the welcome flow with your own account.",
-            inline=False,
-        )
+        # Test commands mapped to their feature key (None = always shown)
+        test_cmds = [
+            ("/testping", "Checks bot responsiveness and shows current latency.", None),
+            ("/testwelcome", "Tests the welcome flow with your own account.", "welcome"),
+            ("/testrank [@user]", "Tests rank card rendering for yourself or a target user.", "leveling"),
+            ("/testcount", "Runs counting feature checks (stats + leaderboard).", "counting"),
+            ("/testbirthday [DD.MM]", "Tests birthday save flow (uses today if no date is provided).", "birthdays"),
+            ("/testpoll [seconds] [question]", "Starts a guided poll smoke test via the normal poll wizard.", "polls"),
+            ("/testticketpanel", "Validates ticket system availability.", "tickets"),
+            ("/testmusic", "Smoke-tests music voice pipeline (join + leave).", "music"),
+            ("/testsay [text]", "Tests admin message/embed output.", None),
+            ("/testlevel @user [xp]", "Tests leveling write + rank output in one command.", "leveling"),
+            ("/testlevelup @user [bonus_xp]", "Forces at least one level-up and verifies level-up announcement output.", "leveling"),
+            ("/testachievement @user name", "Tests manual achievement assignment.", "achievements"),
+            ("/testlog [category] [message]", "Writes a manual test entry into the log database.", "logging"),
+        ]
 
-        embed.add_field(
-            name="/testrank [@user]",
-            value="Tests rank card rendering for yourself or a target user.",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="/testcount",
-            value="Runs counting feature checks (stats + leaderboard).",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="/testbirthday [DD.MM]",
-            value="Tests birthday save flow (uses today if no date is provided).",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="/testpoll [seconds] [question]",
-            value="Starts a guided poll smoke test via the normal poll wizard.",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="/testticketpanel",
-            value="Posts the ticket panel to validate ticket entry flow.",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="/testmusic",
-            value="Smoke-tests music voice pipeline (join + leave).",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="/testsay [text]",
-            value="Tests admin message/embed output.",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="/testlevel @user [xp]",
-            value="Tests leveling write + rank output in one command.",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="/testlevelup @user [bonus_xp]",
-            value="Forces at least one level-up and verifies level-up announcement output.",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="/testachievement @user name",
-            value="Tests manual achievement assignment.",
-            inline=False,
-        )
-
-        embed.add_field(
-            name="/testlog [category] [message]",
-            value=(
-                "Writes a manual test entry into the log database.\n"
-                "Use event-based checks additionally for chat/voice/mod/server/member logs."
-            ),
-            inline=False,
-        )
+        for name, desc, fkey in test_cmds:
+            if fkey is not None and not _fe(fkey):
+                continue
+            embed.add_field(name=name, value=desc, inline=False)
 
         await interaction.response.edit_message(embed=embed)
 
@@ -344,7 +324,8 @@ class AdminHelp(commands.Cog):
             color=discord.Color.blue(),
         )
 
-        view = AdminHelpView(ctx.author)
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        view = AdminHelpView(ctx.author, guild_id=guild_id)
         await ctx.send(embed=embed, view=view)
 
 

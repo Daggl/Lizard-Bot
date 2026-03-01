@@ -251,9 +251,20 @@ class DashboardControllerMixin:
                 lang_combo.addItem("—", None)
             self._log_language_event("_populate_language_controls found no guilds; added placeholder")
             return
-        guild_combo.setCurrentIndex(0)
-        # Explicitly fire the handler because setCurrentIndex(0) may be a
-        # no-op if the index is already 0 after addItem inside the blocker.
+        # Try to restore the previously-selected guild from persisted settings
+        restore_idx = 0
+        try:
+            saved_gid = str((getattr(self, "_ui_settings", None) or {}).get("last_language_guild_id", "") or "").strip()
+            if saved_gid:
+                for i in range(guild_combo.count()):
+                    if str(guild_combo.itemData(i) or "") == saved_gid:
+                        restore_idx = i
+                        break
+        except Exception:
+            pass
+        guild_combo.setCurrentIndex(restore_idx)
+        # Explicitly fire the handler because setCurrentIndex may be a
+        # no-op if the index is already the same after addItem inside the blocker.
         self.on_language_guild_changed()
 
     def _selected_language_guild_id(self) -> str:
@@ -296,6 +307,12 @@ class DashboardControllerMixin:
         # Normalise: empty string → None so config_json_path never gets guild_id=""
         self._active_guild_id = guild_id if guild_id else None
         self._populate_language_combo()
+        # Persist selected guild so it survives UI restarts
+        if guild_id:
+            try:
+                self._save_ui_settings({"last_language_guild_id": guild_id})
+            except Exception:
+                pass
         if hasattr(self, "_reload_guild_configs"):
             self._reload_guild_configs()
 

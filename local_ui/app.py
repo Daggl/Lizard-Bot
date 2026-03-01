@@ -14,6 +14,7 @@ from config.config_editor import ConfigEditor
 from controllers.core.lifecycle_controller import LifecycleControllerMixin
 from controllers.core.runtime_core_controller import RuntimeCoreControllerMixin
 from controllers.features.birthdays_controller import BirthdaysControllerMixin
+from controllers.features.features_controller import FeaturesControllerMixin
 from controllers.features.leveling_controller import LevelingControllerMixin
 from controllers.monitoring.dashboard_controller import \
     DashboardControllerMixin
@@ -29,8 +30,9 @@ from core.runtime import run_main_window
 from core.startup_trace import write_startup_trace
 # HTML embed removed; no html module required
 from PySide6 import QtCore, QtWidgets
-from ui.ui_tabs import (build_configs_tab, build_dashboard_tab, build_logs_tab,
-                        build_purge_tab, build_welcome_and_rank_tabs)
+from ui.ui_tabs import (build_configs_tab, build_dashboard_tab, build_features_tab,
+                        build_logs_tab, build_purge_tab,
+                        build_welcome_and_rank_tabs)
 
 write_startup_trace()
 
@@ -38,7 +40,7 @@ write_startup_trace()
 install_exception_hook()
 
 
-class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControllerMixin, DashboardControllerMixin, AdminControllerMixin, EmojiControllerMixin, PreviewControllerMixin, PreviewApiControllerMixin, PurgeControllerMixin, LifecycleControllerMixin, RuntimeCoreControllerMixin, QtWidgets.QMainWindow):
+class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysControllerMixin, LogsControllerMixin, DashboardControllerMixin, AdminControllerMixin, EmojiControllerMixin, PreviewControllerMixin, PreviewApiControllerMixin, PurgeControllerMixin, LifecycleControllerMixin, RuntimeCoreControllerMixin, QtWidgets.QMainWindow):
     _async_done = QtCore.Signal(object)
 
     def __init__(self):
@@ -61,6 +63,7 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
 
         build_welcome_and_rank_tabs(self, tabs, QtCore)
         build_purge_tab(self, tabs)
+        build_features_tab(self, tabs)
 
         self.setCentralWidget(tabs)
 
@@ -340,6 +343,10 @@ class MainWindow(LevelingControllerMixin, BirthdaysControllerMixin, LogsControll
             pass
         try:
             self._load_birthdays_config()
+        except Exception:
+            pass
+        try:
+            self._load_features_config()
         except Exception:
             pass
         try:

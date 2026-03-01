@@ -67,7 +67,12 @@ class Achievements(commands.Cog):
                     "image": image_value,
                 })
 
-        channel = self.bot.get_channel(get_achievement_channel_id(guild_id=guild_id))
+        # If a UI test override is active, always use that channel
+        override = getattr(self.bot, "_ui_test_channel_override", None)
+        if override is not None:
+            channel = override
+        else:
+            channel = self.bot.get_channel(get_achievement_channel_id(guild_id=guild_id))
         if channel is None and getattr(getattr(member, 'guild', None), 'system_channel', None):
             channel = member.guild.system_channel
         if channel and unlocked:

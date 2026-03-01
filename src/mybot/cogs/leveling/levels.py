@@ -48,6 +48,11 @@ class Levels(commands.Cog):
         bot.db = self.db
 
     async def _resolve_levelup_channel(self, member: discord.Member):
+        # If a UI test override is active, always use that channel
+        override = getattr(self.bot, "_ui_test_channel_override", None)
+        if override is not None:
+            return override
+
         guild = getattr(member, "guild", None)
         channel_id = get_levelup_channel_id(guild_id=getattr(guild, 'id', None))
 

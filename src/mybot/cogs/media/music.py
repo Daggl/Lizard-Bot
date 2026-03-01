@@ -350,23 +350,6 @@ class Music(commands.Cog, name="music"):
             )
 
     @commands.hybrid_command(
-        name="leave", description="Leave voice channel and clear queue"
-    )
-    async def leave(self, ctx: commands.Context):
-        guild_id = ctx.guild.id
-        if ctx.voice_client:
-            await ctx.voice_client.disconnect()
-        self.queues.pop(guild_id, None)
-        self.now_playing[guild_id] = None
-        await ctx.send(
-            self._t(
-                ctx,
-                "music.msg.left",
-                "Left the voice channel and cleared the queue.",
-            )
-        )
-
-    @commands.hybrid_command(
         name="play", description="Play a YouTube URL or search term"
     )
     async def play(self, ctx: commands.Context, *, query: str):

@@ -19,6 +19,102 @@ class LogsControllerMixin:
         except Exception:
             pass
 
+    def _get_log_filter_text(self) -> str:
+        """Return the current text filter (lowercase)."""
+        try:
+            widget = getattr(self, "log_filter_input", None)
+            if widget is not None:
+                return str(widget.text() or "").strip().lower()
+        except Exception:
+            pass
+        return ""
+
+    def _get_log_filter_category(self) -> str:
+        """Return the current category filter (lowercase)."""
+        try:
+            widget = getattr(self, "log_filter_category", None)
+            if widget is not None:
+                return str(widget.currentData() or "").strip().lower()
+        except Exception:
+            pass
+        return ""
+
+    def _log_line_matches_filter(self, line: str) -> bool:
+        """Check if a log line matches the active filters."""
+        text_filter = self._get_log_filter_text()
+        cat_filter = self._get_log_filter_category()
+        if not text_filter and not cat_filter:
+            return True
+        lower = line.lower()
+        if text_filter and text_filter not in lower:
+            return False
+        if cat_filter and cat_filter not in lower:
+            return False
+        return True
+
+    def _apply_log_filter(self):
+        """Re-filter displayed logs by reloading the last 200 entries with the active filter."""
+        try:
+            self._set_status("Filtering logs...")
+        except Exception:
+            pass
+        try:
+            db_conn = getattr(self, "_db_conn", None)
+            db_table = getattr(self, "_db_table", None)
+            if db_conn is not None and db_table is not None:
+                self.log_text.clear()
+                guild_id = getattr(self, "_active_guild_id", None)
+                cur = db_conn.cursor()
+                if guild_id:
+                    cur.execute(
+                        f"SELECT rowid, * FROM '{db_table}' WHERE guild_id = ? ORDER BY rowid DESC LIMIT 500;",
+                        (int(guild_id),),
+                    )
+                else:
+                    cur.execute(f"SELECT rowid, * FROM '{db_table}' ORDER BY rowid DESC LIMIT 500;")
+                rows = cur.fetchall()
+                count = 0
+                for row in reversed(rows):
+                    formatted = self._format_db_row(row)
+                    if self._log_line_matches_filter(formatted):
+                        self.log_text.appendPlainText(formatted)
+                        count += 1
+                try:
+                    self._set_status(f"Filter applied — {count} entries shown")
+                except Exception:
+                    pass
+            else:
+                # File-based logs: re-read and filter
+                path = getattr(self, "_active_log_path", None)
+                if path and os.path.isfile(path):
+                    self.log_text.clear()
+                    count = 0
+                    with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+                        for raw_line in fh:
+                            line = raw_line.rstrip()
+                            if self._log_line_matches_filter(line):
+                                self.log_text.appendPlainText(line)
+                                count += 1
+                    try:
+                        self._set_status(f"Filter applied — {count} lines shown")
+                    except Exception:
+                        pass
+        except Exception as e:
+            self._debug_log(f"_apply_log_filter failed: {e}")
+
+    def _clear_log_filter(self):
+        """Reset all log filters and reload."""
+        try:
+            widget = getattr(self, "log_filter_input", None)
+            if widget is not None:
+                widget.clear()
+            cat_widget = getattr(self, "log_filter_category", None)
+            if cat_widget is not None:
+                cat_widget.setCurrentIndex(0)
+            self._apply_log_filter()
+        except Exception:
+            pass
+
     def _start_log_poller(self, path: str, mode: str = "file", table: str = None):
         try:
             self._stop_log_poller()
@@ -68,6 +164,9 @@ class LogsControllerMixin:
                         display_line = "Restart marker updated"
             except Exception:
                 display_line = line
+            # Apply active filter — skip lines that don't match
+            if not self._log_line_matches_filter(display_line):
+                return
             try:
                 self.log_text.appendPlainText(display_line)
             except Exception as e:

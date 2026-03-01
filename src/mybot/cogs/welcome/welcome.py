@@ -398,7 +398,56 @@ class Welcome(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def testwelcome(self, ctx: commands.Context):
         _debug("[DEBUG] Test command used")
-        await self.on_member_join(ctx.author)
+        member = ctx.author
+        guild_id = getattr(getattr(member, 'guild', None), 'id', None)
+        cfg = _load_welcome_cfg(guild_id=guild_id)
+
+        # Determine target channel: test override > ctx.channel
+        override = getattr(self.bot, "_ui_test_channel_override", None)
+        target_channel = override or ctx.channel
+
+        welcome_channel_id = int(cfg.get("WELCOME_CHANNEL_ID", 0) or 0)
+        rules_channel_id = int(cfg.get("RULES_CHANNEL_ID", 0) or 0)
+        aboutme_channel_id = int(cfg.get("ABOUTME_CHANNEL_ID", 0) or 0)
+        verify_channel_id = int(cfg.get("VERIFY_CHANNEL_ID", 0) or 0)
+        welcome_message: Optional[str] = cfg.get("WELCOME_MESSAGE")
+
+        guild = member.guild
+        rules_channel = guild.get_channel(rules_channel_id) if guild else None
+        aboutme_channel = guild.get_channel(aboutme_channel_id) if guild else None
+        verify_channel = guild.get_channel(verify_channel_id) if guild else None
+
+        banner = await self.create_banner(member)
+        _debug("[DEBUG] Banner created")
+
+        if not welcome_message:
+            await target_channel.send(file=banner)
+            return
+
+        rules_mention = rules_channel.mention if rules_channel is not None else "#rules"
+        verify_mention = verify_channel.mention if verify_channel is not None else "#verify"
+        aboutme_mention = aboutme_channel.mention if aboutme_channel is not None else "#aboutme"
+
+        try:
+            description = welcome_message.format(
+                mention=member.mention,
+                rules_channel=rules_mention,
+                verify_channel=verify_mention,
+                aboutme_channel=aboutme_mention,
+            )
+        except Exception:
+            await target_channel.send(file=banner)
+            return
+
+        embed = discord.Embed(
+            description=description,
+            color=discord.Color.from_rgb(140, 110, 255),
+            timestamp=datetime.now(timezone.utc),
+        )
+        embed.set_image(url="attachment://welcome.png")
+        _debug("[DEBUG] Sending test welcome message...")
+        await target_channel.send(file=banner, embed=embed)
+        _debug("[DEBUG] Test welcome message sent")
 
 
 async def setup(bot: commands.Bot):

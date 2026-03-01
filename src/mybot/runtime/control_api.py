@@ -68,6 +68,8 @@ ADMIN_TEST_COMMANDS = {
     "testlevelup",
     "testachievement",
     "testlog",
+    "testwelcome",
+    "testall",
 }
 
 
@@ -163,7 +165,7 @@ def _pick_test_guild(bot):
     return guilds[0] if guilds else None
 
 
-def _pick_test_channel(guild, requested_channel_id=None):
+async def _pick_test_channel(guild, requested_channel_id=None, bot=None):
     if guild is None:
         return None
     me = getattr(guild, "me", None)
@@ -173,18 +175,36 @@ def _pick_test_channel(guild, requested_channel_id=None):
             chan_id = int(requested_channel_id)
         except Exception:
             return None
+        # 1) Try guild.get_channel
+        requested = None
         try:
             requested = guild.get_channel(chan_id)
         except Exception:
-            requested = None
+            pass
+        # 2) Try bot.get_channel (handles channels in other guilds or cache)
+        if requested is None and bot is not None:
+            try:
+                requested = bot.get_channel(chan_id)
+            except Exception:
+                pass
+        # 3) Try bot.fetch_channel as last resort (API call)
+        if requested is None and bot is not None:
+            try:
+                requested = await bot.fetch_channel(chan_id)
+            except Exception:
+                pass
         if requested is None:
             return None
+        # Use the channel's own guild for permission checks
+        chan_guild = getattr(requested, "guild", guild)
+        chan_me = getattr(chan_guild, "me", me)
         try:
-            perms = requested.permissions_for(me) if me is not None else None
+            perms = requested.permissions_for(chan_me) if chan_me is not None else None
             if perms is None or getattr(perms, "send_messages", False):
                 return requested
         except Exception:
-            return None
+            # Permission check failed — still return the channel (best effort)
+            return requested
         return None
     for channel in channels:
         try:
@@ -339,7 +359,7 @@ async def _run_admin_test(bot, command_name: str, requested_channel_id=None):
     if guild is None:
         return {"ok": False, "error": "Bot is in no guild; cannot run admin test"}
 
-    channel = _pick_test_channel(guild, requested_channel_id=requested_channel_id)
+    channel = await _pick_test_channel(guild, requested_channel_id=requested_channel_id, bot=bot)
     if channel is None:
         if requested_channel_id not in (None, ""):
             return {"ok": False, "error": f"Requested channel not available: {requested_channel_id}"}
@@ -386,6 +406,75 @@ async def _run_admin_test(bot, command_name: str, requested_channel_id=None):
             lines.append("Output:")
             lines.append(preview)
     return {"ok": True, "details": "\n".join(lines)}
+
+
+# The ordered list of tests to run for ``testall``.
+_TESTALL_SEQUENCE = [
+    "testping",
+    "testrank",
+    "testcount",
+    "testbirthday",
+    "testpoll",
+    "testsay",
+    "testlevel",
+    "testlevelup",
+    "testachievement",
+    "testlog",
+    "testwelcome",
+    "testticketpanel",
+]
+
+
+async def _run_admin_test_all(bot, requested_channel_id=None):
+    """Run every admin test command sequentially.
+
+    When *requested_channel_id* is given, ``bot._ui_test_channel_override``
+    is set for the duration so that cogs that normally send to a configured
+    channel (level-up, achievements, …) will instead send to the
+    requested channel.
+    """
+    if not requested_channel_id:
+        return {"ok": False, "error": "testall requires a channel_id"}
+
+    guild = _pick_test_guild(bot)
+    if guild is None:
+        return {"ok": False, "error": "Bot is in no guild; cannot run admin test"}
+
+    channel = await _pick_test_channel(guild, requested_channel_id=requested_channel_id, bot=bot)
+    if channel is None:
+        return {"ok": False, "error": f"Requested channel not available: {requested_channel_id}"}
+
+    # Set channel override so cogs route ALL messages here
+    bot._ui_test_channel_override = channel
+
+    results = []
+    passed = 0
+    failed_list = []
+
+    try:
+        for test_name in _TESTALL_SEQUENCE:
+            try:
+                r = await _run_admin_test(bot, test_name, requested_channel_id=requested_channel_id)
+                if r.get("ok"):
+                    passed += 1
+                    results.append(f"✅ {test_name}")
+                else:
+                    failed_list.append(test_name)
+                    error = r.get("error", "unknown")
+                    results.append(f"❌ {test_name}: {error}")
+            except Exception as exc:
+                failed_list.append(test_name)
+                results.append(f"❌ {test_name}: {exc}")
+    finally:
+        # Always clear the override
+        bot._ui_test_channel_override = None
+
+    summary = f"Test All: {passed}/{len(_TESTALL_SEQUENCE)} passed"
+    if failed_list:
+        summary += f" | Failed: {', '.join(failed_list)}"
+
+    details = summary + "\n\n" + "\n".join(results)
+    return {"ok": True, "details": details}
 
 
 async def _handle_purge(bot, req: dict) -> dict:
@@ -738,6 +827,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     "error": f"unsupported test command: {test_name}",
                     "available": sorted(ADMIN_TEST_COMMANDS),
                 }
+            elif test_name == "testall":
+                resp = await _run_admin_test_all(bot, requested_channel_id=channel_id)
             else:
                 resp = await _run_admin_test(bot, test_name, requested_channel_id=channel_id)
 
@@ -791,6 +882,19 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
         elif action == "purge_status":
             resp = _handle_purge_status(bot)
+
+        elif action == "sync_guild_commands":
+            # Re-sync slash commands for a guild after feature toggles change
+            gid = req.get("guild_id")
+            if not gid:
+                resp = {"ok": False, "error": "guild_id required"}
+            else:
+                try:
+                    from mybot.runtime.lizard import sync_guild_commands
+                    await sync_guild_commands(int(gid))
+                    resp = {"ok": True, "guild_id": str(gid)}
+                except Exception as e:
+                    resp = {"ok": False, "error": f"sync failed: {e}"}
 
         elif action == "rank_preview":
             name = req.get("name") or getattr(getattr(bot, "user", None), "name", None) or "NewMember"

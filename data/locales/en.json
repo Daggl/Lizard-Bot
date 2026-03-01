@@ -177,5 +177,21 @@
   "music.msg.queue_now": "Now: **{title}**",
   "music.msg.queue_entry": "{index}. {title} — requested by {requester}",
   "music.msg.now_playing": "Now playing: **{title}** — requested by {requester}",
-  "music.msg.stopped": "Stopped and cleared the queue."
+  "music.msg.stopped": "Stopped and cleared the queue.",
+  "help.section.memes.title": "😂 Memes",
+  "help.section.memes.body": "Create and save memes from images or GIFs with your own captions.\n\n`/meme create <name> <caption>` → Post an image/GIF and add a caption\n`/meme show <name>` → Show a saved meme\n`/meme list` → List all memes\n`/meme delete <name>` → Delete a meme (Admin)",
+  "meme.msg.saved": "✅ Meme **{name}** saved!",
+  "meme.msg.deleted": "🗑 Meme **{name}** deleted.",
+  "meme.error.not_found": "❌ Meme **{name}** not found.",
+  "meme.error.exists": "❌ Meme **{name}** already exists.",
+  "meme.error.no_image": "❌ Please attach an image or GIF.",
+  "meme.error.no_memes": "📭 No memes saved.",
+  "meme.list.title": "😂 Meme Collection",
+  "meme.list.footer": "{count} meme(s) saved",
+  "help.section.membercount.title": "👥 Member Count",
+  "help.section.membercount.body": "A voice channel that automatically displays the current number of server members.\n\nThis feature is configured by admins via the setup wizard.",
+  "membercount.msg.set": "✅ Member count channel set to {channel}.",
+  "membercount.msg.template": "✅ Template updated: `{template}`",
+  "membercount.msg.removed": "🗑 Member count channel removed.",
+  "membercount.error.no_channel": "❌ No member count channel configured."
 }
