@@ -1,5 +1,6 @@
 """Repository path resolution and runtime directory/database bootstrapping."""
 
+import json
 import os
 import shutil
 import sqlite3
@@ -62,6 +63,200 @@ def guild_data_path(guild_id: int | str | None, filename: str) -> str:
     guild_dir = os.path.join(GUILDS_DIR, gid)
     os.makedirs(guild_dir, exist_ok=True)
     return os.path.join(guild_dir, filename)
+
+
+# ---------------------------------------------------------------------------
+# Default templates for per-guild JSON files
+# ---------------------------------------------------------------------------
+
+# Config files – created from data/config.example.json sections
+_CONFIG_DEFAULTS: dict[str, dict] = {
+    "welcome.json": {
+        "VERIFY_CHANNEL_ID": 0,
+        "WELCOME_CHANNEL_ID": 0,
+        "RULES_CHANNEL_ID": 0,
+        "ABOUTME_CHANNEL_ID": 0,
+        "ROLE_ID": 0,
+        "BANNER_PATH": "",
+        "BG_MODE": "",
+        "BG_ZOOM": 0,
+        "BG_OFFSET_X": 0,
+        "BG_OFFSET_Y": 0,
+        "FONT_WELCOME": "",
+        "FONT_USERNAME": "",
+        "BANNER_TITLE": "",
+        "TITLE_FONT_SIZE": 0,
+        "USERNAME_FONT_SIZE": 0,
+        "TITLE_COLOR": "",
+        "USERNAME_COLOR": "",
+        "TITLE_OFFSET_X": 0,
+        "TITLE_OFFSET_Y": 0,
+        "USERNAME_OFFSET_X": 0,
+        "USERNAME_OFFSET_Y": 0,
+        "TEXT_OFFSET_X": 0,
+        "TEXT_OFFSET_Y": 0,
+        "OFFSET_X": 0,
+        "OFFSET_Y": 0,
+        "EXAMPLE_NAME": "",
+        "WELCOME_MESSAGE": "",
+        "FIT_MODE": "",
+        "FONT_FAMILY": "",
+        "FONT_SIZE": 0,
+        "FONT_COLOR": "",
+        "ALIGN": "",
+        "OPACITY": 0,
+        "OVERLAY_TEXT": False,
+    },
+    "autorole.json": {
+        "VERIFY_CHANNEL_ID": 0,
+        "RULES_CHANNEL_ID": 0,
+        "STARTER_ROLE_ID": 0,
+        "VERIFY_ROLE_ID": 0,
+        "DEFAULT_ROLE_ID": 0,
+        "VERIFY_MESSAGE_IDS": [],
+        "RULES_MESSAGE_IDS": [],
+        "EMOJI": "",
+        "DB_PATH": "data/db/autorole.db",
+    },
+    "tempvoice.json": {
+        "ENABLED": False,
+        "CATEGORY_ID": 0,
+        "CREATE_CHANNEL_ID": 0,
+        "CONTROL_CHANNEL_ID": 0,
+        "CHANNEL_NAME_TEMPLATE": "",
+        "DEFAULT_USER_LIMIT": 0,
+    },
+    "tickets.json": {
+        "TICKET_CATEGORY_ID": 0,
+        "SUPPORT_ROLE_ID": 0,
+        "TICKET_LOG_CHANNEL_ID": 0,
+    },
+    "log_chat.json": {"CHANNEL_ID": 0},
+    "log_mod.json": {"CHANNEL_ID": 0},
+    "log_member.json": {"CHANNEL_ID": 0},
+    "log_voice.json": {"CHANNEL_ID": 0},
+    "log_server.json": {"CHANNEL_ID": 0},
+    "leveling.json": {
+        "ACHIEVEMENT_CHANNEL_ID": 0,
+        "XP_PER_MESSAGE": 0,
+        "VOICE_XP_PER_MINUTE": 0,
+        "MESSAGE_COOLDOWN": 0,
+        "LEVEL_BASE_XP": 0,
+        "LEVEL_XP_STEP": 0,
+        "LEVEL_UP_MESSAGE_TEMPLATE": "",
+        "ACHIEVEMENT_MESSAGE_TEMPLATE": "",
+        "LEVEL_REWARDS": {},
+        "ACHIEVEMENTS": {},
+    },
+    "count.json": {
+        "COUNT_CHANNEL_ID": 0,
+        "MIN_COUNT_FOR_RECORD": 0,
+    },
+    "birthdays.json": {
+        "CHANNEL_ID": 0,
+        "EMBED_TITLE": "",
+        "EMBED_DESCRIPTION": "",
+        "EMBED_FOOTER": "",
+        "EMBED_COLOR": "",
+    },
+    "rank.json": {
+        "BG_PATH": "",
+        "EXAMPLE_NAME": "",
+        "BG_MODE": "cover",
+        "BG_ZOOM": 100,
+        "BG_OFFSET_X": 0,
+        "BG_OFFSET_Y": 0,
+        "AVATAR_X": 75,
+        "AVATAR_Y": 125,
+        "AVATAR_SIZE": 300,
+        "USERNAME_X": 400,
+        "USERNAME_Y": 80,
+        "USERNAME_FONT": "assets/fonts/Poppins-Bold.ttf",
+        "USERNAME_FONT_SIZE": 90,
+        "USERNAME_COLOR": "#FFFFFF",
+        "LEVEL_X": 400,
+        "LEVEL_Y": 200,
+        "LEVEL_FONT": "assets/fonts/Poppins-Regular.ttf",
+        "LEVEL_FONT_SIZE": 60,
+        "LEVEL_COLOR": "#C8C8C8",
+        "XP_X": 1065,
+        "XP_Y": 270,
+        "XP_FONT": "assets/fonts/Poppins-Regular.ttf",
+        "XP_FONT_SIZE": 33,
+        "XP_COLOR": "#C8C8C8",
+        "MESSAGES_X": 400,
+        "MESSAGES_Y": 400,
+        "MESSAGES_FONT": "assets/fonts/Poppins-Regular.ttf",
+        "MESSAGES_FONT_SIZE": 33,
+        "MESSAGES_COLOR": "#C8C8C8",
+        "VOICE_X": 680,
+        "VOICE_Y": 400,
+        "VOICE_FONT": "assets/fonts/Poppins-Regular.ttf",
+        "VOICE_FONT_SIZE": 33,
+        "VOICE_COLOR": "#C8C8C8",
+        "ACHIEVEMENTS_X": 980,
+        "ACHIEVEMENTS_Y": 400,
+        "ACHIEVEMENTS_FONT": "assets/fonts/Poppins-Regular.ttf",
+        "ACHIEVEMENTS_FONT_SIZE": 33,
+        "ACHIEVEMENTS_COLOR": "#C8C8C8",
+        "BAR_X": 400,
+        "BAR_Y": 330,
+        "BAR_WIDTH": 900,
+        "BAR_HEIGHT": 38,
+        "BAR_BG_COLOR": "#323232",
+        "BAR_FILL_COLOR": "#8C6EFF",
+    },
+    "language.json": {
+        "DEFAULT_LANGUAGE": "",
+        "GUILD_LANGUAGES": {},
+    },
+    "local_ui.json": {
+        "event_test_channel_id": "",
+        "safe_read_only": False,
+        "safe_debug_logging": False,
+        "safe_auto_reload_off": False,
+    },
+}
+
+# Runtime data files – empty defaults
+_DATA_DEFAULTS: dict[str, dict] = {
+    "levels_data.json": {},
+    "polls_data.json": {},
+    "count_data.json": {
+        "current": 0,
+        "last_user": None,
+        "record": 0,
+        "record_holder": None,
+        "total_counts": {},
+        "fails": 0,
+    },
+    "birthdays_data.json": {},
+    "birthdays_sent.json": {},
+}
+
+# Combined for convenience
+_ALL_GUILD_FILES: dict[str, dict] = {**_CONFIG_DEFAULTS, **_DATA_DEFAULTS}
+
+
+def ensure_guild_configs(guild_id: int | str) -> None:
+    """Create all expected JSON files for a guild if they don't already exist.
+
+    This ensures every guild directory has the full set of config and runtime
+    data files.  Existing files are **never** overwritten.
+    """
+    gid = str(guild_id)
+    guild_dir = os.path.join(GUILDS_DIR, gid)
+    os.makedirs(guild_dir, exist_ok=True)
+
+    for filename, default in _ALL_GUILD_FILES.items():
+        filepath = os.path.join(guild_dir, filename)
+        if os.path.exists(filepath):
+            continue
+        try:
+            with open(filepath, "w", encoding="utf-8") as fh:
+                json.dump(default, fh, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
 
 
 def repo_path(*parts: str) -> str:

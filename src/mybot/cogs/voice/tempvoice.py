@@ -458,7 +458,8 @@ class TempVoice(commands.Cog):
         self.db.commit()
 
     def _channel_name_for(self, member: discord.Member) -> str:
-        template = _cfg_str("CHANNEL_NAME_TEMPLATE", "🔊 {display_name}")
+        guild_id = getattr(getattr(member, "guild", None), "id", None)
+        template = _cfg_str("CHANNEL_NAME_TEMPLATE", "🔊 {display_name}", guild_id=guild_id)
         try:
             return template.format(
                 user=member.name,
@@ -469,7 +470,7 @@ class TempVoice(commands.Cog):
             return f"🔊 {member.display_name}"[:95]
 
     def _temp_category(self, guild: discord.Guild) -> Optional[discord.CategoryChannel]:
-        cid = _cfg_int("CATEGORY_ID", 0)
+        cid = _cfg_int("CATEGORY_ID", 0, guild_id=getattr(guild, "id", None))
         if cid:
             c = guild.get_channel(cid)
             if isinstance(c, discord.CategoryChannel):
@@ -480,14 +481,14 @@ class TempVoice(commands.Cog):
         return None
 
     def _control_channel(self, guild: discord.Guild) -> Optional[discord.TextChannel]:
-        cid = _cfg_int("CONTROL_CHANNEL_ID", 0)
+        cid = _cfg_int("CONTROL_CHANNEL_ID", 0, guild_id=getattr(guild, "id", None))
         if not cid:
             return None
         ch = guild.get_channel(cid)
         return ch if isinstance(ch, discord.TextChannel) else None
 
     def _create_channel_hub(self, guild: discord.Guild) -> Optional[discord.VoiceChannel]:
-        cid = _cfg_int("CREATE_CHANNEL_ID", 0)
+        cid = _cfg_int("CREATE_CHANNEL_ID", 0, guild_id=getattr(guild, "id", None))
         if not cid:
             return None
         ch = guild.get_channel(cid)
@@ -566,7 +567,9 @@ class TempVoice(commands.Cog):
                 guild_id=None,
                 default="Server-only action.",
             )
-        if not _cfg_bool("ENABLED", True):
+        guild_id = getattr(getattr(member, "guild", None), "id", None)
+
+        if not _cfg_bool("ENABLED", True, guild_id=guild_id):
             return None, translate(
                 "tempvoice.error.disabled",
                 guild_id=getattr(member.guild, "id", None),
@@ -584,7 +587,7 @@ class TempVoice(commands.Cog):
             member.guild.default_role: discord.PermissionOverwrite(view_channel=True, connect=True),
             member: discord.PermissionOverwrite(view_channel=True, connect=True, manage_channels=True, move_members=True),
         }
-        limit = max(0, min(99, _cfg_int("DEFAULT_USER_LIMIT", 0)))
+        limit = max(0, min(99, _cfg_int("DEFAULT_USER_LIMIT", 0, guild_id=guild_id)))
 
         try:
             channel = await member.guild.create_voice_channel(
@@ -873,7 +876,7 @@ class TempVoice(commands.Cog):
                 channel=hub_channel.mention,
             )
         else:
-            configured_id = _cfg_int("CREATE_CHANNEL_ID", 0)
+            configured_id = _cfg_int("CREATE_CHANNEL_ID", 0, guild_id=getattr(getattr(ctx, "guild", None), "id", None))
             if configured_id:
                 hub_hint = translate_for_ctx(
                     ctx,

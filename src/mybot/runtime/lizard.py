@@ -14,7 +14,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from mybot.utils.env_store import ensure_env_file
-from mybot.utils.paths import REPO_ROOT, ensure_runtime_storage
+from mybot.utils.paths import REPO_ROOT, ensure_guild_configs, ensure_runtime_storage
 
 # ensure project root's `src` is importable (when running as module)
 _src = os.path.join(REPO_ROOT, "src")
@@ -100,6 +100,13 @@ async def on_ready():
     # initialize database
     database.setup()
 
+    # ensure all per-guild config/data JSON files exist
+    for guild in bot.guilds:
+        try:
+            ensure_guild_configs(guild.id)
+        except Exception as e:
+            print(f"[WARN] Could not ensure configs for guild {guild.id}: {e}")
+
     # show that bot is online
     print(f"{bot.user.name} is online!")
 
@@ -135,6 +142,16 @@ async def ping(ctx):
 
     # simple test command to check if bot responds
     await ctx.send("🏓 Pong! all is good in the hood!")
+
+
+@bot.event
+async def on_guild_join(guild):
+    """Ensure all config/data files exist when the bot joins a new guild."""
+    try:
+        ensure_guild_configs(guild.id)
+        print(f"[GUILD JOIN] Created configs for guild {guild.name} ({guild.id})")
+    except Exception as e:
+        print(f"[WARN] Could not ensure configs for new guild {guild.id}: {e}")
 
 
 @bot.event
