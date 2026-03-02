@@ -103,8 +103,6 @@
   "social_media": {
     "TWITCH": {
       "ENABLED": false,
-      "CLIENT_ID": "",
-      "OAUTH_TOKEN": "",
       "CHANNELS": []
     },
     "YOUTUBE": {
@@ -113,7 +111,6 @@
     },
     "TWITTER": {
       "ENABLED": false,
-      "BEARER_TOKEN": "",
       "CHANNELS": []
     },
     "TIKTOK": {

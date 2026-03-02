@@ -9,6 +9,7 @@ All settings are per-guild and stored in ``social_media.json``.
 """
 
 import asyncio
+import os
 import re as _re
 import traceback
 from datetime import datetime, timezone
@@ -563,8 +564,8 @@ class SocialMedia(commands.Cog):
         if isinstance(twitch_cfg, dict) and twitch_cfg.get("ENABLED"):
             creator_map = _creator_to_channel_id(twitch_cfg)
             usernames = _all_creators(twitch_cfg)
-            client_id = str(twitch_cfg.get("CLIENT_ID", "") or "")
-            oauth_token = str(twitch_cfg.get("OAUTH_TOKEN", "") or "")
+            client_id = os.getenv("TWITCH_CLIENT_ID", "")
+            oauth_token = os.getenv("TWITCH_OAUTH_TOKEN", "")
             if usernames and client_id and oauth_token:
                 streams = await _fetch_twitch_streams(usernames, client_id, oauth_token)
                 posted_set = set(posted_data.get("twitch", []))

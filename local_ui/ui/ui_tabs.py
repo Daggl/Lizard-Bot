@@ -1494,19 +1494,23 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
 
         scroll_layout.addWidget(box)
 
+    # Hint: API tokens are now managed via .env
+    env_hint = QtWidgets.QLabel(
+        "ℹ️  API tokens (Twitch Client ID / OAuth, Twitter Bearer) are stored "
+        "globally in the .env file. Open the Config Editor → .env to manage them."
+    )
+    env_hint.setWordWrap(True)
+    env_hint.setStyleSheet("color:#9aa0a6; font-style:italic; margin:4px 0;")
+    scroll_layout.addWidget(env_hint)
+
     # --- Twitch ---
-    _build_platform("Twitch", "TWITCH", [
-        ("Client ID", "sm_twitch_client_id", "Twitch App Client ID", False),
-        ("OAuth Token", "sm_twitch_oauth", "Twitch OAuth Token", True),
-    ])
+    _build_platform("Twitch", "TWITCH", [])
 
     # --- YouTube ---
     _build_platform("YouTube", "YOUTUBE", [])
 
     # --- Twitter / X ---
-    _build_platform("Twitter / X", "TWITTER", [
-        ("Bearer Token", "sm_twitter_bearer", "Twitter API Bearer Token", True),
-    ])
+    _build_platform("Twitter / X", "TWITTER", [])
 
     # --- TikTok ---
     _build_platform("TikTok", "TIKTOK", [])

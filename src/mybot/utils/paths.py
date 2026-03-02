@@ -171,35 +171,24 @@ _CONFIG_DEFAULTS: dict[str, dict] = {
     "social_media.json": {
         "TWITCH": {
             "ENABLED": False,
-            "CHANNEL_ID": 0,
-            "USERNAMES": "",
-            "CLIENT_ID": "",
-            "OAUTH_TOKEN": "",
-            "CHANNEL_MAP": {},
+            "CHANNELS": [],
         },
         "YOUTUBE": {
             "ENABLED": False,
-            "CHANNEL_ID": 0,
-            "YOUTUBE_CHANNEL_IDS": "",
-            "CHANNEL_MAP": {},
+            "CHANNELS": [],
         },
         "TWITTER": {
             "ENABLED": False,
-            "CHANNEL_ID": 0,
-            "BEARER_TOKEN": "",
-            "USERNAMES": "",
-            "CHANNEL_MAP": {},
+            "CHANNELS": [],
         },
         "TIKTOK": {
             "ENABLED": False,
-            "CHANNEL_ID": 0,
-            "USERNAMES": "",
-            "CHANNEL_MAP": {},
+            "CHANNELS": [],
         },
         "CUSTOM": {
             "ENABLED": False,
-            "CHANNEL_ID": 0,
             "FEED_URLS": "",
+            "CHANNELS": [],
         },
     },
     "rank.json": {

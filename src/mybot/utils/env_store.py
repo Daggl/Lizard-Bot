@@ -12,6 +12,9 @@ DEFAULT_ENV_VALUES = {
     "OAUTH_REDIRECT_URI": "",
     "APP_ORIGIN": "",
     "APP_ENV": "",
+    "TWITCH_CLIENT_ID": "",
+    "TWITCH_OAUTH_TOKEN": "",
+    "TWITTER_BEARER_TOKEN": "",
 }
 
 _ENV_HEADER = [

@@ -104,14 +104,9 @@ class SocialsControllerMixin:
             except Exception:
                 pass
 
-        _load_platform("TWITCH", "sm_twitch", [
-            ("CLIENT_ID", "sm_twitch_client_id"),
-            ("OAUTH_TOKEN", "sm_twitch_oauth"),
-        ])
+        _load_platform("TWITCH", "sm_twitch", [])
         _load_platform("YOUTUBE", "sm_youtube", [])
-        _load_platform("TWITTER", "sm_twitter", [
-            ("BEARER_TOKEN", "sm_twitter_bearer"),
-        ])
+        _load_platform("TWITTER", "sm_twitter", [])
         _load_platform("TIKTOK", "sm_tiktok", [])
 
     def _save_socials_config(self, data: dict):
@@ -262,8 +257,6 @@ class SocialsControllerMixin:
             payload = {
                 "TWITCH": {
                     "ENABLED": self.sm_twitch_enabled.isChecked(),
-                    "CLIENT_ID": (self.sm_twitch_client_id.text() or "").strip(),
-                    "OAUTH_TOKEN": (self.sm_twitch_oauth.text() or "").strip(),
                     "CHANNELS": _read_channel_cards(self.sm_twitch_cards),
                 },
                 "YOUTUBE": {
@@ -272,7 +265,6 @@ class SocialsControllerMixin:
                 },
                 "TWITTER": {
                     "ENABLED": self.sm_twitter_enabled.isChecked(),
-                    "BEARER_TOKEN": (self.sm_twitter_bearer.text() or "").strip(),
                     "CHANNELS": _read_channel_cards(self.sm_twitter_cards),
                 },
                 "TIKTOK": {
