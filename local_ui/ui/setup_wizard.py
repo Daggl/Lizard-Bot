@@ -160,15 +160,20 @@ class SetupWizardDialog(QtWidgets.QDialog):
         row = QtWidgets.QHBoxLayout()
         row.setSpacing(6)
 
-        # Create button (channels only, not roles)
-        if not is_role:
-            create_btn = QtWidgets.QPushButton("Create")
-            create_btn.setFixedWidth(64)
+        # Create button
+        create_btn = QtWidgets.QPushButton("Create")
+        create_btn.setFixedWidth(64)
+        if is_role:
+            create_btn.setToolTip("Create this role on the Discord server")
+            create_btn.clicked.connect(
+                lambda _c=False, fn=file_name, k=key, lbl=label: self._on_create_role(fn, k, lbl)
+            )
+        else:
             create_btn.setToolTip("Create this channel on the Discord server")
             create_btn.clicked.connect(
                 lambda _c=False, fn=file_name, k=key, lbl=label: self._on_create_channel(fn, k, lbl)
             )
-            row.addWidget(create_btn)
+        row.addWidget(create_btn)
 
         # Label
         lbl_widget = QtWidgets.QLabel(label)
@@ -502,6 +507,61 @@ class SetupWizardDialog(QtWidgets.QDialog):
         QtWidgets.QMessageBox.information(
             self, "Create Channel",
             f"✅ Channel '{ch_name}' erstellt (ID: {ch_id})",
+        )
+
+    def _on_create_role(self, file_name: str, key: str, label: str):
+        """Create a new role on the Discord server and fill in the ID."""
+        if not self._guild_id:
+            QtWidgets.QMessageBox.warning(
+                self, "Create Role",
+                "Keine aktive Guild. Bitte zuerst eine Guild im Dashboard auswählen.",
+            )
+            return
+
+        default_name = label.replace("(", "").replace(")", "").strip()
+
+        name, ok = QtWidgets.QInputDialog.getText(
+            self, "Create Role",
+            f"Rollen-Name für '{label}':",
+            text=default_name,
+        )
+        if not ok or not name.strip():
+            return
+
+        try:
+            resp = send_cmd({
+                "action": "create_role",
+                "guild_id": str(self._guild_id),
+                "role_name": name.strip(),
+            }, timeout=10.0)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Create Role", f"Fehler: {exc}")
+            return
+
+        if not resp.get("ok"):
+            QtWidgets.QMessageBox.warning(
+                self, "Create Role",
+                f"Rolle konnte nicht erstellt werden:\n{resp.get('error', resp)}",
+            )
+            return
+
+        role_data = resp.get("role", {})
+        role_id = role_data.get("id")
+        role_name = role_data.get("name", name.strip())
+
+        widget_meta = self._fields.get((file_name, key))
+        if widget_meta:
+            widget_meta[0].setText(str(role_id))
+        name_lbl = self._name_labels.get((file_name, key))
+        if name_lbl:
+            name_lbl.setText(role_name)
+
+        # Invalidate snapshot cache so new role appears on next Pick
+        self._snapshot_cache = None
+
+        QtWidgets.QMessageBox.information(
+            self, "Create Role",
+            f"✅ Rolle '{role_name}' erstellt (ID: {role_id})",
         )
 
     def _load_env_values(self):

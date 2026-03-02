@@ -1004,6 +1004,31 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 except Exception as e:
                     resp = {"ok": False, "error": str(e)}
 
+        elif action == "create_role":
+            # Create a role on a guild
+            guild_id = req.get("guild_id")
+            role_name = str(req.get("role_name") or "").strip()
+            if not guild_id:
+                resp = {"ok": False, "error": "guild_id required"}
+            elif not role_name:
+                resp = {"ok": False, "error": "role_name required"}
+            else:
+                try:
+                    guild = bot.get_guild(int(guild_id))
+                    if guild is None:
+                        resp = {"ok": False, "error": f"Guild {guild_id} not found"}
+                    else:
+                        role = await guild.create_role(name=role_name)
+                        resp = {
+                            "ok": True,
+                            "role": {
+                                "id": role.id,
+                                "name": role.name,
+                            },
+                        }
+                except Exception as e:
+                    resp = {"ok": False, "error": str(e)}
+
         elif action == "rank_preview":
             name = req.get("name") or getattr(getattr(bot, "user", None), "name", None) or "NewMember"
             avatar_url = req.get("avatar_url")

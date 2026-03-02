@@ -54,6 +54,7 @@ DEFAULT_EXTENSIONS = [
     "mybot.cogs.leveling.rewards",
     "mybot.cogs.leveling.tracking",
     "mybot.cogs.general.help_tutorial",
+    "mybot.cogs.general.lizard",
     "mybot.cogs.admin.admin_panel",
     "mybot.cogs.admin.admin_tools",
     "mybot.cogs.admin.admin_tutorial",

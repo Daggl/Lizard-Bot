@@ -123,39 +123,36 @@ class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysCont
         QTabBar::tab:hover {
             background: #222A35;
         }
-        /* Sub-tabs (nested tab groups) */
+        /* Sub-tabs (nested tab groups) — pill / underline style */
         QTabWidget#subTabs::pane {
             border: none;
-            border-top: 2px solid #2A3240;
+            border-top: 1px solid #2A3240;
             border-radius: 0;
             background: #171C23;
             top: 0;
         }
         QTabWidget#subTabs > QTabBar::tab {
-            background: #1B212A;
-            color: #A0B0C8;
-            border: 1px solid #2A3240;
+            background: transparent;
+            color: #8899B0;
+            border: none;
             border-bottom: 2px solid transparent;
-            border-top-left-radius: 6px;
-            border-top-right-radius: 6px;
-            border-bottom-left-radius: 0;
-            border-bottom-right-radius: 0;
-            padding: 7px 18px;
-            margin-right: 4px;
-            margin-bottom: -2px;
-            min-width: 80px;
-            font-size: 13px;
-            font-weight: 600;
+            border-radius: 0;
+            padding: 5px 14px;
+            margin-right: 2px;
+            margin-bottom: 0;
+            min-width: 60px;
+            font-size: 12px;
+            font-weight: 500;
         }
         QTabWidget#subTabs > QTabBar::tab:selected {
-            color: #FFFFFF;
-            background: #1F2A3A;
-            border-color: #4A76C9;
-            border-bottom: 2px solid #4A76C9;
+            color: #6EA8FE;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid #6EA8FE;
         }
         QTabWidget#subTabs > QTabBar::tab:hover {
-            color: #D0DEFC;
-            background: #222D3D;
+            color: #C0D8FF;
+            background: rgba(74, 118, 201, 0.08);
         }
         #statusLabel {
             font-weight: 700;
