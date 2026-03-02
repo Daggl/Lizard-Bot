@@ -61,109 +61,14 @@ _WIZARD_FILE_TO_FEATURE = {
     "social_media": "socials",
 }
 
-class GuildSnapshotPickerDialog(QtWidgets.QDialog):
-    def __init__(self, snapshot_payload: dict, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Guild Snapshot Picker")
-        self.resize(860, 720)
-        self._payload = snapshot_payload or {}
-        self._guilds = list(self._payload.get("guilds") or [])
-        self._channel_combos = {}
-        self._role_combos = {}
-
-        root = QtWidgets.QVBoxLayout(self)
-
-        top_row = QtWidgets.QHBoxLayout()
-        top_row.addWidget(QtWidgets.QLabel("Guild:"))
-        self.guild_combo = QtWidgets.QComboBox()
-        for idx, guild in enumerate(self._guilds):
-            gid = guild.get("id")
-            gname = guild.get("name") or str(gid)
-            self.guild_combo.addItem(f"{gname} ({gid})", idx)
-        top_row.addWidget(self.guild_combo, 1)
-        root.addLayout(top_row)
-
-        self.scroll = QtWidgets.QScrollArea()
-        self.scroll.setWidgetResizable(True)
-        content = QtWidgets.QWidget()
-        content_layout = QtWidgets.QVBoxLayout(content)
-
-        ch_box = QtWidgets.QGroupBox("Channel mappings")
-        ch_form = QtWidgets.QFormLayout(ch_box)
-        for file_name, key, label in CHANNEL_FIELD_KEYS:
-            combo = QtWidgets.QComboBox()
-            combo.addItem("Pick...", None)
-            self._channel_combos[(file_name, key)] = combo
-            ch_form.addRow(label, combo)
-        content_layout.addWidget(ch_box)
-
-        role_box = QtWidgets.QGroupBox("Role mappings")
-        role_form = QtWidgets.QFormLayout(role_box)
-        for file_name, key, label in ROLE_FIELD_KEYS:
-            combo = QtWidgets.QComboBox()
-            combo.addItem("Pick...", None)
-            self._role_combos[(file_name, key)] = combo
-            role_form.addRow(label, combo)
-        content_layout.addWidget(role_box)
-
-        content_layout.addStretch()
-        self.scroll.setWidget(content)
-        root.addWidget(self.scroll, 1)
-
-        buttons = QtWidgets.QHBoxLayout()
-        self.apply_btn = QtWidgets.QPushButton("Apply")
-        self.cancel_btn = QtWidgets.QPushButton("Cancel")
-        buttons.addStretch()
-        buttons.addWidget(self.apply_btn)
-        buttons.addWidget(self.cancel_btn)
-        root.addLayout(buttons)
-
-        self.guild_combo.currentIndexChanged.connect(self._populate_current_guild)
-        self.apply_btn.clicked.connect(self.accept)
-        self.cancel_btn.clicked.connect(self.reject)
-
-        self._populate_current_guild()
-
-    def _populate_current_guild(self):
-        idx = int(self.guild_combo.currentData() or 0)
-        if idx < 0 or idx >= len(self._guilds):
-            return
-        guild = self._guilds[idx]
-        channels = list(guild.get("channels") or [])
-        roles = list(guild.get("roles") or [])
-
-        for (file_name, key), combo in self._channel_combos.items():
-            combo.clear()
-            combo.addItem("Pick...", None)
-            key_upper = str(key).upper()
-            if "CATEGORY" in key_upper:
-                filtered = [c for c in channels if "category" in str(c.get("type") or "").lower()]
-            else:
-                filtered = [c for c in channels if "category" not in str(c.get("type") or "").lower()]
-            for channel in filtered:
-                cid = channel.get("id")
-                cname = channel.get("name")
-                combo.addItem(f"# {cname}", cid)
-
-        for _field_key, combo in self._role_combos.items():
-            combo.clear()
-            combo.addItem("Pick...", None)
-            for role in roles:
-                rid = role.get("id")
-                rname = role.get("name")
-                combo.addItem(f"@ {rname}", rid)
-
-    def selected_mapping(self) -> dict:
-        out = {}
-        for field_key, combo in self._channel_combos.items():
-            value = combo.currentData()
-            if value:
-                out[field_key] = int(value)
-        for field_key, combo in self._role_combos.items():
-            value = combo.currentData()
-            if value:
-                out[field_key] = int(value)
-        return out
+# Determine the default channel type for "Create" based on field key
+def _channel_type_for_key(key: str) -> str:
+    key_upper = str(key).upper()
+    if "CATEGORY" in key_upper:
+        return "category"
+    if "CREATE_CHANNEL" in key_upper:
+        return "voice"
+    return "text"
 
 
 class SetupWizardDialog(QtWidgets.QDialog):
@@ -174,6 +79,8 @@ class SetupWizardDialog(QtWidgets.QDialog):
         self._fields = {}
         self._configs = {}
         self._env_values = None
+        self._snapshot_cache = None  # cached guild_snapshot response
+        self._name_labels = {}  # (file_name, key) -> QLabel for channel/role name
         self._load_env_values()
 
         # Inherit active guild from parent window
@@ -188,18 +95,12 @@ class SetupWizardDialog(QtWidgets.QDialog):
 
         guild_label = f" (Guild {self._guild_id})" if self._guild_id else ""
         self.setWindowTitle(f"Setup Wizard{guild_label}")
-        self.resize(860, 640)
+        self.resize(920, 680)
 
         root = QtWidgets.QVBoxLayout(self)
         self.step_label = QtWidgets.QLabel()
         self.step_label.setObjectName("sectionLabel")
         root.addWidget(self.step_label)
-
-        top_actions = QtWidgets.QHBoxLayout()
-        self.snapshot_btn = QtWidgets.QPushButton("Guild Snapshot Picker")
-        top_actions.addWidget(self.snapshot_btn)
-        top_actions.addStretch()
-        root.addLayout(top_actions)
 
         self.stack = QtWidgets.QStackedWidget()
         root.addWidget(self.stack, 1)
@@ -225,7 +126,6 @@ class SetupWizardDialog(QtWidgets.QDialog):
         self.help_btn.clicked.connect(self._show_current_page_help)
         self.finish_btn.clicked.connect(self._save_and_close)
         self.cancel_btn.clicked.connect(self.reject)
-        self.snapshot_btn.clicked.connect(self._open_snapshot_picker)
         self.stack.currentChanged.connect(lambda _i: self._update_nav())
 
         self._build_pages()
@@ -236,7 +136,6 @@ class SetupWizardDialog(QtWidgets.QDialog):
     def _apply_read_only_mode(self):
         if not self._read_only:
             return
-        self.snapshot_btn.setEnabled(False)
         for _, (widget, _field_type) in self._fields.items():
             try:
                 if hasattr(widget, "setReadOnly"):
@@ -255,11 +154,51 @@ class SetupWizardDialog(QtWidgets.QDialog):
             self._configs[name] = cfg
         return self._configs[name]
 
-    def _add_id_row(self, layout: QtWidgets.QFormLayout, file_name: str, key: str, label: str):
+    def _add_id_row(self, layout, file_name: str, key: str, label: str,
+                    is_role: bool = False):
+        """Build a row:  [Create]  Label  [Channel Name]  [Channel ID]  [Pick...]"""
+        row = QtWidgets.QHBoxLayout()
+        row.setSpacing(6)
+
+        # Create button (channels only, not roles)
+        if not is_role:
+            create_btn = QtWidgets.QPushButton("Create")
+            create_btn.setFixedWidth(64)
+            create_btn.setToolTip("Create this channel on the Discord server")
+            create_btn.clicked.connect(
+                lambda _c=False, fn=file_name, k=key, lbl=label: self._on_create_channel(fn, k, lbl)
+            )
+            row.addWidget(create_btn)
+
+        # Label
+        lbl_widget = QtWidgets.QLabel(label)
+        lbl_widget.setFixedWidth(190)
+        row.addWidget(lbl_widget)
+
+        # Channel/Role Name (read-only display)
+        name_label = QtWidgets.QLineEdit()
+        name_label.setReadOnly(True)
+        name_label.setPlaceholderText("Channel Name" if not is_role else "Role Name")
+        name_label.setMinimumWidth(140)
+        self._name_labels[(file_name, key)] = name_label
+        row.addWidget(name_label, 1)
+
+        # Channel/Role ID
         line = QtWidgets.QLineEdit()
-        line.setPlaceholderText("Discord ID (digits)")
+        line.setPlaceholderText("Channel Id" if not is_role else "Role Id")
+        line.setMinimumWidth(160)
         self._fields[(file_name, key)] = (line, "int")
-        layout.addRow(label, line)
+        row.addWidget(line, 2)
+
+        # Pick button
+        pick_btn = QtWidgets.QPushButton("Pick...")
+        pick_btn.setFixedWidth(64)
+        pick_btn.clicked.connect(
+            lambda _c=False, fn=file_name, k=key, role=is_role: self._on_pick(fn, k, role)
+        )
+        row.addWidget(pick_btn)
+
+        layout.addLayout(row)
 
     def _add_text_row(self, layout: QtWidgets.QFormLayout, file_name: str, key: str, label: str, placeholder: str = ""):
         line = QtWidgets.QLineEdit()
@@ -320,8 +259,7 @@ class SetupWizardDialog(QtWidgets.QDialog):
         title2.setStyleSheet("font-size: 16px; font-weight: 700;")
         page2_outer.addWidget(title2)
         sub2 = QtWidgets.QLabel(
-            "Set channels and roles per feature. Only enabled features are shown.\n"
-            "Right-click a channel/role in Discord (developer mode) to copy its ID."
+            "Use Pick... to select an existing channel/role, or Create to make a new one."
         )
         sub2.setWordWrap(True)
         sub2.setStyleSheet("color:#9aa0a6;")
@@ -333,6 +271,9 @@ class SetupWizardDialog(QtWidgets.QDialog):
         scroll_content = QtWidgets.QWidget()
         scroll_layout = QtWidgets.QVBoxLayout(scroll_content)
         scroll_layout.setSpacing(12)
+
+        # Determine which fields are roles
+        _ROLE_KEYS = {(f, k) for f, k, _l in ROLE_FIELD_KEYS}
 
         # Feature groups: (group_label, [(file, key, label), ...])
         _GROUPS = [
@@ -354,7 +295,7 @@ class SetupWizardDialog(QtWidgets.QDialog):
             ]),
             ("TempVoice", [
                 ("tempvoice", "CREATE_CHANNEL_ID", "Create-join channel (Voice)"),
-                ("tempvoice", "CONTROL_CHANNEL_ID", "Control panel channel (Text)"),
+                ("tempvoice", "CONTROL_CHANNEL_ID", "Control panel channel"),
                 ("tempvoice", "CATEGORY_ID", "TempVoice category"),
             ]),
             ("Tickets", [
@@ -389,11 +330,11 @@ class SetupWizardDialog(QtWidgets.QDialog):
             if not visible:
                 continue
             group_box = QtWidgets.QGroupBox(group_label)
-            group_form = QtWidgets.QFormLayout(group_box)
-            group_form.setHorizontalSpacing(12)
-            group_form.setVerticalSpacing(8)
+            group_vbox = QtWidgets.QVBoxLayout(group_box)
+            group_vbox.setSpacing(6)
             for file_name, key, label in visible:
-                self._add_id_row(group_form, file_name, key, label)
+                is_role = (file_name, key) in _ROLE_KEYS
+                self._add_id_row(group_vbox, file_name, key, label, is_role=is_role)
             scroll_layout.addWidget(group_box)
 
         scroll_layout.addStretch()
@@ -434,38 +375,134 @@ class SetupWizardDialog(QtWidgets.QDialog):
             return True  # Not mapped → always show
         return bool(features.get(feature_key, True))
 
-    def _open_snapshot_picker(self):
+    def _fetch_snapshot(self) -> dict | None:
+        """Fetch and cache the guild snapshot from the bot."""
+        if self._snapshot_cache is not None:
+            return self._snapshot_cache
         try:
             resp = send_cmd({"action": "guild_snapshot"}, timeout=8.0)
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Guild Snapshot", f"Request failed: {exc}")
+            QtWidgets.QMessageBox.warning(self, "Snapshot", f"Bot nicht erreichbar: {exc}")
+            return None
+        if not resp.get("ok"):
+            QtWidgets.QMessageBox.warning(self, "Snapshot", f"Fehler: {resp}")
+            return None
+        self._snapshot_cache = resp
+        return resp
+
+    def _get_guild_from_snapshot(self, snapshot: dict) -> dict | None:
+        """Return the guild dict matching the active guild, or the first one."""
+        guilds = list(snapshot.get("guilds") or [])
+        if not guilds:
+            return None
+        if self._guild_id:
+            for g in guilds:
+                if str(g.get("id")) == str(self._guild_id):
+                    return g
+        return guilds[0]
+
+    def _on_pick(self, file_name: str, key: str, is_role: bool):
+        """Show a popup menu to pick a channel or role from the snapshot."""
+        snapshot = self._fetch_snapshot()
+        if not snapshot:
+            return
+        guild = self._get_guild_from_snapshot(snapshot)
+        if not guild:
+            QtWidgets.QMessageBox.warning(self, "Pick", "Keine Guild-Daten verfügbar.")
+            return
+
+        menu = QtWidgets.QMenu(self)
+        if is_role:
+            roles = list(guild.get("roles") or [])
+            if not roles:
+                menu.addAction("(keine Rollen gefunden)").setEnabled(False)
+            for role in roles:
+                rid = role.get("id")
+                rname = role.get("name", "unknown")
+                action = menu.addAction(f"@ {rname}")
+                action.setData((rid, rname))
+        else:
+            channels = list(guild.get("channels") or [])
+            key_upper = str(key).upper()
+            if "CATEGORY" in key_upper:
+                filtered = [c for c in channels if "category" in str(c.get("type") or "").lower()]
+            else:
+                filtered = [c for c in channels if "category" not in str(c.get("type") or "").lower()]
+            if not filtered:
+                menu.addAction("(keine Channels gefunden)").setEnabled(False)
+            for channel in filtered:
+                cid = channel.get("id")
+                cname = channel.get("name", "unknown")
+                action = menu.addAction(f"# {cname}")
+                action.setData((cid, cname))
+
+        chosen = menu.exec(self.cursor().pos())
+        if chosen and chosen.data():
+            chosen_id, chosen_name = chosen.data()
+            widget_meta = self._fields.get((file_name, key))
+            if widget_meta:
+                widget_meta[0].setText(str(chosen_id))
+            name_lbl = self._name_labels.get((file_name, key))
+            if name_lbl:
+                name_lbl.setText(chosen_name)
+
+    def _on_create_channel(self, file_name: str, key: str, label: str):
+        """Create a new channel on the Discord server and fill in the ID."""
+        if not self._guild_id:
+            QtWidgets.QMessageBox.warning(
+                self, "Create Channel",
+                "Keine aktive Guild. Bitte zuerst eine Guild im Dashboard auswählen.",
+            )
+            return
+
+        ch_type = _channel_type_for_key(key)
+        # Suggest a sensible default name from the label
+        default_name = label.lower().replace(" ", "-").replace("(", "").replace(")", "")
+
+        name, ok = QtWidgets.QInputDialog.getText(
+            self, "Create Channel",
+            f"Channel-Name für '{label}':",
+            text=default_name,
+        )
+        if not ok or not name.strip():
+            return
+
+        try:
+            resp = send_cmd({
+                "action": "create_channel",
+                "guild_id": str(self._guild_id),
+                "channel_name": name.strip(),
+                "channel_type": ch_type,
+            }, timeout=10.0)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Create Channel", f"Fehler: {exc}")
             return
 
         if not resp.get("ok"):
-            QtWidgets.QMessageBox.warning(self, "Guild Snapshot", f"Failed: {resp}")
+            QtWidgets.QMessageBox.warning(
+                self, "Create Channel",
+                f"Channel konnte nicht erstellt werden:\n{resp.get('error', resp)}",
+            )
             return
 
-        guilds = list(resp.get("guilds") or [])
-        if not guilds:
-            QtWidgets.QMessageBox.warning(self, "Guild Snapshot", "No guild data returned from bot.")
-            return
+        ch_data = resp.get("channel", {})
+        ch_id = ch_data.get("id")
+        ch_name = ch_data.get("name", name.strip())
 
-        dlg = GuildSnapshotPickerDialog(resp, self)
-        if dlg.exec() != QtWidgets.QDialog.Accepted:
-            return
+        widget_meta = self._fields.get((file_name, key))
+        if widget_meta:
+            widget_meta[0].setText(str(ch_id))
+        name_lbl = self._name_labels.get((file_name, key))
+        if name_lbl:
+            name_lbl.setText(ch_name)
 
-        mapping = dlg.selected_mapping()
-        for field_key, value in mapping.items():
-            widget_meta = self._fields.get(field_key)
-            if not widget_meta:
-                continue
-            widget, field_type = widget_meta
-            if field_type != "int":
-                continue
-            try:
-                widget.setText(str(int(value)))
-            except Exception:
-                continue
+        # Invalidate snapshot cache so new channel appears on next Pick
+        self._snapshot_cache = None
+
+        QtWidgets.QMessageBox.information(
+            self, "Create Channel",
+            f"✅ Channel '{ch_name}' erstellt (ID: {ch_id})",
+        )
 
     def _load_env_values(self):
         env_path, _created = ensure_env_file(self._repo_root)
@@ -493,6 +530,34 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 widget.setPlainText(str(current))
             else:
                 widget.setText(str(current))
+        # Try to resolve names for existing channel/role IDs
+        self._resolve_names_from_snapshot()
+
+    def _resolve_names_from_snapshot(self):
+        """Try to resolve channel/role names for IDs already in input fields."""
+        try:
+            snapshot = self._fetch_snapshot()
+        except Exception:
+            return
+        if not snapshot:
+            return
+        guild = self._get_guild_from_snapshot(snapshot)
+        if not guild:
+            return
+
+        channels = {str(c.get("id")): c.get("name", "") for c in (guild.get("channels") or [])}
+        roles = {str(r.get("id")): r.get("name", "") for r in (guild.get("roles") or [])}
+        all_items = {**channels, **roles}
+
+        for (file_name, key), name_lbl in self._name_labels.items():
+            widget_meta = self._fields.get((file_name, key))
+            if not widget_meta:
+                continue
+            current_id = str(widget_meta[0].text() or "").strip()
+            if current_id and current_id != "0":
+                resolved = all_items.get(current_id, "")
+                if resolved:
+                    name_lbl.setText(resolved)
 
     def _coerce_int(self, value: str, label: str) -> int:
         raw = str(value or "").strip()
@@ -618,18 +683,17 @@ class SetupWizardDialog(QtWidgets.QDialog):
             return (
                 "Help • Channels & Roles",
                 "Hier setzt du Channel- und Rollen-IDs, gruppiert nach Feature.\n\n"
-                "Woher bekommst du die IDs?\n"
-                "- In Discord Entwicklermodus aktivieren\n"
-                "- Rechtsklick auf Kanal/Rolle → ID kopieren\n"
-                "- Nur Zahlen eintragen (keine #, keine Namen)\n\n"
+                "Jede Zeile hat drei Aktionen:\n"
+                "• Create — erstellt den Channel direkt auf dem Discord Server\n"
+                "• Channel Name / ID — zeigt den aktuell gesetzten Channel\n"
+                "• Pick... — wähle einen bestehenden Channel/Rolle aus der Guild\n\n"
                 "Feature-Gruppen:\n"
                 "• Welcome & Verification: Channels + Rollen für Begrüßung\n"
                 "• Community: Count, Birthdays, Leveling Channels\n"
                 "• TempVoice: Join-to-create Hub, Control Panel, Kategorie\n"
                 "• Tickets: Kategorie, Log Channel, Support Rolle\n"
                 "• Logging: Chat/Member/Mod/Server/Voice Log Channels\n"
-                "• Notifications: Free Stuff + Social Media Channels\n\n"
-                "Tipp: Über 'Guild Snapshot Picker' kannst du viele IDs automatisch übernehmen.",
+                "• Notifications: Free Stuff + Social Media Channels",
             )
 
         return (

@@ -972,6 +972,38 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 except Exception as e:
                     resp = {"ok": False, "error": f"sync failed: {e}"}
 
+        elif action == "create_channel":
+            # Create a text/voice/category channel on a guild
+            guild_id = req.get("guild_id")
+            channel_name = str(req.get("channel_name") or "").strip()
+            channel_type = str(req.get("channel_type") or "text").strip().lower()
+            if not guild_id:
+                resp = {"ok": False, "error": "guild_id required"}
+            elif not channel_name:
+                resp = {"ok": False, "error": "channel_name required"}
+            else:
+                try:
+                    guild = bot.get_guild(int(guild_id))
+                    if guild is None:
+                        resp = {"ok": False, "error": f"Guild {guild_id} not found"}
+                    else:
+                        if channel_type == "category":
+                            ch = await guild.create_category(channel_name)
+                        elif channel_type == "voice":
+                            ch = await guild.create_voice_channel(channel_name)
+                        else:
+                            ch = await guild.create_text_channel(channel_name)
+                        resp = {
+                            "ok": True,
+                            "channel": {
+                                "id": ch.id,
+                                "name": ch.name,
+                                "type": str(ch.type),
+                            },
+                        }
+                except Exception as e:
+                    resp = {"ok": False, "error": str(e)}
+
         elif action == "rank_preview":
             name = req.get("name") or getattr(getattr(bot, "user", None), "name", None) or "NewMember"
             avatar_url = req.get("avatar_url")
