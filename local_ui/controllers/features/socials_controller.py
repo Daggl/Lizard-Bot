@@ -1,56 +1,65 @@
-"""Controller mixin for per-guild Social Media configuration."""
+"""Controller mixin for per-guild Social Media configuration.
+
+Uses the per-channel model: each platform has a CHANNELS list where every
+entry maps a Discord text channel to one or more creators.  Channels are
+displayed as individual cards in the UI.
+"""
 
 from config.config_io import (config_json_path, load_guild_config,
                               save_json)
 from PySide6 import QtWidgets
+from services.control_api_client import send_cmd
 
 
 # ---------------------------------------------------------------------------
-# Table helpers
+# Card helpers
 # ---------------------------------------------------------------------------
 
-def _read_table_entries(table: QtWidgets.QTableWidget) -> str:
-    """Read all non-empty entries from a single-column QTableWidget as comma-separated string."""
-    entries = []
-    for row in range(table.rowCount()):
-        item = table.item(row, 0)
-        if item:
-            text = item.text().strip()
-            if text:
-                entries.append(text)
-    return ",".join(entries)
+def _read_channel_cards(cards: list[dict]) -> list[dict]:
+    """Read card widgets → CHANNELS list for config."""
+    channels: list[dict] = []
+    for card in cards:
+        creator_raw = (card["creator"].text() or "").strip()
+        additional_raw = (card["additional_creators"].text() or "").strip()
+        creators: list[str] = []
+        if creator_raw:
+            creators.append(creator_raw)
+        if additional_raw:
+            creators.extend([c.strip() for c in additional_raw.split(",") if c.strip()])
+        ch_name = (card["channel_name"].text() or "").strip()
+        ch_id_raw = (card["channel_id"].text() or "").strip()
+        if not ch_id_raw or not ch_id_raw.isdigit():
+            continue
+        channels.append({
+            "CREATORS": creators,
+            "CHANNEL_NAME": ch_name,
+            "CHANNEL_ID": int(ch_id_raw),
+        })
+    return channels
 
 
-def _populate_table_from_csv(table: QtWidgets.QTableWidget, csv_value: str):
-    """Populate a single-column QTableWidget from a comma-separated string."""
-    entries = [e.strip() for e in str(csv_value or "").split(",") if e.strip()]
-    table.setRowCount(len(entries))
-    for i, entry in enumerate(entries):
-        table.setItem(i, 0, QtWidgets.QTableWidgetItem(entry))
-
-
-def _read_route_table(table: QtWidgets.QTableWidget) -> dict:
-    """Read a 2-column (Creator, Channel ID) route table into a dict."""
-    routes = {}
-    for row in range(table.rowCount()):
-        creator_item = table.item(row, 0)
-        channel_item = table.item(row, 1)
-        if creator_item and channel_item:
-            creator = creator_item.text().strip().lower()
-            ch_raw = channel_item.text().strip()
-            if creator and ch_raw and ch_raw.isdigit():
-                routes[creator] = int(ch_raw)
-    return routes
-
-
-def _populate_route_table(table: QtWidgets.QTableWidget, channel_map: dict):
-    """Populate a 2-column route table from a dict {creator: channel_id}."""
-    if not isinstance(channel_map, dict):
-        channel_map = {}
-    table.setRowCount(len(channel_map))
-    for i, (creator, ch_id) in enumerate(channel_map.items()):
-        table.setItem(i, 0, QtWidgets.QTableWidgetItem(str(creator)))
-        table.setItem(i, 1, QtWidgets.QTableWidgetItem(str(ch_id)))
+def _populate_channel_cards(clear_fn, add_fn, channels: list):
+    """Clear existing cards and create new ones from config data."""
+    clear_fn()
+    if not isinstance(channels, list):
+        return
+    for entry in channels:
+        if not isinstance(entry, dict):
+            continue
+        card_data = add_fn()
+        creators = entry.get("CREATORS", [])
+        if isinstance(creators, str):
+            creators = [c.strip() for c in creators.split(",") if c.strip()]
+        if creators:
+            card_data["creator"].setText(creators[0])
+            if len(creators) > 1:
+                card_data["additional_creators"].setText(", ".join(creators[1:]))
+        ch_name = str(entry.get("CHANNEL_NAME", "") or "")
+        ch_id = str(entry.get("CHANNEL_ID", "") or "")
+        if ch_id == "0":
+            ch_id = ""
+        card_data["channel_name"].setText(ch_name)
+        card_data["channel_id"].setText(ch_id)
 
 
 class SocialsControllerMixin:
@@ -79,42 +88,31 @@ class SocialsControllerMixin:
                 if enabled_chk is not None:
                     enabled_chk.setChecked(bool(section.get("ENABLED", False)))
 
-                cid_widget = getattr(self, f"{prefix}_channel_id", None)
-                if cid_widget is not None and not cid_widget.hasFocus():
-                    cid = str(section.get("CHANNEL_ID", "") or "").strip()
-                    cid_widget.setText(cid if cid and cid != "0" else "")
-
-                routes_table = getattr(self, f"{prefix}_routes_table", None)
-                if routes_table is not None and not routes_table.hasFocus():
-                    _populate_route_table(routes_table, section.get("CHANNEL_MAP", {}))
+                clear_fn = getattr(self, f"{prefix}_clear_cards", None)
+                add_fn = getattr(self, f"{prefix}_add_card", None)
+                if clear_fn and add_fn:
+                    _populate_channel_cards(
+                        clear_fn, add_fn, section.get("CHANNELS", []),
+                    )
 
                 for field_key, widget_attr in (extra_fields or []):
                     widget = getattr(self, widget_attr, None)
                     if widget is None:
                         continue
-                    if isinstance(widget, QtWidgets.QTableWidget):
-                        if not widget.hasFocus():
-                            _populate_table_from_csv(widget, section.get(field_key, ""))
-                    elif hasattr(widget, "setText") and not widget.hasFocus():
+                    if hasattr(widget, "setText") and not widget.hasFocus():
                         widget.setText(str(section.get(field_key, "") or ""))
             except Exception:
                 pass
 
         _load_platform("TWITCH", "sm_twitch", [
-            ("USERNAMES", "sm_twitch_usernames_table"),
             ("CLIENT_ID", "sm_twitch_client_id"),
             ("OAUTH_TOKEN", "sm_twitch_oauth"),
         ])
-        _load_platform("YOUTUBE", "sm_youtube", [
-            ("YOUTUBE_CHANNEL_IDS", "sm_youtube_ids_table"),
-        ])
+        _load_platform("YOUTUBE", "sm_youtube", [])
         _load_platform("TWITTER", "sm_twitter", [
             ("BEARER_TOKEN", "sm_twitter_bearer"),
-            ("USERNAMES", "sm_twitter_usernames_table"),
         ])
-        _load_platform("TIKTOK", "sm_tiktok", [
-            ("USERNAMES", "sm_tiktok_usernames_table"),
-        ])
+        _load_platform("TIKTOK", "sm_tiktok", [])
 
     def _save_socials_config(self, data: dict):
         path = self._socials_config_path()
@@ -140,6 +138,112 @@ class SocialsControllerMixin:
         except Exception:
             pass
 
+    # -----------------------------------------------------------------
+    # Create / Pick for channel cards (used by UI tab buttons)
+    # -----------------------------------------------------------------
+
+    def _on_social_card_create(self, platform_key: str, card_data: dict):
+        """Create a Discord channel via the bot API and fill the card."""
+        try:
+            gid = getattr(self, "_active_guild_id", None)
+            if not gid:
+                QtWidgets.QMessageBox.warning(
+                    self, "Create Channel",
+                    "Keine aktive Guild. Bitte zuerst eine Guild auswählen.",
+                )
+                return
+
+            creator = (card_data["creator"].text() or "").strip()
+            default_name = (
+                f"{platform_key.lower()}-{creator.lower()}"
+                if creator else f"{platform_key.lower()}-feed"
+            )
+            name, ok = QtWidgets.QInputDialog.getText(
+                self, "Create Channel", "Channel-Name:", text=default_name,
+            )
+            if not ok or not name.strip():
+                return
+
+            resp = send_cmd({
+                "action": "create_channel",
+                "guild_id": str(gid),
+                "channel_name": name.strip(),
+                "channel_type": "text",
+            }, timeout=10.0)
+
+            if not resp.get("ok"):
+                QtWidgets.QMessageBox.warning(
+                    self, "Create Channel",
+                    f"Channel konnte nicht erstellt werden:\n"
+                    f"{resp.get('error', resp)}",
+                )
+                return
+
+            ch = resp.get("channel", {})
+            card_data["channel_name"].setText(ch.get("name", name.strip()))
+            card_data["channel_id"].setText(str(ch.get("id", "")))
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(
+                self, "Create Channel", f"Fehler: {exc}",
+            )
+
+    def _on_social_card_pick(self, platform_key: str, card_data: dict):
+        """Pick an existing Discord channel and fill the card."""
+        try:
+            gid = getattr(self, "_active_guild_id", None)
+            if not gid:
+                QtWidgets.QMessageBox.warning(
+                    self, "Pick Channel",
+                    "Keine aktive Guild. Bitte zuerst eine Guild auswählen.",
+                )
+                return
+
+            resp = send_cmd({"action": "guild_snapshot"}, timeout=8.0)
+            if not resp.get("ok"):
+                QtWidgets.QMessageBox.warning(self, "Pick", f"Fehler: {resp}")
+                return
+
+            guild = None
+            for g in (resp.get("guilds") or []):
+                if str(g.get("id")) == str(gid):
+                    guild = g
+                    break
+            if not guild:
+                guilds = list(resp.get("guilds") or [])
+                guild = guilds[0] if guilds else None
+            if not guild:
+                QtWidgets.QMessageBox.warning(
+                    self, "Pick", "Keine Guild-Daten.",
+                )
+                return
+
+            channels = [
+                c for c in (guild.get("channels") or [])
+                if "category" not in str(c.get("type", "")).lower()
+            ]
+            menu = QtWidgets.QMenu(self)
+            if not channels:
+                menu.addAction("(keine Channels gefunden)").setEnabled(False)
+            for ch in channels:
+                action = menu.addAction(f"# {ch.get('name', 'unknown')}")
+                action.setData((ch.get("id"), ch.get("name", "unknown")))
+
+            chosen = menu.exec(self.cursor().pos())
+            if not chosen or not chosen.data():
+                return
+
+            ch_id, ch_name = chosen.data()
+            card_data["channel_name"].setText(ch_name)
+            card_data["channel_id"].setText(str(ch_id))
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(
+                self, "Pick Channel", f"Fehler: {exc}",
+            )
+
+    # -----------------------------------------------------------------
+    # Save
+    # -----------------------------------------------------------------
+
     def _save_socials_settings(self, reload_after: bool = False):
         try:
             if self._is_safe_read_only():
@@ -155,56 +259,29 @@ class SocialsControllerMixin:
                     "Auto reload ist aus: Speichern ohne Reload.",
                 )
 
-            # Validate channel IDs
-            def _parse_cid(widget):
-                raw = (widget.text() or "").strip()
-                if not raw:
-                    return 0
-                if not raw.isdigit():
-                    raise ValueError(f"Channel ID must contain only digits: {raw}")
-                return int(raw)
-
-            try:
-                twitch_cid = _parse_cid(self.sm_twitch_channel_id)
-                youtube_cid = _parse_cid(self.sm_youtube_channel_id)
-                twitter_cid = _parse_cid(self.sm_twitter_channel_id)
-                tiktok_cid = _parse_cid(self.sm_tiktok_channel_id)
-            except ValueError as exc:
-                QtWidgets.QMessageBox.warning(self, "Social Media", str(exc))
-                return
-
             payload = {
                 "TWITCH": {
                     "ENABLED": self.sm_twitch_enabled.isChecked(),
-                    "CHANNEL_ID": twitch_cid,
-                    "USERNAMES": _read_table_entries(self.sm_twitch_usernames_table),
                     "CLIENT_ID": (self.sm_twitch_client_id.text() or "").strip(),
                     "OAUTH_TOKEN": (self.sm_twitch_oauth.text() or "").strip(),
-                    "CHANNEL_MAP": _read_route_table(self.sm_twitch_routes_table) if hasattr(self, "sm_twitch_routes_table") else {},
+                    "CHANNELS": _read_channel_cards(self.sm_twitch_cards),
                 },
                 "YOUTUBE": {
                     "ENABLED": self.sm_youtube_enabled.isChecked(),
-                    "CHANNEL_ID": youtube_cid,
-                    "YOUTUBE_CHANNEL_IDS": _read_table_entries(self.sm_youtube_ids_table),
-                    "CHANNEL_MAP": _read_route_table(self.sm_youtube_routes_table) if hasattr(self, "sm_youtube_routes_table") else {},
+                    "CHANNELS": _read_channel_cards(self.sm_youtube_cards),
                 },
                 "TWITTER": {
                     "ENABLED": self.sm_twitter_enabled.isChecked(),
-                    "CHANNEL_ID": twitter_cid,
                     "BEARER_TOKEN": (self.sm_twitter_bearer.text() or "").strip(),
-                    "USERNAMES": _read_table_entries(self.sm_twitter_usernames_table),
-                    "CHANNEL_MAP": _read_route_table(self.sm_twitter_routes_table) if hasattr(self, "sm_twitter_routes_table") else {},
+                    "CHANNELS": _read_channel_cards(self.sm_twitter_cards),
                 },
                 "TIKTOK": {
                     "ENABLED": self.sm_tiktok_enabled.isChecked(),
-                    "CHANNEL_ID": tiktok_cid,
-                    "USERNAMES": _read_table_entries(self.sm_tiktok_usernames_table),
-                    "CHANNEL_MAP": _read_route_table(self.sm_tiktok_routes_table) if hasattr(self, "sm_tiktok_routes_table") else {},
+                    "CHANNELS": _read_channel_cards(self.sm_tiktok_cards),
                 },
                 "CUSTOM": {
                     "ENABLED": False,
-                    "CHANNEL_ID": 0,
-                    "FEED_URLS": "",
+                    "CHANNELS": [],
                 },
             }
             self._save_socials_config(payload)

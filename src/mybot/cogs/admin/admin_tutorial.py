@@ -207,8 +207,9 @@ class AdminHelpView(discord.ui.View):
                 value=(
                     "`/socialcheck` ↳ Manually check all social media feeds\n"
                     "`/socialsources` ↳ Show configured social media sources\n"
-                    "`/socialroute <platform> <creator> [channel]` ↳ Route a creator to a specific channel\n"
-                    "`/socialroutes` ↳ Show all per-creator channel routes\n"
+                    "`/socialadd <platform> <channel> <creators>` ↳ Assign creator(s) to a channel\n"
+                    "`/socialremove <platform> <creator>` ↳ Remove a creator\n"
+                    "`/socialchannels [platform]` ↳ Show all channel assignments\n"
                     "↳ Sources are configured in the UI per guild"
                 ),
                 inline=False,

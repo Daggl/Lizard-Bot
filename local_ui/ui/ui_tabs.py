@@ -1323,7 +1323,7 @@ def build_freestuff_tab(window, tabs: QtWidgets.QTabWidget):
 # =====================================================================
 
 def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
-    """Build the 'Social Media' tab with table-based entry management and TikTok support."""
+    """Build the 'Social Media' tab with per-channel card-based creator management."""
     sm = QtWidgets.QWidget()
     layout = QtWidgets.QVBoxLayout(sm)
     layout.setContentsMargins(12, 12, 12, 12)
@@ -1336,8 +1336,8 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
 
     desc = QtWidgets.QLabel(
         "Configure social media feeds. The bot checks every 5 minutes and posts\n"
-        "notifications to the configured Discord channels per source.\n"
-        "Use the Channel Routes table to send specific creators to different channels."
+        "notifications to the configured Discord channels.\n"
+        "Each channel entry maps a Discord text channel to one or more creators."
     )
     desc.setWordWrap(True)
     desc.setStyleSheet("color: #9AA5B4; font-size: 12px; margin-bottom: 10px;")
@@ -1350,179 +1350,166 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
     scroll_layout = QtWidgets.QVBoxLayout(scroll_content)
     scroll_layout.setSpacing(10)
 
-    def _make_entry_table(parent_layout, col_header):
-        """Create a single-column table with Add / Remove buttons."""
-        table = QtWidgets.QTableWidget(0, 1)
-        table.setHorizontalHeaderLabels([col_header])
-        table.horizontalHeader().setStretchLastSection(True)
-        table.verticalHeader().setVisible(False)
-        table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        table.setMinimumHeight(90)
-        table.setMaximumHeight(150)
+    # -----------------------------------------------------------------
+    # Channel-card helpers (shared across platforms)
+    # -----------------------------------------------------------------
+    def _make_channel_card(platform_label, platform_key, cards_list, cards_layout):
+        """Create a single channel card and append it to *cards_list*."""
+        idx = len(cards_list) + 1
 
-        btn_row = QtWidgets.QHBoxLayout()
-        add_btn = QtWidgets.QPushButton("+ Add")
-        remove_btn = QtWidgets.QPushButton("\u2212 Remove")
-        add_btn.setFixedWidth(90)
-        remove_btn.setFixedWidth(90)
-        btn_row.addWidget(add_btn)
-        btn_row.addWidget(remove_btn)
-        btn_row.addStretch()
+        card = QtWidgets.QFrame()
+        card.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        card.setFrameShadow(QtWidgets.QFrame.Raised)
+        grid = QtWidgets.QGridLayout(card)
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(6)
+        grid.setContentsMargins(8, 8, 8, 8)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(2, 1)
 
-        parent_layout.addWidget(table)
-        parent_layout.addLayout(btn_row)
+        # Col 0 — label spanning two rows
+        lbl = QtWidgets.QLabel(f"{platform_label}\nchannel {idx}")
+        lbl.setFixedWidth(80)
+        lbl.setStyleSheet("font-weight: bold;")
+        grid.addWidget(lbl, 0, 0, 2, 1)
 
-        def _on_add():
-            row = table.rowCount()
-            table.insertRow(row)
-            table.setItem(row, 0, QtWidgets.QTableWidgetItem(""))
-            table.editItem(table.item(row, 0))
+        # Row 0 — creator fields
+        creator_edit = QtWidgets.QLineEdit()
+        creator_edit.setPlaceholderText("Creator")
+        add_edit = QtWidgets.QLineEdit()
+        add_edit.setPlaceholderText("Additional Creator(s)")
+        remove_btn = QtWidgets.QPushButton("\u00d7")
+        remove_btn.setFixedSize(24, 24)
+        remove_btn.setToolTip("Remove this channel entry")
+        grid.addWidget(creator_edit, 0, 1)
+        grid.addWidget(add_edit, 0, 2, 1, 3)
+        grid.addWidget(remove_btn, 0, 5)
 
+        # Row 1 — channel fields + buttons
+        ch_name_edit = QtWidgets.QLineEdit()
+        ch_name_edit.setPlaceholderText("Channel Name")
+        ch_name_edit.setReadOnly(True)
+        ch_id_edit = QtWidgets.QLineEdit()
+        ch_id_edit.setPlaceholderText("Channel ID")
+        create_btn = QtWidgets.QPushButton("Create")
+        create_btn.setFixedWidth(64)
+        pick_btn = QtWidgets.QPushButton("Pick...")
+        pick_btn.setFixedWidth(64)
+        grid.addWidget(ch_name_edit, 1, 1)
+        grid.addWidget(ch_id_edit, 1, 2)
+        grid.addWidget(create_btn, 1, 3)
+        grid.addWidget(pick_btn, 1, 4)
+
+        card_data = {
+            "frame": card,
+            "label": lbl,
+            "creator": creator_edit,
+            "additional_creators": add_edit,
+            "channel_name": ch_name_edit,
+            "channel_id": ch_id_edit,
+            "create_btn": create_btn,
+            "pick_btn": pick_btn,
+        }
+        cards_list.append(card_data)
+        # Insert before the trailing stretch
+        cards_layout.insertWidget(cards_layout.count() - 1, card)
+
+        # Wire remove
         def _on_remove():
-            sel = table.currentRow()
-            if sel >= 0:
-                table.removeRow(sel)
-
-        add_btn.clicked.connect(_on_add)
+            if card_data in cards_list:
+                cards_list.remove(card_data)
+            card.setParent(None)
+            card.deleteLater()
+            for i, c in enumerate(cards_list, 1):
+                c["label"].setText(f"{platform_label}\nchannel {i}")
         remove_btn.clicked.connect(_on_remove)
 
-        return table
+        # Wire Create / Pick  (methods provided by SocialsControllerMixin)
+        create_btn.clicked.connect(
+            lambda _=False, pk=platform_key, cd=card_data:
+                window._on_social_card_create(pk, cd)
+        )
+        pick_btn.clicked.connect(
+            lambda _=False, pk=platform_key, cd=card_data:
+                window._on_social_card_pick(pk, cd)
+        )
+        return card_data
 
-    def _make_route_table(parent_layout):
-        """Create a 2-column table (Creator, Channel ID) for per-creator routing."""
-        lbl = QtWidgets.QLabel("Channel Routes (per-creator → channel):")
-        lbl.setStyleSheet("margin-top:6px;")
-        parent_layout.addWidget(lbl)
+    def _clear_cards(cards_list, cards_layout):
+        for cd in list(cards_list):
+            cd["frame"].setParent(None)
+            cd["frame"].deleteLater()
+        cards_list.clear()
 
-        table = QtWidgets.QTableWidget(0, 2)
-        table.setHorizontalHeaderLabels(["Creator", "Channel ID"])
-        table.horizontalHeader().setStretchLastSection(True)
-        table.verticalHeader().setVisible(False)
-        table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        table.setMinimumHeight(70)
-        table.setMaximumHeight(130)
+    # -----------------------------------------------------------------
+    # Build one platform section
+    # -----------------------------------------------------------------
+    def _build_platform(platform_label, platform_key, credential_fields):
+        box = QtWidgets.QGroupBox(platform_label)
+        vbox = QtWidgets.QVBoxLayout(box)
+        form = QtWidgets.QFormLayout()
+        form.setHorizontalSpacing(10)
+        form.setVerticalSpacing(6)
 
-        btn_row = QtWidgets.QHBoxLayout()
-        add_btn = QtWidgets.QPushButton("+ Add Route")
-        remove_btn = QtWidgets.QPushButton("\u2212 Remove Route")
-        add_btn.setFixedWidth(100)
-        remove_btn.setFixedWidth(110)
-        btn_row.addWidget(add_btn)
-        btn_row.addWidget(remove_btn)
-        btn_row.addStretch()
+        enabled_chk = QtWidgets.QCheckBox("Enabled")
+        form.addRow("", enabled_chk)
+        setattr(window, f"sm_{platform_key.lower()}_enabled", enabled_chk)
 
-        parent_layout.addWidget(table)
-        parent_layout.addLayout(btn_row)
+        for row_label, attr_name, placeholder, is_password in credential_fields:
+            edit = QtWidgets.QLineEdit()
+            edit.setPlaceholderText(placeholder)
+            if is_password:
+                edit.setEchoMode(QtWidgets.QLineEdit.Password)
+            form.addRow(f"{row_label}:", edit)
+            setattr(window, attr_name, edit)
 
-        def _on_add():
-            row = table.rowCount()
-            table.insertRow(row)
-            table.setItem(row, 0, QtWidgets.QTableWidgetItem(""))
-            table.setItem(row, 1, QtWidgets.QTableWidgetItem(""))
-            table.editItem(table.item(row, 0))
+        vbox.addLayout(form)
 
-        def _on_remove():
-            sel = table.currentRow()
-            if sel >= 0:
-                table.removeRow(sel)
+        # Cards container
+        cards_list: list[dict] = []
+        cards_vbox = QtWidgets.QVBoxLayout()
+        cards_vbox.setSpacing(6)
+        cards_vbox.addStretch()
+        vbox.addLayout(cards_vbox)
 
-        add_btn.clicked.connect(_on_add)
-        remove_btn.clicked.connect(_on_remove)
+        # "additional … channel" button
+        add_btn = QtWidgets.QPushButton(f"Additional {platform_label} Channel")
+        add_btn.setFixedWidth(220)
+        add_btn.clicked.connect(
+            lambda: _make_channel_card(platform_label, platform_key,
+                                       cards_list, cards_vbox)
+        )
+        vbox.addWidget(add_btn)
 
-        return table
+        # Expose on window for controller access
+        setattr(window, f"sm_{platform_key.lower()}_cards", cards_list)
+        setattr(window, f"sm_{platform_key.lower()}_cards_layout", cards_vbox)
+        setattr(window, f"sm_{platform_key.lower()}_add_card",
+                lambda pl=platform_label, pk=platform_key,
+                       cl=cards_list, cv=cards_vbox:
+                    _make_channel_card(pl, pk, cl, cv))
+        setattr(window, f"sm_{platform_key.lower()}_clear_cards",
+                lambda cl=cards_list, cv=cards_vbox:
+                    _clear_cards(cl, cv))
+
+        scroll_layout.addWidget(box)
 
     # --- Twitch ---
-    twitch_box = QtWidgets.QGroupBox("Twitch")
-    twitch_vbox = QtWidgets.QVBoxLayout(twitch_box)
-    twitch_form = QtWidgets.QFormLayout()
-    twitch_form.setHorizontalSpacing(10)
-    twitch_form.setVerticalSpacing(6)
-
-    window.sm_twitch_enabled = QtWidgets.QCheckBox("Enabled")
-    twitch_form.addRow("", window.sm_twitch_enabled)
-    window.sm_twitch_channel_id = QtWidgets.QLineEdit()
-    window.sm_twitch_channel_id.setPlaceholderText("Discord Channel ID")
-    window.sm_twitch_channel_id.setMaximumWidth(280)
-    twitch_form.addRow("Channel ID:", window.sm_twitch_channel_id)
-    window.sm_twitch_client_id = QtWidgets.QLineEdit()
-    window.sm_twitch_client_id.setPlaceholderText("Twitch App Client ID")
-    twitch_form.addRow("Client ID:", window.sm_twitch_client_id)
-    window.sm_twitch_oauth = QtWidgets.QLineEdit()
-    window.sm_twitch_oauth.setPlaceholderText("Twitch OAuth Token")
-    window.sm_twitch_oauth.setEchoMode(QtWidgets.QLineEdit.Password)
-    twitch_form.addRow("OAuth Token:", window.sm_twitch_oauth)
-    twitch_vbox.addLayout(twitch_form)
-
-    twitch_vbox.addWidget(QtWidgets.QLabel("Monitored Twitch Usernames:"))
-    window.sm_twitch_usernames_table = _make_entry_table(twitch_vbox, "Username")
-    window.sm_twitch_routes_table = _make_route_table(twitch_vbox)
-    scroll_layout.addWidget(twitch_box)
+    _build_platform("Twitch", "TWITCH", [
+        ("Client ID", "sm_twitch_client_id", "Twitch App Client ID", False),
+        ("OAuth Token", "sm_twitch_oauth", "Twitch OAuth Token", True),
+    ])
 
     # --- YouTube ---
-    yt_box = QtWidgets.QGroupBox("YouTube")
-    yt_vbox = QtWidgets.QVBoxLayout(yt_box)
-    yt_form = QtWidgets.QFormLayout()
-    yt_form.setHorizontalSpacing(10)
-    yt_form.setVerticalSpacing(6)
+    _build_platform("YouTube", "YOUTUBE", [])
 
-    window.sm_youtube_enabled = QtWidgets.QCheckBox("Enabled")
-    yt_form.addRow("", window.sm_youtube_enabled)
-    window.sm_youtube_channel_id = QtWidgets.QLineEdit()
-    window.sm_youtube_channel_id.setPlaceholderText("Discord Channel ID")
-    window.sm_youtube_channel_id.setMaximumWidth(280)
-    yt_form.addRow("Channel ID:", window.sm_youtube_channel_id)
-    yt_vbox.addLayout(yt_form)
-
-    yt_vbox.addWidget(QtWidgets.QLabel("Monitored YouTube Channel IDs:"))
-    window.sm_youtube_ids_table = _make_entry_table(yt_vbox, "YouTube Channel ID (UCxxxx)")
-    window.sm_youtube_routes_table = _make_route_table(yt_vbox)
-    scroll_layout.addWidget(yt_box)
-
-    # --- Twitter/X ---
-    tw_box = QtWidgets.QGroupBox("Twitter / X")
-    tw_vbox = QtWidgets.QVBoxLayout(tw_box)
-    tw_form = QtWidgets.QFormLayout()
-    tw_form.setHorizontalSpacing(10)
-    tw_form.setVerticalSpacing(6)
-
-    window.sm_twitter_enabled = QtWidgets.QCheckBox("Enabled")
-    tw_form.addRow("", window.sm_twitter_enabled)
-    window.sm_twitter_channel_id = QtWidgets.QLineEdit()
-    window.sm_twitter_channel_id.setPlaceholderText("Discord Channel ID")
-    window.sm_twitter_channel_id.setMaximumWidth(280)
-    tw_form.addRow("Channel ID:", window.sm_twitter_channel_id)
-    window.sm_twitter_bearer = QtWidgets.QLineEdit()
-    window.sm_twitter_bearer.setPlaceholderText("Twitter API Bearer Token")
-    window.sm_twitter_bearer.setEchoMode(QtWidgets.QLineEdit.Password)
-    tw_form.addRow("Bearer Token:", window.sm_twitter_bearer)
-    tw_vbox.addLayout(tw_form)
-
-    tw_vbox.addWidget(QtWidgets.QLabel("Monitored Twitter Usernames:"))
-    window.sm_twitter_usernames_table = _make_entry_table(tw_vbox, "Username")
-    window.sm_twitter_routes_table = _make_route_table(tw_vbox)
-    scroll_layout.addWidget(tw_box)
+    # --- Twitter / X ---
+    _build_platform("Twitter / X", "TWITTER", [
+        ("Bearer Token", "sm_twitter_bearer", "Twitter API Bearer Token", True),
+    ])
 
     # --- TikTok ---
-    tt_box = QtWidgets.QGroupBox("TikTok")
-    tt_vbox = QtWidgets.QVBoxLayout(tt_box)
-    tt_form = QtWidgets.QFormLayout()
-    tt_form.setHorizontalSpacing(10)
-    tt_form.setVerticalSpacing(6)
-
-    window.sm_tiktok_enabled = QtWidgets.QCheckBox("Enabled")
-    tt_form.addRow("", window.sm_tiktok_enabled)
-    window.sm_tiktok_channel_id = QtWidgets.QLineEdit()
-    window.sm_tiktok_channel_id.setPlaceholderText("Discord Channel ID")
-    window.sm_tiktok_channel_id.setMaximumWidth(280)
-    tt_form.addRow("Channel ID:", window.sm_tiktok_channel_id)
-    tt_vbox.addLayout(tt_form)
-
-    tt_vbox.addWidget(QtWidgets.QLabel("Monitored TikTok Usernames (without @):"))
-    window.sm_tiktok_usernames_table = _make_entry_table(tt_vbox, "Username")
-    window.sm_tiktok_routes_table = _make_route_table(tt_vbox)
-    scroll_layout.addWidget(tt_box)
+    _build_platform("TikTok", "TIKTOK", [])
 
     scroll_layout.addStretch()
     scroll.setWidget(scroll_content)

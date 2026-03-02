@@ -103,15 +103,17 @@ Saved to: `config/freestuff.json`
 
 Use this tab to configure social media notifications (Twitch, YouTube, Twitter/X, TikTok).
 
-- **Per-source settings**: Each source has its own enable toggle, Discord channel, and credentials.
-- **Twitch**: Requires a Twitch App Client ID and OAuth Token. Monitors usernames for live streams.
-- **YouTube**: Uses public RSS feeds. Provide YouTube Channel IDs (UCxxxx format).
+- **Per-channel model**: Each platform has a Channels table. Every row maps a Discord channel
+  to one or more creators (comma-separated).
+- **Twitch**: Requires a Twitch App Client ID and OAuth Token.
+- **YouTube**: Uses public RSS feeds. Provide YouTube Channel IDs (UCxxxx format) as creator names.
 - **Twitter/X**: Requires a Bearer Token (placeholder for future implementation).
 - **TikTok**: Monitors TikTok usernames for new posts via RSS.
-- **Channel Routes**: You can route individual creators to different Discord channels.
-  Use the Channel Routes table (Creator → Channel ID) or the `/socialroute` command.
+- Use **+ Add Channel** to add a new row, then fill in Creator(s), Channel Name, and Channel ID.
+- Use **Create** / **Pick** to create or select an existing Discord channel.
 - The bot checks every 5 minutes automatically.
 - Use `/socialcheck` in Discord to manually trigger a check.
+- Use `/socialadd`, `/socialremove`, `/socialchannels` to manage assignments via Discord.
 
 Saved to: `config/social_media.json`
 
@@ -386,14 +388,19 @@ Use these commands as the fastest per-feature smoke test:
 - **Usage:** `/socialsources`
 - **Permission:** Everyone
 
-### `/socialroute <platform> <creator> [channel]`
-- **What it does:** Routes a specific creator to a different Discord channel. Omit channel to remove the route.
-- **Usage:** `/socialroute twitch streamer123 #social-twitch-2`
+### `/socialadd <platform> <channel> <creators>`
+- **What it does:** Assigns one or more creators to a Discord channel for notifications.
+- **Usage:** `/socialadd twitch #twitch-streams streamer1, streamer2`
 - **Permission:** Administrator
 
-### `/socialroutes`
-- **What it does:** Shows all per-creator channel routes across all platforms.
-- **Usage:** `/socialroutes`
+### `/socialremove <platform> <creator>`
+- **What it does:** Removes a creator from all channel assignments for a platform.
+- **Usage:** `/socialremove twitch streamer1`
+- **Permission:** Administrator
+
+### `/socialchannels [platform]`
+- **What it does:** Shows all channel assignments across platforms (or one specific platform).
+- **Usage:** `/socialchannels` or `/socialchannels twitch`
 - **Permission:** Everyone
 
 ---

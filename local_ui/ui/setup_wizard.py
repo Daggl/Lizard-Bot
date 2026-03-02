@@ -4,7 +4,7 @@ from config.config_io import (config_json_path, ensure_env_file, load_env_dict,
 from PySide6 import QtWidgets
 from services.control_api_client import send_cmd
 
-# Platform mapping for additional social channels
+# Platform mapping for social channels
 _SOCIAL_PLATFORMS = ["Twitch", "YouTube", "Twitter / X", "TikTok"]
 _PLATFORM_KEY_MAP = {
     "Twitch": "TWITCH",
@@ -33,10 +33,6 @@ CHANNEL_FIELD_KEYS = [
     ("log_voice", "CHANNEL_ID", "Log voice channel"),
     ("membercount", "CHANNEL_ID", "Member count channel"),
     ("freestuff", "CHANNEL_ID", "Free stuff channel"),
-    ("social_media", "TWITCH.CHANNEL_ID", "Social: Twitch channel"),
-    ("social_media", "YOUTUBE.CHANNEL_ID", "Social: YouTube channel"),
-    ("social_media", "TWITTER.CHANNEL_ID", "Social: Twitter/X channel"),
-    ("social_media", "TIKTOK.CHANNEL_ID", "Social: TikTok channel"),
 ]
 
 ROLE_FIELD_KEYS = [
@@ -349,10 +345,6 @@ class SetupWizardDialog(QtWidgets.QDialog):
             ]),
             ("Notifications", [
                 ("freestuff", "CHANNEL_ID", "Free stuff channel"),
-                ("social_media", "TWITCH.CHANNEL_ID", "Social: Twitch channel"),
-                ("social_media", "YOUTUBE.CHANNEL_ID", "Social: YouTube channel"),
-                ("social_media", "TWITTER.CHANNEL_ID", "Social: Twitter/X channel"),
-                ("social_media", "TIKTOK.CHANNEL_ID", "Social: TikTok channel"),
             ]),
         ]
 
@@ -370,30 +362,51 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 is_role = (file_name, key) in _ROLE_KEYS
                 self._add_id_row(group_vbox, file_name, key, label, is_role=is_role)
 
-            # Add "Create / Pick additional Social channels" buttons to Notifications
-            if group_label == "Notifications":
-                # Container for dynamic additional-channel rows
-                self._extra_social_layout = QtWidgets.QVBoxLayout()
-                group_vbox.addLayout(self._extra_social_layout)
-
-                btn_row = QtWidgets.QHBoxLayout()
-                create_btn = QtWidgets.QPushButton("Create additional Social channels")
-                create_btn.setToolTip(
-                    "Create extra Discord channels for per-creator social routing"
-                )
-                create_btn.clicked.connect(self._on_create_additional_social_channel)
-                btn_row.addWidget(create_btn)
-
-                pick_btn = QtWidgets.QPushButton("Pick additional Social channels")
-                pick_btn.setToolTip(
-                    "Pick an existing Discord channel for per-creator social routing"
-                )
-                pick_btn.clicked.connect(self._on_pick_additional_social_channel)
-                btn_row.addWidget(pick_btn)
-
-                group_vbox.addLayout(btn_row)
-
             scroll_layout.addWidget(group_box)
+
+        # --- Social Media section (per-channel card model) ---
+        if self._is_field_visible("social_media", enabled_features):
+            self._social_channel_cards = {}   # platform_key -> list[dict]
+            self._social_cards_layouts = {}   # platform_key -> QVBoxLayout
+            sm_box = QtWidgets.QGroupBox("Social Media")
+            sm_vbox = QtWidgets.QVBoxLayout(sm_box)
+            sm_vbox.setSpacing(8)
+
+            sm_desc = QtWidgets.QLabel(
+                "Each platform has channel entries. Each entry maps one "
+                "Discord channel to one or more creators.\n"
+                "Use 'Additional … Channel' to add a new entry."
+            )
+            sm_desc.setWordWrap(True)
+            sm_desc.setStyleSheet("color:#9aa0a6; font-size: 11px;")
+            sm_vbox.addWidget(sm_desc)
+
+            for platform_name, platform_key in _PLATFORM_KEY_MAP.items():
+                pbox = QtWidgets.QGroupBox(platform_name)
+                pvbox = QtWidgets.QVBoxLayout(pbox)
+                pvbox.setSpacing(4)
+
+                cards_list: list[dict] = []
+                cards_vbox = QtWidgets.QVBoxLayout()
+                cards_vbox.setSpacing(6)
+                cards_vbox.addStretch()
+                pvbox.addLayout(cards_vbox)
+
+                self._social_channel_cards[platform_key] = cards_list
+                self._social_cards_layouts[platform_key] = cards_vbox
+
+                add_btn = QtWidgets.QPushButton(f"Additional {platform_name} Channel")
+                add_btn.setFixedWidth(220)
+                add_btn.clicked.connect(
+                    lambda _=False, pn=platform_name, pk=platform_key,
+                           cl=cards_list, cv=cards_vbox:
+                        self._add_social_card(pn, pk, cl, cv)
+                )
+                pvbox.addWidget(add_btn)
+
+                sm_vbox.addWidget(pbox)
+
+            scroll_layout.addWidget(sm_box)
 
         scroll_layout.addStretch()
         scroll.setWidget(scroll_content)
@@ -625,8 +638,83 @@ class SetupWizardDialog(QtWidgets.QDialog):
             f"✅ Rolle '{role_name}' erstellt und gespeichert (ID: {role_id})",
         )
 
-    def _on_create_additional_social_channel(self):
-        """Create an extra social-media channel and store its ID in CHANNEL_MAP."""
+    def _add_social_card(self, platform_name: str, platform_key: str,
+                         cards_list: list, cards_layout):
+        """Create a channel card for the wizard and append it."""
+        idx = len(cards_list) + 1
+
+        card = QtWidgets.QFrame()
+        card.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        card.setFrameShadow(QtWidgets.QFrame.Raised)
+        grid = QtWidgets.QGridLayout(card)
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(6)
+        grid.setContentsMargins(8, 8, 8, 8)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(2, 1)
+
+        lbl = QtWidgets.QLabel(f"{platform_name}\nchannel {idx}")
+        lbl.setFixedWidth(80)
+        lbl.setStyleSheet("font-weight: bold;")
+        grid.addWidget(lbl, 0, 0, 2, 1)
+
+        creator_edit = QtWidgets.QLineEdit()
+        creator_edit.setPlaceholderText("Creator")
+        add_edit = QtWidgets.QLineEdit()
+        add_edit.setPlaceholderText("Additional Creator(s)")
+        remove_btn = QtWidgets.QPushButton("\u00d7")
+        remove_btn.setFixedSize(24, 24)
+        remove_btn.setToolTip("Remove this channel entry")
+        grid.addWidget(creator_edit, 0, 1)
+        grid.addWidget(add_edit, 0, 2, 1, 3)
+        grid.addWidget(remove_btn, 0, 5)
+
+        ch_name_edit = QtWidgets.QLineEdit()
+        ch_name_edit.setPlaceholderText("Channel Name")
+        ch_name_edit.setReadOnly(True)
+        ch_id_edit = QtWidgets.QLineEdit()
+        ch_id_edit.setPlaceholderText("Channel ID")
+        create_btn = QtWidgets.QPushButton("Create")
+        create_btn.setFixedWidth(64)
+        pick_btn = QtWidgets.QPushButton("Pick...")
+        pick_btn.setFixedWidth(64)
+        grid.addWidget(ch_name_edit, 1, 1)
+        grid.addWidget(ch_id_edit, 1, 2)
+        grid.addWidget(create_btn, 1, 3)
+        grid.addWidget(pick_btn, 1, 4)
+
+        card_data = {
+            "frame": card,
+            "label": lbl,
+            "creator": creator_edit,
+            "additional_creators": add_edit,
+            "channel_name": ch_name_edit,
+            "channel_id": ch_id_edit,
+        }
+        cards_list.append(card_data)
+        cards_layout.insertWidget(cards_layout.count() - 1, card)
+
+        def _on_remove():
+            if card_data in cards_list:
+                cards_list.remove(card_data)
+            card.setParent(None)
+            card.deleteLater()
+            for i, c in enumerate(cards_list, 1):
+                c["label"].setText(f"{platform_name}\nchannel {i}")
+        remove_btn.clicked.connect(_on_remove)
+
+        create_btn.clicked.connect(
+            lambda _=False, pk=platform_key, cd=card_data:
+                self._on_social_create_channel(pk, cd)
+        )
+        pick_btn.clicked.connect(
+            lambda _=False, pk=platform_key, cd=card_data:
+                self._on_social_pick_channel(pk, cd)
+        )
+        return card_data
+
+    def _on_social_create_channel(self, platform_key: str, card_data: dict):
+        """Create a Discord channel and fill the card fields."""
         if not self._guild_id:
             QtWidgets.QMessageBox.warning(
                 self, "Create Channel",
@@ -634,28 +722,17 @@ class SetupWizardDialog(QtWidgets.QDialog):
             )
             return
 
-        platform, ok = QtWidgets.QInputDialog.getItem(
-            self, "Platform",
-            "Für welche Plattform soll der Channel erstellt werden?",
-            _SOCIAL_PLATFORMS, 0, False,
+        creator = (card_data["creator"].text() or "").strip()
+        default_name = (
+            f"{platform_key.lower()}-{creator.lower()}"
+            if creator else f"{platform_key.lower()}-feed"
         )
-        if not ok or not platform:
-            return
-
-        creator, ok_c = QtWidgets.QInputDialog.getText(
-            self, "Creator",
-            f"Creator-Name für die Route (z.B. Benutzername):",
-        )
-        if not ok_c or not creator.strip():
-            return
-
-        default_name = f"{platform.lower().replace(' / ', '-').replace(' ', '-')}-{creator.strip().lower()}"
-        name, ok2 = QtWidgets.QInputDialog.getText(
+        name, ok = QtWidgets.QInputDialog.getText(
             self, "Create Channel",
-            f"Channel-Name für '{platform} / {creator.strip()}':",
+            f"Channel-Name:",
             text=default_name,
         )
-        if not ok2 or not name.strip():
+        if not ok or not name.strip():
             return
 
         try:
@@ -680,23 +757,20 @@ class SetupWizardDialog(QtWidgets.QDialog):
         ch_id = ch_data.get("id")
         ch_name = ch_data.get("name", name.strip())
 
-        self._snapshot_cache = None  # invalidate
+        self._snapshot_cache = None
+        card_data["channel_name"].setText(ch_name)
+        card_data["channel_id"].setText(str(ch_id))
 
-        # Save to CHANNEL_MAP in social_media.json
-        platform_key = _PLATFORM_KEY_MAP.get(platform, "TWITCH")
-        self._save_social_route(platform_key, creator.strip().lower(), ch_id)
-
-        # Display the new channel in the wizard
-        self._add_extra_social_row(platform, creator.strip(), ch_name, ch_id)
+        # Persist immediately
+        self._save_social_channels(platform_key)
 
         QtWidgets.QMessageBox.information(
             self, "Create Channel",
-            f"✅ Channel '{ch_name}' erstellt und als Route gespeichert.\n"
-            f"Creator: {creator.strip()} → Channel: {ch_name} (ID: {ch_id})",
+            f"\u2705 Channel '{ch_name}' erstellt und gespeichert (ID: {ch_id})",
         )
 
-    def _on_pick_additional_social_channel(self):
-        """Pick an existing channel and store it in CHANNEL_MAP for a platform."""
+    def _on_social_pick_channel(self, platform_key: str, card_data: dict):
+        """Pick an existing channel and fill the card fields."""
         if not self._guild_id:
             QtWidgets.QMessageBox.warning(
                 self, "Pick Channel",
@@ -712,22 +786,6 @@ class SetupWizardDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.warning(self, "Pick", "Keine Guild-Daten verfügbar.")
             return
 
-        platform, ok = QtWidgets.QInputDialog.getItem(
-            self, "Platform",
-            "Für welche Plattform soll der Channel zugewiesen werden?",
-            _SOCIAL_PLATFORMS, 0, False,
-        )
-        if not ok or not platform:
-            return
-
-        creator, ok_c = QtWidgets.QInputDialog.getText(
-            self, "Creator",
-            f"Creator-Name für die Route (z.B. Benutzername):",
-        )
-        if not ok_c or not creator.strip():
-            return
-
-        # Show channel picker
         channels = list(guild.get("channels") or [])
         filtered = [c for c in channels if "category" not in str(c.get("type") or "").lower()]
         menu = QtWidgets.QMenu(self)
@@ -742,62 +800,48 @@ class SetupWizardDialog(QtWidgets.QDialog):
             return
 
         ch_id, ch_name = chosen.data()
+        card_data["channel_name"].setText(ch_name)
+        card_data["channel_id"].setText(str(ch_id))
 
-        # Save to CHANNEL_MAP in social_media.json
-        platform_key = _PLATFORM_KEY_MAP.get(platform, "TWITCH")
-        self._save_social_route(platform_key, creator.strip().lower(), ch_id)
+        # Persist immediately
+        self._save_social_channels(platform_key)
 
-        # Display the new channel in the wizard
-        self._add_extra_social_row(platform, creator.strip(), ch_name, ch_id)
-
-        QtWidgets.QMessageBox.information(
-            self, "Pick Channel",
-            f"✅ Route gespeichert.\n"
-            f"Creator: {creator.strip()} → Channel: {ch_name} (ID: {ch_id})",
-        )
-
-    def _save_social_route(self, platform_key: str, creator: str, channel_id):
-        """Persist a creator → channel route in CHANNEL_MAP for the given platform."""
+    def _save_social_channels(self, platform_key: str):
+        """Persist the CHANNELS list for a platform from the card widgets."""
         try:
+            if not hasattr(self, "_social_channel_cards"):
+                return
+            cards = self._social_channel_cards.get(platform_key, [])
             path = config_json_path(self._repo_root, "social_media.json",
                                     guild_id=self._guild_id)
             cfg = load_json_dict(path)
             if not isinstance(cfg.get(platform_key), dict):
                 cfg[platform_key] = {}
-            if not isinstance(cfg[platform_key].get("CHANNEL_MAP"), dict):
-                cfg[platform_key]["CHANNEL_MAP"] = {}
-            cfg[platform_key]["CHANNEL_MAP"][creator] = int(channel_id) if channel_id else 0
-            save_json_merged(path, cfg)
-            # Update cached config
+            channels = []
+            for card in cards:
+                creator_raw = (card["creator"].text() or "").strip()
+                additional_raw = (card["additional_creators"].text() or "").strip()
+                creators: list[str] = []
+                if creator_raw:
+                    creators.append(creator_raw)
+                if additional_raw:
+                    creators.extend([c.strip() for c in additional_raw.split(",") if c.strip()])
+                ch_name = (card["channel_name"].text() or "").strip()
+                ch_id_raw = (card["channel_id"].text() or "").strip()
+                if not ch_id_raw:
+                    continue
+                channels.append({
+                    "CREATORS": creators,
+                    "CHANNEL_NAME": ch_name,
+                    "CHANNEL_ID": int(ch_id_raw) if ch_id_raw.isdigit() else 0,
+                })
+            cfg[platform_key]["CHANNELS"] = channels
+            save_json_deep_merged(path, cfg)
             self._configs.pop("social_media", None)
         except Exception as exc:
             QtWidgets.QMessageBox.warning(
-                self, "Save Route", f"Route konnte nicht gespeichert werden: {exc}",
+                self, "Save", f"Channels konnten nicht gespeichert werden: {exc}",
             )
-
-    def _add_extra_social_row(self, platform: str, creator: str, ch_name: str, ch_id):
-        """Add a visible row for a newly created/picked additional social channel."""
-        if not hasattr(self, "_extra_social_layout"):
-            return
-        row = QtWidgets.QHBoxLayout()
-        row.setSpacing(6)
-
-        lbl = QtWidgets.QLabel(f"  ↳ {platform}: {creator}")
-        lbl.setFixedWidth(250)
-        lbl.setStyleSheet("color:#9aa0a6;")
-        row.addWidget(lbl)
-
-        name_field = QtWidgets.QLineEdit(ch_name)
-        name_field.setReadOnly(True)
-        name_field.setMinimumWidth(140)
-        row.addWidget(name_field, 1)
-
-        id_field = QtWidgets.QLineEdit(str(ch_id))
-        id_field.setReadOnly(True)
-        id_field.setMinimumWidth(160)
-        row.addWidget(id_field, 2)
-
-        self._extra_social_layout.addLayout(row)
 
     def _auto_save_field(self, file_name: str, key: str, value):
         """Immediately persist a single field value to the guild config file."""
@@ -849,8 +893,8 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 widget.setText(str(current))
         # Try to resolve names for existing channel/role IDs
         self._resolve_names_from_snapshot()
-        # Load existing CHANNEL_MAP routes for social media
-        self._load_existing_social_routes()
+        # Load existing social media channel configs
+        self._load_existing_social_channels()
 
     def _resolve_names_from_snapshot(self):
         """Try to resolve channel/role names for IDs already in input fields."""
@@ -878,9 +922,9 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 if resolved:
                     name_lbl.setText(resolved)
 
-    def _load_existing_social_routes(self):
-        """Load existing CHANNEL_MAP routes and display them in the wizard."""
-        if not hasattr(self, "_extra_social_layout"):
+    def _load_existing_social_channels(self):
+        """Load existing CHANNELS entries and display them as cards."""
+        if not hasattr(self, "_social_channel_cards"):
             return
         try:
             cfg = self._cfg("social_media")
@@ -890,7 +934,7 @@ class SetupWizardDialog(QtWidgets.QDialog):
             return
 
         # Resolve channel names from snapshot if available
-        ch_names = {}
+        ch_names: dict[str, str] = {}
         try:
             snapshot = self._fetch_snapshot()
             if snapshot:
@@ -901,18 +945,39 @@ class SetupWizardDialog(QtWidgets.QDialog):
         except Exception:
             pass
 
-        platform_display = {"TWITCH": "Twitch", "YOUTUBE": "YouTube",
-                            "TWITTER": "Twitter / X", "TIKTOK": "TikTok"}
-        for pkey, pname in platform_display.items():
-            section = cfg.get(pkey, {})
+        for platform_key, cards_list in self._social_channel_cards.items():
+            section = cfg.get(platform_key, {})
             if not isinstance(section, dict):
                 continue
-            channel_map = section.get("CHANNEL_MAP", {})
-            if not isinstance(channel_map, dict):
+            channels = section.get("CHANNELS", [])
+            if not isinstance(channels, list):
                 continue
-            for creator, ch_id in channel_map.items():
-                ch_name = ch_names.get(str(ch_id), "")
-                self._add_extra_social_row(pname, creator, ch_name, ch_id)
+            cards_layout = self._social_cards_layouts.get(platform_key)
+            if cards_layout is None:
+                continue
+            # Find platform_name from key
+            platform_name = {v: k for k, v in _PLATFORM_KEY_MAP.items()}.get(platform_key, platform_key)
+            for entry in channels:
+                if not isinstance(entry, dict):
+                    continue
+                card_data = self._add_social_card(
+                    platform_name, platform_key, cards_list, cards_layout,
+                )
+                creators = entry.get("CREATORS", [])
+                if isinstance(creators, str):
+                    creators = [c.strip() for c in creators.split(",") if c.strip()]
+                if creators:
+                    card_data["creator"].setText(creators[0])
+                    if len(creators) > 1:
+                        card_data["additional_creators"].setText(", ".join(creators[1:]))
+                ch_id = str(entry.get("CHANNEL_ID", "") or "")
+                ch_name = str(entry.get("CHANNEL_NAME", "") or "")
+                if ch_id and not ch_name:
+                    ch_name = ch_names.get(ch_id, "")
+                if ch_id == "0":
+                    ch_id = ""
+                card_data["channel_name"].setText(ch_name)
+                card_data["channel_id"].setText(ch_id)
 
     def _coerce_int(self, value: str, label: str) -> int:
         raw = str(value or "").strip()
@@ -960,7 +1025,7 @@ class SetupWizardDialog(QtWidgets.QDialog):
             if not self._validate_env_before_save(env_updates):
                 return
             # Files with nested keys (dot-notation) need deep merge to
-            # preserve sibling keys like ENABLED, USERNAMES, etc.
+            # preserve sibling keys like ENABLED, CHANNELS, etc.
             _NESTED_FILES = {"social_media"}
             for file_name, data in updates.items():
                 path = config_json_path(self._repo_root, f"{file_name}.json", guild_id=self._guild_id)
@@ -970,6 +1035,10 @@ class SetupWizardDialog(QtWidgets.QDialog):
                     save_json_merged(path, data)
             if env_updates is not None:
                 save_env_merged(self._repo_root, env_updates)
+            # Persist social channel cards (they are not in self._fields)
+            if hasattr(self, "_social_channel_cards"):
+                for platform_key in self._social_channel_cards:
+                    self._save_social_channels(platform_key)
             guild_label = f" for guild {self._guild_id}" if self._guild_id else ""
             QtWidgets.QMessageBox.information(
                 self,
@@ -1053,10 +1122,13 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 "• Create — erstellt den Channel/Rolle auf dem Discord Server und speichert die ID sofort\n"
                 "• Channel Name / ID — zeigt den aktuell gesetzten Channel\n"
                 "• Pick... — wähle einen bestehenden Channel/Rolle und speichert die ID sofort\n\n"
-                "Zusätzliche Social Channels:\n"
-                "• 'Create additional' — erstellt einen extra Channel für per-Creator Routing\n"
-                "• 'Pick additional' — wählt einen bestehenden Channel für per-Creator Routing\n"
-                "  Beide fragen nach Plattform und Creator-Name und speichern in CHANNEL_MAP.\n\n"
+                "Social Media — Pro-Channel + Creator Modell:\n"
+                "• Jede Plattform (Twitch, YouTube, Twitter/X, TikTok) hat Channel-Karten.\n"
+                "• Jede Karte = ein Discord-Channel + Creator + zusätzliche Creator(s).\n"
+                "• 'Additional … Channel' — neue Karte hinzufügen\n"
+                "• × — Karte entfernen\n"
+                "• Create — neuen Discord-Channel erstellen und in die Karte eintragen\n"
+                "• Pick — bestehenden Discord-Channel wählen und eintragen\n\n"
                 "Feature-Gruppen:\n"
                 "• Welcome & Verification: Channels + Rollen für Begrüßung\n"
                 "• Community: Count, Birthdays, Leveling Channels\n"
@@ -1064,7 +1136,8 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 "• Tickets: Kategorie, Log Channel, Support Rolle\n"
                 "• Logging: Chat/Member/Mod/Server/Voice Log Channels\n"
                 "• Member Count: Voice-Channel für Mitglieder-Anzeige\n"
-                "• Notifications: Free Stuff + Social Media Channels\n\n"
+                "• Notifications: Free Stuff Channel\n"
+                "• Social Media: Per-Channel Creator-Zuordnung\n\n"
                 "Alle IDs werden sofort beim Create/Pick gespeichert.",
             )
 
