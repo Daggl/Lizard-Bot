@@ -4,6 +4,7 @@ import re
 from config.config_io import (config_json_path, load_guild_config,
                               load_json_dict, save_json_merged)
 from PySide6 import QtCore, QtWidgets
+from services.control_api_client import send_cmd
 
 
 def _natural_sort_text_key(text: str) -> str:
@@ -79,23 +80,30 @@ class LevelingControllerMixin:
         try:
             rows = []
             if isinstance(rewards_cfg, dict):
-                for level_raw, role_name in rewards_cfg.items():
+                for level_raw, role_data in rewards_cfg.items():
                     try:
                         level = int(level_raw)
                     except Exception:
                         continue
-                    role = str(role_name or "").strip()
-                    if level > 0 and role:
-                        rows.append((level, role))
+                    # Support both legacy string ("Bronze") and new dict ({"name": "Bronze", "role_id": 123})
+                    if isinstance(role_data, dict):
+                        role_name = str(role_data.get("name", "") or "").strip()
+                        role_id = str(role_data.get("role_id", "") or "").strip()
+                    else:
+                        role_name = str(role_data or "").strip()
+                        role_id = ""
+                    if level > 0 and (role_name or role_id):
+                        rows.append((level, role_name, role_id))
             rows.sort(key=lambda it: it[0])
             table.setSortingEnabled(False)
             table.setRowCount(0)
-            for level, role in rows:
+            for level, role_name, role_id in rows:
                 row = table.rowCount()
                 table.insertRow(row)
                 level_item = _SortableTableItem(str(level), int(level))
                 table.setItem(row, 0, level_item)
-                table.setItem(row, 1, _SortableTableItem(role, str(role).lower()))
+                table.setItem(row, 1, _SortableTableItem(role_name, str(role_name).lower()))
+                table.setItem(row, 2, _SortableTableItem(role_id, str(role_id)))
             table.setSortingEnabled(True)
         except Exception:
             pass
@@ -147,9 +155,11 @@ class LevelingControllerMixin:
         for row in range(table.rowCount()):
             level_item = table.item(row, 0)
             role_item = table.item(row, 1)
+            id_item = table.item(row, 2)
             level_raw = str(level_item.text() if level_item else "").strip()
             role_name = str(role_item.text() if role_item else "").strip()
-            if not level_raw and not role_name:
+            role_id_raw = str(id_item.text() if id_item else "").strip()
+            if not level_raw and not role_name and not role_id_raw:
                 continue
             try:
                 level_int = int(level_raw)
@@ -157,9 +167,14 @@ class LevelingControllerMixin:
                 raise ValueError(f"Rewards row {row + 1}: invalid level ({exc})") from exc
             if level_int <= 0:
                 raise ValueError(f"Rewards row {row + 1}: level must be > 0")
-            if not role_name:
-                raise ValueError(f"Rewards row {row + 1}: role name is empty")
-            out[str(level_int)] = role_name
+            if not role_name and not role_id_raw:
+                raise ValueError(f"Rewards row {row + 1}: role name or ID is required")
+            entry = {"name": role_name}
+            if role_id_raw:
+                if not role_id_raw.isdigit():
+                    raise ValueError(f"Rewards row {row + 1}: Role ID must be digits only")
+                entry["role_id"] = int(role_id_raw)
+            out[str(level_int)] = entry
         return out
 
     def _collect_achievements_from_table(self) -> dict:
@@ -212,6 +227,7 @@ class LevelingControllerMixin:
         level_item = _SortableTableItem("1", 1)
         table.setItem(row, 0, level_item)
         table.setItem(row, 1, _SortableTableItem("Role Name", "role name"))
+        table.setItem(row, 2, _SortableTableItem("", ""))
         table.setCurrentCell(row, 0)
 
     def on_leveling_remove_reward_row(self):
@@ -221,6 +237,146 @@ class LevelingControllerMixin:
         row = table.currentRow()
         if row >= 0:
             table.removeRow(row)
+
+    # ------------------------------------------------------------------
+    # Pick / Create for reward roles
+    # ------------------------------------------------------------------
+
+    def _fetch_snapshot_cached(self) -> dict | None:
+        """Fetch guild snapshot (uses setup wizard cache if available)."""
+        try:
+            resp = send_cmd({"action": "guild_snapshot"}, timeout=8.0)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Snapshot", f"Bot nicht erreichbar: {exc}")
+            return None
+        if not resp.get("ok"):
+            QtWidgets.QMessageBox.warning(self, "Snapshot", f"Fehler: {resp}")
+            return None
+        return resp
+
+    def _get_guild_from_snapshot_local(self, snapshot: dict) -> dict | None:
+        guilds = list(snapshot.get("guilds") or [])
+        if not guilds:
+            return None
+        gid = getattr(self, "_active_guild_id", None)
+        if gid:
+            for g in guilds:
+                if str(g.get("id")) == str(gid):
+                    return g
+        return guilds[0]
+
+    def on_leveling_pick_reward_role(self):
+        """Pick an existing role from the server for the selected reward row."""
+        table = getattr(self, "lv_rewards_table", None)
+        if table is None:
+            return
+        row = table.currentRow()
+        if row < 0:
+            QtWidgets.QMessageBox.information(self, "Leveling", "Please select a reward row first.")
+            return
+
+        snapshot = self._fetch_snapshot_cached()
+        if not snapshot:
+            return
+        guild = self._get_guild_from_snapshot_local(snapshot)
+        if not guild:
+            QtWidgets.QMessageBox.warning(self, "Pick", "Keine Guild-Daten verfügbar.")
+            return
+
+        menu = QtWidgets.QMenu(self)
+        roles = list(guild.get("roles") or [])
+        if not roles:
+            menu.addAction("(keine Rollen gefunden)").setEnabled(False)
+        for role in roles:
+            rid = role.get("id")
+            rname = role.get("name", "unknown")
+            action = menu.addAction(f"@ {rname}")
+            action.setData((rid, rname))
+
+        chosen = menu.exec(self.cursor().pos())
+        if chosen and chosen.data():
+            chosen_id, chosen_name = chosen.data()
+            # Update Role name column
+            name_item = table.item(row, 1)
+            if name_item is None:
+                name_item = _SortableTableItem("", "")
+                table.setItem(row, 1, name_item)
+            name_item.setText(str(chosen_name))
+            # Update Role ID column
+            id_item = table.item(row, 2)
+            if id_item is None:
+                id_item = _SortableTableItem("", "")
+                table.setItem(row, 2, id_item)
+            id_item.setText(str(chosen_id))
+
+    def on_leveling_create_reward_role(self):
+        """Create a new role on the server for the selected reward row."""
+        table = getattr(self, "lv_rewards_table", None)
+        if table is None:
+            return
+        row = table.currentRow()
+        if row < 0:
+            QtWidgets.QMessageBox.information(self, "Leveling", "Please select a reward row first.")
+            return
+
+        gid = getattr(self, "_active_guild_id", None)
+        if not gid:
+            QtWidgets.QMessageBox.warning(
+                self, "Create Role",
+                "Keine aktive Guild. Bitte zuerst eine Guild im Dashboard auswählen.",
+            )
+            return
+
+        # Suggest a name from the current row
+        name_item = table.item(row, 1)
+        default_name = str(name_item.text() if name_item else "").strip() or "Reward Role"
+
+        name, ok = QtWidgets.QInputDialog.getText(
+            self, "Create Role",
+            f"Rollen-Name für Reward (Level {table.item(row, 0).text() if table.item(row, 0) else '?'}):",
+            text=default_name,
+        )
+        if not ok or not name.strip():
+            return
+
+        try:
+            resp = send_cmd({
+                "action": "create_role",
+                "guild_id": str(gid),
+                "role_name": name.strip(),
+            }, timeout=10.0)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Create Role", f"Fehler: {exc}")
+            return
+
+        if not resp.get("ok"):
+            QtWidgets.QMessageBox.warning(
+                self, "Create Role",
+                f"Rolle konnte nicht erstellt werden:\n{resp.get('error', resp)}",
+            )
+            return
+
+        role_data = resp.get("role", {})
+        role_id = role_data.get("id")
+        role_name = role_data.get("name", name.strip())
+
+        # Update table row
+        name_item = table.item(row, 1)
+        if name_item is None:
+            name_item = _SortableTableItem("", "")
+            table.setItem(row, 1, name_item)
+        name_item.setText(str(role_name))
+
+        id_item = table.item(row, 2)
+        if id_item is None:
+            id_item = _SortableTableItem("", "")
+            table.setItem(row, 2, id_item)
+        id_item.setText(str(role_id))
+
+        QtWidgets.QMessageBox.information(
+            self, "Create Role",
+            f"✅ Rolle '{role_name}' erstellt (ID: {role_id})",
+        )
 
     def on_leveling_add_achievement_row(self):
         table = getattr(self, "lv_achievements_table", None)

@@ -18,6 +18,7 @@ from controllers.features.features_controller import FeaturesControllerMixin
 from controllers.features.freestuff_controller import FreeStuffControllerMixin
 from controllers.features.leveling_controller import LevelingControllerMixin
 from controllers.features.socials_controller import SocialsControllerMixin
+from controllers.features.welcome_dm_controller import WelcomeDmControllerMixin
 from controllers.monitoring.dashboard_controller import \
     DashboardControllerMixin
 from controllers.monitoring.logs_controller import LogsControllerMixin
@@ -34,7 +35,8 @@ from core.startup_trace import write_startup_trace
 from PySide6 import QtCore, QtWidgets
 from ui.ui_tabs import (build_configs_tab, build_dashboard_tab, build_features_tab,
                         build_freestuff_tab, build_logs_tab, build_purge_tab,
-                        build_socials_tab, build_welcome_and_rank_tabs)
+                        build_socials_tab, build_welcome_and_rank_tabs,
+                        build_welcome_dm_tab)
 
 write_startup_trace()
 
@@ -42,7 +44,7 @@ write_startup_trace()
 install_exception_hook()
 
 
-class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysControllerMixin, FreeStuffControllerMixin, SocialsControllerMixin, LogsControllerMixin, DashboardControllerMixin, AdminControllerMixin, EmojiControllerMixin, PreviewControllerMixin, PreviewApiControllerMixin, PurgeControllerMixin, LifecycleControllerMixin, RuntimeCoreControllerMixin, QtWidgets.QMainWindow):
+class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysControllerMixin, FreeStuffControllerMixin, SocialsControllerMixin, WelcomeDmControllerMixin, LogsControllerMixin, DashboardControllerMixin, AdminControllerMixin, EmojiControllerMixin, PreviewControllerMixin, PreviewApiControllerMixin, PurgeControllerMixin, LifecycleControllerMixin, RuntimeCoreControllerMixin, QtWidgets.QMainWindow):
     _async_done = QtCore.Signal(object)
 
     def __init__(self):
@@ -76,6 +78,7 @@ class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysCont
         notif_tabs.setObjectName("subTabs")
         build_freestuff_tab(self, notif_tabs)
         build_socials_tab(self, notif_tabs)
+        build_welcome_dm_tab(self, notif_tabs)
         build_purge_tab(self, notif_tabs)
         tabs.addTab(notif_tabs, "Notifications")
 
@@ -402,6 +405,10 @@ class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysCont
             pass
         try:
             self._load_socials_config()
+        except Exception:
+            pass
+        try:
+            self._load_welcome_dm_config()
         except Exception:
             pass
         try:

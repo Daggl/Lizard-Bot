@@ -82,20 +82,39 @@ def get_level_xp_step(guild_id: int | str | None = None) -> int:
         return 50
 
 def get_level_rewards(guild_id: int | str | None = None) -> dict:
+    """Return ``{int_level: {"name": str, "role_id": int | None}}``.
+
+    Backward-compatible: legacy ``"5": "Bronze"`` entries are normalised to
+    ``{"name": "Bronze", "role_id": None}``.
+    """
     cfg = _cfg(guild_id)
     raw = cfg.get("LEVEL_REWARDS")
     if not isinstance(raw, dict):
         return {}
 
-    out = {}
-    for level_raw, role_name in raw.items():
+    out: dict[int, dict] = {}
+    for level_raw, value in raw.items():
         try:
             level = int(level_raw)
         except Exception:
             continue
-        role = str(role_name or "").strip()
-        if level > 0 and role:
-            out[level] = role
+        if level <= 0:
+            continue
+
+        if isinstance(value, dict):
+            name = str(value.get("name") or "").strip()
+            role_id_raw = value.get("role_id")
+            try:
+                role_id = int(role_id_raw) if role_id_raw else None
+            except (ValueError, TypeError):
+                role_id = None
+            if name:
+                out[level] = {"name": name, "role_id": role_id}
+        else:
+            # Legacy string format
+            name = str(value or "").strip()
+            if name:
+                out[level] = {"name": name, "role_id": None}
     return out
 
 

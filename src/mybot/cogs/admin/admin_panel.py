@@ -67,8 +67,16 @@ class AdminPanel(commands.Cog):
 
         # Check reward roles
         reward_lines: list[str] = []
-        for lvl, role_name in get_level_rewards().items():
-            role = discord.utils.get(guild.roles, name=role_name)
+        for lvl, rw_data in get_level_rewards().items():
+            if isinstance(rw_data, dict):
+                role_name = rw_data.get("name", "?")
+                role_id = rw_data.get("role_id")
+                role = guild.get_role(int(role_id)) if role_id else None
+                if role is None:
+                    role = discord.utils.get(guild.roles, name=role_name)
+            else:
+                role_name = str(rw_data)
+                role = discord.utils.get(guild.roles, name=role_name)
             if role:
                 reward_lines.append(f"Level {lvl} → {role_name} ✅")
             else:

@@ -73,7 +73,11 @@
     "LEVEL_XP_STEP": 0,
     "LEVEL_UP_MESSAGE_TEMPLATE": "",
     "ACHIEVEMENT_MESSAGE_TEMPLATE": "",
-    "LEVEL_REWARDS": {},
+    "LEVEL_REWARDS": {
+      "5":  {"name": "Bronze",  "role_id": 0},
+      "10": {"name": "Silver", "role_id": 0},
+      "20": {"name": "Gold",   "role_id": 0}
+    },
     "ACHIEVEMENTS": {}
   },
   "count": {

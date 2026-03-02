@@ -888,21 +888,33 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     lv_form.addRow("Achievement placeholders:", av_ph_widget)
 
     lv_form.addRow(_section_label("Rewards & Achievements"))
-    window.lv_rewards_table = QtWidgets.QTableWidget(0, 2)
-    window.lv_rewards_table.setHorizontalHeaderLabels(["Level", "Role name"])
+    window.lv_rewards_table = QtWidgets.QTableWidget(0, 3)
+    window.lv_rewards_table.setHorizontalHeaderLabels(["Level", "Role name", "Role ID"])
     window.lv_rewards_table.verticalHeader().setVisible(False)
     window.lv_rewards_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
     window.lv_rewards_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
     window.lv_rewards_table.horizontalHeader().setStretchLastSection(True)
+    window.lv_rewards_table.setColumnWidth(0, 70)
+    window.lv_rewards_table.setColumnWidth(1, 250)
     window.lv_rewards_table.setSortingEnabled(True)
     window.lv_rewards_table.setMinimumHeight(170)
     lv_form.addRow("Level rewards:", window.lv_rewards_table)
 
     rewards_btns = QtWidgets.QHBoxLayout()
+    rewards_btns.setSpacing(8)
     window.lv_rewards_add_btn = QtWidgets.QPushButton("Add reward")
     window.lv_rewards_remove_btn = QtWidgets.QPushButton("Remove selected")
+    window.lv_rewards_pick_btn = QtWidgets.QPushButton("Pick...")
+    window.lv_rewards_create_btn = QtWidgets.QPushButton("Create")
+    window.lv_rewards_pick_btn.setToolTip("Pick an existing role from the server for the selected reward row")
+    window.lv_rewards_create_btn.setToolTip("Create a new role on the server for the selected reward row")
+    for _b in (window.lv_rewards_add_btn, window.lv_rewards_remove_btn,
+               window.lv_rewards_pick_btn, window.lv_rewards_create_btn):
+        _b.setMinimumWidth(90)
     rewards_btns.addWidget(window.lv_rewards_add_btn)
     rewards_btns.addWidget(window.lv_rewards_remove_btn)
+    rewards_btns.addWidget(window.lv_rewards_pick_btn)
+    rewards_btns.addWidget(window.lv_rewards_create_btn)
     rewards_btns.addStretch()
     lv_form.addRow("", rewards_btns)
 
@@ -917,9 +929,13 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     lv_form.addRow("Achievements:", window.lv_achievements_table)
 
     ach_btns = QtWidgets.QHBoxLayout()
+    ach_btns.setSpacing(8)
     window.lv_achievements_add_btn = QtWidgets.QPushButton("Add achievement")
     window.lv_achievements_remove_btn = QtWidgets.QPushButton("Remove selected")
     window.lv_achievements_choose_image_btn = QtWidgets.QPushButton("Choose image...")
+    for _b in (window.lv_achievements_add_btn, window.lv_achievements_remove_btn,
+               window.lv_achievements_choose_image_btn):
+        _b.setMinimumWidth(90)
     ach_btns.addWidget(window.lv_achievements_add_btn)
     ach_btns.addWidget(window.lv_achievements_remove_btn)
     ach_btns.addWidget(window.lv_achievements_choose_image_btn)
@@ -1076,6 +1092,8 @@ def build_welcome_and_rank_tabs(window, tabs: QtWidgets.QTabWidget, QtCore):
     window.av_ph_achievement_name.clicked.connect(lambda: window._insert_placeholder_into(window.lv_achievement_msg, '{achievement_name}'))
     window.lv_rewards_add_btn.clicked.connect(window.on_leveling_add_reward_row)
     window.lv_rewards_remove_btn.clicked.connect(window.on_leveling_remove_reward_row)
+    window.lv_rewards_pick_btn.clicked.connect(window.on_leveling_pick_reward_role)
+    window.lv_rewards_create_btn.clicked.connect(window.on_leveling_create_reward_role)
     window.lv_achievements_add_btn.clicked.connect(window.on_leveling_add_achievement_row)
     window.lv_achievements_remove_btn.clicked.connect(window.on_leveling_remove_achievement_row)
     window.lv_achievements_choose_image_btn.clicked.connect(window.on_leveling_choose_achievement_image)
@@ -1530,6 +1548,127 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
     window.sm_save_reload.clicked.connect(lambda: window._save_socials_settings(reload_after=True))
 
     tabs.addTab(sm, "Social Media")
+
+
+# =====================================================================
+# Welcome DM tab
+# =====================================================================
+
+def build_welcome_dm_tab(window, tabs: QtWidgets.QTabWidget):
+    """Build the 'Welcome DM' tab for configuring DMs sent to new members."""
+    wdm = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(wdm)
+    layout.setContentsMargins(12, 12, 12, 12)
+    layout.setSpacing(10)
+
+    header = QtWidgets.QLabel("Welcome DM Configuration")
+    header.setObjectName("sectionLabel")
+    header.setStyleSheet("font-size: 15px; font-weight: bold; margin-bottom: 6px;")
+    layout.addWidget(header)
+
+    desc = QtWidgets.QLabel(
+        "Configure a private message sent to new members when they join.\n"
+        "Supports placeholders and an optional embed."
+    )
+    desc.setWordWrap(True)
+    desc.setStyleSheet("color: #9AA5B4; font-size: 12px; margin-bottom: 10px;")
+    layout.addWidget(desc)
+
+    form = QtWidgets.QFormLayout()
+    form.setHorizontalSpacing(10)
+    form.setVerticalSpacing(8)
+
+    window.wdm_enabled = QtWidgets.QCheckBox("Enabled")
+    form.addRow("", window.wdm_enabled)
+
+    window.wdm_message = QtWidgets.QPlainTextEdit()
+    window.wdm_message.setMinimumHeight(90)
+    window.wdm_message.setMaximumHeight(150)
+    window.wdm_message.setPlaceholderText(
+        "Welcome {user_name} to {guild_name}! We now have {member_count} members."
+    )
+    form.addRow("Message:", window.wdm_message)
+
+    # Placeholder buttons
+    ph_widget = QtWidgets.QWidget()
+    ph_grid = QtWidgets.QGridLayout(ph_widget)
+    ph_grid.setContentsMargins(0, 0, 0, 0)
+    ph_grid.setHorizontalSpacing(8)
+    ph_grid.setVerticalSpacing(8)
+    window.wdm_ph_mention = QtWidgets.QPushButton("{mention}")
+    window.wdm_ph_user_name = QtWidgets.QPushButton("{user_name}")
+    window.wdm_ph_display_name = QtWidgets.QPushButton("{display_name}")
+    window.wdm_ph_user_id = QtWidgets.QPushButton("{user_id}")
+    window.wdm_ph_guild_name = QtWidgets.QPushButton("{guild_name}")
+    window.wdm_ph_member_count = QtWidgets.QPushButton("{member_count}")
+    for _btn in (
+        window.wdm_ph_mention, window.wdm_ph_user_name,
+        window.wdm_ph_display_name, window.wdm_ph_user_id,
+        window.wdm_ph_guild_name, window.wdm_ph_member_count,
+    ):
+        try:
+            _btn.setMinimumHeight(34)
+        except Exception:
+            pass
+    ph_grid.addWidget(window.wdm_ph_mention, 0, 0)
+    ph_grid.addWidget(window.wdm_ph_user_name, 0, 1)
+    ph_grid.addWidget(window.wdm_ph_display_name, 0, 2)
+    ph_grid.addWidget(window.wdm_ph_user_id, 1, 0)
+    ph_grid.addWidget(window.wdm_ph_guild_name, 1, 1)
+    ph_grid.addWidget(window.wdm_ph_member_count, 1, 2)
+    form.addRow("Placeholders:", ph_widget)
+
+    window.wdm_embed_title = QtWidgets.QLineEdit()
+    window.wdm_embed_title.setPlaceholderText("Optional embed title")
+    form.addRow("Embed title:", window.wdm_embed_title)
+
+    window.wdm_embed_description = QtWidgets.QPlainTextEdit()
+    window.wdm_embed_description.setMinimumHeight(80)
+    window.wdm_embed_description.setMaximumHeight(140)
+    window.wdm_embed_description.setPlaceholderText("Optional embed description (supports placeholders)")
+    form.addRow("Embed description:", window.wdm_embed_description)
+
+    window.wdm_embed_color = QtWidgets.QLineEdit()
+    window.wdm_embed_color.setPlaceholderText("#5865F2")
+    window.wdm_embed_color.setMaximumWidth(140)
+    form.addRow("Embed color:", window.wdm_embed_color)
+
+    layout.addLayout(form)
+    layout.addStretch()
+
+    # Wire placeholder buttons to insert into message field
+    def _insert_ph(text):
+        cursor = window.wdm_message.textCursor()
+        cursor.insertText(text)
+        window.wdm_message.setFocus()
+
+    window.wdm_ph_mention.clicked.connect(lambda: _insert_ph("{mention}"))
+    window.wdm_ph_user_name.clicked.connect(lambda: _insert_ph("{user_name}"))
+    window.wdm_ph_display_name.clicked.connect(lambda: _insert_ph("{display_name}"))
+    window.wdm_ph_user_id.clicked.connect(lambda: _insert_ph("{user_id}"))
+    window.wdm_ph_guild_name.clicked.connect(lambda: _insert_ph("{guild_name}"))
+    window.wdm_ph_member_count.clicked.connect(lambda: _insert_ph("{member_count}"))
+
+    # Buttons
+    btn_row = QtWidgets.QHBoxLayout()
+    btn_row.addStretch()
+    window.wdm_save = QtWidgets.QPushButton("Save")
+    window.wdm_save_reload = QtWidgets.QPushButton("Save + Reload")
+    for _btn in (window.wdm_save, window.wdm_save_reload):
+        try:
+            _btn.setMinimumWidth(_btn.sizeHint().width() + 18)
+            _btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        except Exception:
+            pass
+    btn_row.addWidget(window.wdm_save)
+    btn_row.addWidget(window.wdm_save_reload)
+    layout.addLayout(btn_row)
+
+    # Wire signals
+    window.wdm_save.clicked.connect(lambda: window._save_welcome_dm_settings(reload_after=False))
+    window.wdm_save_reload.clicked.connect(lambda: window._save_welcome_dm_settings(reload_after=True))
+
+    tabs.addTab(wdm, "Welcome DM")
 
 
 # =====================================================================
