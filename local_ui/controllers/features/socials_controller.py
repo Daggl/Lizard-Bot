@@ -1,7 +1,7 @@
 """Controller mixin for per-guild Social Media configuration."""
 
 from config.config_io import (config_json_path, load_guild_config,
-                              save_json_merged)
+                              save_json)
 from PySide6 import QtWidgets
 
 
@@ -68,65 +68,59 @@ class SocialsControllerMixin:
         if not isinstance(cfg, dict):
             cfg = {}
 
-        try:
-            # Twitch
-            twitch = cfg.get("TWITCH", {}) if isinstance(cfg.get("TWITCH"), dict) else {}
-            if hasattr(self, "sm_twitch_enabled"):
-                self.sm_twitch_enabled.setChecked(bool(twitch.get("ENABLED", False)))
-            if hasattr(self, "sm_twitch_channel_id") and not self.sm_twitch_channel_id.hasFocus():
-                cid = str(twitch.get("CHANNEL_ID", "") or "").strip()
-                self.sm_twitch_channel_id.setText(cid if cid and cid != "0" else "")
-            if hasattr(self, "sm_twitch_usernames_table") and not self.sm_twitch_usernames_table.hasFocus():
-                _populate_table_from_csv(self.sm_twitch_usernames_table, twitch.get("USERNAMES", ""))
-            if hasattr(self, "sm_twitch_client_id") and not self.sm_twitch_client_id.hasFocus():
-                self.sm_twitch_client_id.setText(str(twitch.get("CLIENT_ID", "") or ""))
-            if hasattr(self, "sm_twitch_oauth") and not self.sm_twitch_oauth.hasFocus():
-                self.sm_twitch_oauth.setText(str(twitch.get("OAUTH_TOKEN", "") or ""))
-            if hasattr(self, "sm_twitch_routes_table") and not self.sm_twitch_routes_table.hasFocus():
-                _populate_route_table(self.sm_twitch_routes_table, twitch.get("CHANNEL_MAP", {}))
+        def _load_platform(section_key, prefix, extra_fields=None):
+            """Load one platform section into the UI widgets."""
+            try:
+                section = cfg.get(section_key, {})
+                if not isinstance(section, dict):
+                    section = {}
 
-            # YouTube
-            youtube = cfg.get("YOUTUBE", {}) if isinstance(cfg.get("YOUTUBE"), dict) else {}
-            if hasattr(self, "sm_youtube_enabled"):
-                self.sm_youtube_enabled.setChecked(bool(youtube.get("ENABLED", False)))
-            if hasattr(self, "sm_youtube_channel_id") and not self.sm_youtube_channel_id.hasFocus():
-                cid = str(youtube.get("CHANNEL_ID", "") or "").strip()
-                self.sm_youtube_channel_id.setText(cid if cid and cid != "0" else "")
-            if hasattr(self, "sm_youtube_ids_table") and not self.sm_youtube_ids_table.hasFocus():
-                _populate_table_from_csv(self.sm_youtube_ids_table, youtube.get("YOUTUBE_CHANNEL_IDS", ""))
-            if hasattr(self, "sm_youtube_routes_table") and not self.sm_youtube_routes_table.hasFocus():
-                _populate_route_table(self.sm_youtube_routes_table, youtube.get("CHANNEL_MAP", {}))
+                enabled_chk = getattr(self, f"{prefix}_enabled", None)
+                if enabled_chk is not None:
+                    enabled_chk.setChecked(bool(section.get("ENABLED", False)))
 
-            # Twitter/X
-            twitter = cfg.get("TWITTER", {}) if isinstance(cfg.get("TWITTER"), dict) else {}
-            if hasattr(self, "sm_twitter_enabled"):
-                self.sm_twitter_enabled.setChecked(bool(twitter.get("ENABLED", False)))
-            if hasattr(self, "sm_twitter_channel_id") and not self.sm_twitter_channel_id.hasFocus():
-                cid = str(twitter.get("CHANNEL_ID", "") or "").strip()
-                self.sm_twitter_channel_id.setText(cid if cid and cid != "0" else "")
-            if hasattr(self, "sm_twitter_bearer") and not self.sm_twitter_bearer.hasFocus():
-                self.sm_twitter_bearer.setText(str(twitter.get("BEARER_TOKEN", "") or ""))
-            if hasattr(self, "sm_twitter_usernames_table") and not self.sm_twitter_usernames_table.hasFocus():
-                _populate_table_from_csv(self.sm_twitter_usernames_table, twitter.get("USERNAMES", ""))
-            if hasattr(self, "sm_twitter_routes_table") and not self.sm_twitter_routes_table.hasFocus():
-                _populate_route_table(self.sm_twitter_routes_table, twitter.get("CHANNEL_MAP", {}))
+                cid_widget = getattr(self, f"{prefix}_channel_id", None)
+                if cid_widget is not None and not cid_widget.hasFocus():
+                    cid = str(section.get("CHANNEL_ID", "") or "").strip()
+                    cid_widget.setText(cid if cid and cid != "0" else "")
 
-            # TikTok
-            tiktok = cfg.get("TIKTOK", {}) if isinstance(cfg.get("TIKTOK"), dict) else {}
-            if hasattr(self, "sm_tiktok_enabled"):
-                self.sm_tiktok_enabled.setChecked(bool(tiktok.get("ENABLED", False)))
-            if hasattr(self, "sm_tiktok_channel_id") and not self.sm_tiktok_channel_id.hasFocus():
-                cid = str(tiktok.get("CHANNEL_ID", "") or "").strip()
-                self.sm_tiktok_channel_id.setText(cid if cid and cid != "0" else "")
-            if hasattr(self, "sm_tiktok_usernames_table") and not self.sm_tiktok_usernames_table.hasFocus():
-                _populate_table_from_csv(self.sm_tiktok_usernames_table, tiktok.get("USERNAMES", ""))
-            if hasattr(self, "sm_tiktok_routes_table") and not self.sm_tiktok_routes_table.hasFocus():
-                _populate_route_table(self.sm_tiktok_routes_table, tiktok.get("CHANNEL_MAP", {}))
-        except Exception:
-            pass
+                routes_table = getattr(self, f"{prefix}_routes_table", None)
+                if routes_table is not None and not routes_table.hasFocus():
+                    _populate_route_table(routes_table, section.get("CHANNEL_MAP", {}))
+
+                for field_key, widget_attr in (extra_fields or []):
+                    widget = getattr(self, widget_attr, None)
+                    if widget is None:
+                        continue
+                    if isinstance(widget, QtWidgets.QTableWidget):
+                        if not widget.hasFocus():
+                            _populate_table_from_csv(widget, section.get(field_key, ""))
+                    elif hasattr(widget, "setText") and not widget.hasFocus():
+                        widget.setText(str(section.get(field_key, "") or ""))
+            except Exception:
+                pass
+
+        _load_platform("TWITCH", "sm_twitch", [
+            ("USERNAMES", "sm_twitch_usernames_table"),
+            ("CLIENT_ID", "sm_twitch_client_id"),
+            ("OAUTH_TOKEN", "sm_twitch_oauth"),
+        ])
+        _load_platform("YOUTUBE", "sm_youtube", [
+            ("YOUTUBE_CHANNEL_IDS", "sm_youtube_ids_table"),
+        ])
+        _load_platform("TWITTER", "sm_twitter", [
+            ("BEARER_TOKEN", "sm_twitter_bearer"),
+            ("USERNAMES", "sm_twitter_usernames_table"),
+        ])
+        _load_platform("TIKTOK", "sm_tiktok", [
+            ("USERNAMES", "sm_tiktok_usernames_table"),
+        ])
 
     def _save_socials_config(self, data: dict):
-        save_json_merged(self._socials_config_path(), data or {})
+        path = self._socials_config_path()
+        if not path:
+            return
+        save_json(path, data or {})
 
     def _on_reload_after_save_socials(self, r: dict):
         try:

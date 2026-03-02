@@ -7,6 +7,8 @@ try:
     from mybot.utils.config_store import config_json_path as _config_json_path
     from mybot.utils.config_store import global_config_path as _global_config_path
     from mybot.utils.config_store import load_json_dict as _load_json_dict
+    from mybot.utils.config_store import save_json as _save_json
+    from mybot.utils.config_store import save_json_deep_merged as _save_json_deep_merged
     from mybot.utils.config_store import save_json_merged as _save_json_merged
     from mybot.utils.env_store import ensure_env_file as _ensure_env_file
     from mybot.utils.env_store import env_file_path as _env_file_path
@@ -21,6 +23,8 @@ except Exception:
     from mybot.utils.config_store import config_json_path as _config_json_path
     from mybot.utils.config_store import global_config_path as _global_config_path
     from mybot.utils.config_store import load_json_dict as _load_json_dict
+    from mybot.utils.config_store import save_json as _save_json
+    from mybot.utils.config_store import save_json_deep_merged as _save_json_deep_merged
     from mybot.utils.config_store import save_json_merged as _save_json_merged
     from mybot.utils.env_store import ensure_env_file as _ensure_env_file
     from mybot.utils.env_store import env_file_path as _env_file_path
@@ -57,8 +61,18 @@ def load_guild_config(repo_root: str, filename: str, guild_id: str | int | None 
     return {}
 
 
+def save_json(path: str, data) -> bool:
+    """Atomically write *data* as JSON (full replacement, no merge)."""
+    return _save_json(path, data)
+
+
 def save_json_merged(path: str, data: dict) -> dict:
     return _save_json_merged(path, data)
+
+
+def save_json_deep_merged(path: str, data: dict) -> dict:
+    """Deep-merge *data* into an existing file (preserves nested keys)."""
+    return _save_json_deep_merged(path, data)
 
 
 def env_file_path(repo_root: str) -> str:

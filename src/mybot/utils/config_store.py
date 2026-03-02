@@ -81,12 +81,45 @@ def save_json(path: str, data: Any, indent: int = 2) -> bool:
         return False
 
 
+def _deep_update(target: dict, source: dict) -> dict:
+    """Recursively merge *source* into *target* (in-place).
+
+    Scalar values in *source* overwrite those in *target*.  When both sides
+    contain a ``dict`` for the same key the merge recurses so nested keys that
+    are only present in *target* are preserved.
+    """
+    for key, value in source.items():
+        if isinstance(value, dict) and isinstance(target.get(key), dict):
+            _deep_update(target[key], value)
+        else:
+            target[key] = value
+    return target
+
+
 def save_json_merged(path: str, data: dict) -> dict:
     """Merge *data* into an existing JSON file and save atomically.
+
+    Uses a shallow merge (``dict.update``) so that top-level keys present in
+    the file but absent from *data* are preserved, while any key present in
+    *data* fully replaces the file version (including nested dicts).
 
     Returns the merged dictionary.
     """
     existing = load_json_dict(path)
     existing.update(data or {})
+    save_json(path, existing, indent=2)
+    return existing
+
+
+def save_json_deep_merged(path: str, data: dict) -> dict:
+    """Deep-merge *data* into an existing JSON file and save atomically.
+
+    Nested dicts are merged recursively so that keys present in the file
+    but absent from *data* are preserved at every nesting level.
+
+    Returns the merged dictionary.
+    """
+    existing = load_json_dict(path)
+    _deep_update(existing, data or {})
     save_json(path, existing, indent=2)
     return existing
