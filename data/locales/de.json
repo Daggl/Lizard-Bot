@@ -4,7 +4,7 @@
   "help.embed.title": "🤖 Bot Hilfe & Tutorials",
   "help.embed.description": "Hier findest du alle Funktionen erklärt.\n\nBefehl: `/help`\nAliase: `/tutorial`, `/hilfe`",
   "help.section.level_system.title": "🏆 Level System",
-  "help.section.level_system.body": "**Wie funktioniert es?**\n• Du bekommst XP durch Chatten und Voice\n• Höhere Level schalten Rollen & Belohnungen frei\n\n**Befehle:**\n`/rank` → Zeigt deinen Fortschritt\n`/leaderboard` → Server-Rangliste",
+  "help.section.level_system.body": "**Wie funktioniert es?**\n• Du bekommst XP durch Chatten und Voice\n• Höhere Level schalten Rollen & Belohnungen frei\n• Niedrigere Belohnungsrollen werden automatisch entfernt\n\n**Befehle:**\n`/rank` → Zeigt deinen Fortschritt\n`/leaderboard` → Server-Rangliste",
   "help.section.polls.title": "📊 Umfragen",
   "help.section.polls.body": "**Erstelle Umfragen für den Server**\n\n`/poll <frage>`\n➡ Beispiel:\n`/poll Mögt ihr Pizza?`",
   "help.section.birthdays.title": "🎂 Geburtstage",
@@ -229,5 +229,9 @@
   "welcome_dm.msg.test_sent": "✅ Test-DM gesendet. Prüfe deine Direktnachrichten!",
   "welcome_dm.error.not_configured": "❌ Keine Willkommens-DM konfiguriert. Nutze `/setwelcomedm` oder die UI.",
   "welcome_dm.error.dm_blocked": "❌ DM konnte nicht gesendet werden — Direktnachrichten sind deaktiviert.",
-  "welcome_dm.info.title": "📨 Willkommens-DM Konfiguration"
+  "welcome_dm.info.title": "📨 Willkommens-DM Konfiguration",
+  "reward.msg.assigned": "🎉 Du hast die Belohnungsrolle **{role}** erhalten!",
+  "reward.msg.old_removed": "♻ Alte Belohnungsrolle **{role}** wurde entfernt.",
+  "reward.error.assign_failed": "❌ Belohnungsrolle **{role}** konnte nicht zugewiesen werden.",
+  "config.msg.keys_merged": "✅ {count} fehlende Config-Keys wurden automatisch hinzugefügt."
 }

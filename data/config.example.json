@@ -141,6 +141,27 @@
     "EMBED_DESCRIPTION": "",
     "EMBED_COLOR": "#5865F2"
   },
+  "membercount": {
+    "CHANNEL_ID": 0,
+    "TEMPLATE": "{count} \ud83d\udc65 Members"
+  },
+  "features": {
+    "leveling": true,
+    "achievements": true,
+    "birthdays": true,
+    "polls": true,
+    "counting": true,
+    "welcome": true,
+    "tickets": true,
+    "tempvoice": true,
+    "music": true,
+    "logging": true,
+    "memes": true,
+    "membercount": true,
+    "freestuff": true,
+    "socials": true,
+    "welcome_dm": true
+  },
   "language": {
     "DEFAULT_LANGUAGE": "",
     "GUILD_LANGUAGES": {}

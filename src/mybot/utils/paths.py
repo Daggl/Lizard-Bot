@@ -175,17 +175,26 @@ _CONFIG_DEFAULTS: dict[str, dict] = {
             "USERNAMES": "",
             "CLIENT_ID": "",
             "OAUTH_TOKEN": "",
+            "CHANNEL_MAP": {},
         },
         "YOUTUBE": {
             "ENABLED": False,
             "CHANNEL_ID": 0,
             "YOUTUBE_CHANNEL_IDS": "",
+            "CHANNEL_MAP": {},
         },
         "TWITTER": {
             "ENABLED": False,
             "CHANNEL_ID": 0,
             "BEARER_TOKEN": "",
             "USERNAMES": "",
+            "CHANNEL_MAP": {},
+        },
+        "TIKTOK": {
+            "ENABLED": False,
+            "CHANNEL_ID": 0,
+            "USERNAMES": "",
+            "CHANNEL_MAP": {},
         },
         "CUSTOM": {
             "ENABLED": False,
@@ -244,6 +253,34 @@ _CONFIG_DEFAULTS: dict[str, dict] = {
         "DEFAULT_LANGUAGE": "",
         "GUILD_LANGUAGES": {},
     },
+    "welcome_dm.json": {
+        "ENABLED": False,
+        "MESSAGE": "",
+        "EMBED_TITLE": "",
+        "EMBED_DESCRIPTION": "",
+        "EMBED_COLOR": "#5865F2",
+    },
+    "membercount.json": {
+        "CHANNEL_ID": 0,
+        "TEMPLATE": "{count} \ud83d\udc65 Members",
+    },
+    "features.json": {
+        "leveling": True,
+        "achievements": True,
+        "birthdays": True,
+        "polls": True,
+        "counting": True,
+        "welcome": True,
+        "tickets": True,
+        "tempvoice": True,
+        "music": True,
+        "logging": True,
+        "memes": True,
+        "membercount": True,
+        "freestuff": True,
+        "socials": True,
+        "welcome_dm": True,
+    },
     "local_ui.json": {
         "event_test_channel_id": "",
         "safe_read_only": False,
@@ -267,18 +304,35 @@ _DATA_DEFAULTS: dict[str, dict] = {
     "birthdays_data.json": {},
     "birthdays_sent.json": {},
     "freestuff_data.json": {"posted": []},
-    "social_media_data.json": {"twitch": [], "youtube": [], "twitter": [], "custom": []},
+    "social_media_data.json": {"twitch": [], "youtube": [], "twitter": [], "tiktok": [], "custom": []},
 }
 
 # Combined for convenience
 _ALL_GUILD_FILES: dict[str, dict] = {**_CONFIG_DEFAULTS, **_DATA_DEFAULTS}
 
 
-def ensure_guild_configs(guild_id: int | str) -> None:
-    """Create all expected JSON files for a guild if they don't already exist.
+def _deep_merge(base: dict, overlay: dict) -> dict:
+    """Recursively merge *base* defaults into *overlay* without overwriting.
 
-    This ensures every guild directory has the full set of config and runtime
-    data files.  Existing files are **never** overwritten.
+    Only keys missing from *overlay* (at any nesting level) are filled in
+    from *base*.  Existing values in *overlay* are never changed.
+    """
+    merged = dict(overlay)
+    for key, default_val in base.items():
+        if key not in merged:
+            merged[key] = default_val
+        elif isinstance(default_val, dict) and isinstance(merged[key], dict):
+            merged[key] = _deep_merge(default_val, merged[key])
+    return merged
+
+
+def ensure_guild_configs(guild_id: int | str) -> None:
+    """Create or update all expected JSON files for a guild.
+
+    * Missing files are created with full defaults.
+    * Existing files are checked for missing top-level (and nested) keys;
+      any absent keys are filled in from the template without touching
+      values the user has already set.
     """
     gid = str(guild_id)
     guild_dir = os.path.join(GUILDS_DIR, gid)
@@ -286,11 +340,27 @@ def ensure_guild_configs(guild_id: int | str) -> None:
 
     for filename, default in _ALL_GUILD_FILES.items():
         filepath = os.path.join(guild_dir, filename)
-        if os.path.exists(filepath):
+        if not os.path.exists(filepath):
+            # File missing — create with full defaults
+            try:
+                with open(filepath, "w", encoding="utf-8") as fh:
+                    json.dump(default, fh, indent=2, ensure_ascii=False)
+            except Exception:
+                pass
+            continue
+
+        # File exists — merge missing keys
+        if not isinstance(default, dict) or not default:
             continue
         try:
-            with open(filepath, "w", encoding="utf-8") as fh:
-                json.dump(default, fh, indent=2, ensure_ascii=False)
+            with open(filepath, "r", encoding="utf-8") as fh:
+                existing = json.load(fh)
+            if not isinstance(existing, dict):
+                existing = {}
+            merged = _deep_merge(default, existing)
+            if merged != existing:
+                with open(filepath, "w", encoding="utf-8") as fh:
+                    json.dump(merged, fh, indent=2, ensure_ascii=False)
         except Exception:
             pass
 

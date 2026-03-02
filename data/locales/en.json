@@ -4,7 +4,7 @@
   "help.embed.title": "🤖 Bot Help & Tutorials",
   "help.embed.description": "Here you can find all features explained.\n\nCommand: `/help`\nAliases: `/tutorial`, `/hilfe`",
   "help.section.level_system.title": "🏆 Level System",
-  "help.section.level_system.body": "**How does it work?**\n• You gain XP by chatting and voice chat\n• Higher levels give roles & rewards\n\n**Commands:**\n`/rank` → Shows your progress\n`/leaderboard` → Server leaderboard",
+  "help.section.level_system.body": "**How does it work?**\n• You gain XP by chatting and voice chat\n• Higher levels give roles & rewards\n• Lower reward roles are automatically removed when you earn a higher one\n\n**Commands:**\n`/rank` → Shows your progress\n`/leaderboard` → Server leaderboard",
   "help.section.polls.title": "📊 Polls",
   "help.section.polls.body": "**Create polls for the server**\n\n`/poll <question>`\n➡ Example:\n`/poll Do you like pizza?`",
   "help.section.birthdays.title": "🎂 Birthdays",
@@ -229,5 +229,9 @@
   "welcome_dm.msg.test_sent": "✅ Test DM sent. Check your DMs!",
   "welcome_dm.error.not_configured": "❌ No welcome DM configured. Use `/setwelcomedm` or the UI.",
   "welcome_dm.error.dm_blocked": "❌ Could not send DM — your DMs are disabled.",
-  "welcome_dm.info.title": "📨 Welcome DM Configuration"
+  "welcome_dm.info.title": "📨 Welcome DM Configuration",
+  "reward.msg.assigned": "🎉 You earned the **{role}** reward role!",
+  "reward.msg.old_removed": "♻ Old reward role **{role}** was removed.",
+  "reward.error.assign_failed": "❌ Could not assign reward role **{role}**.",
+  "config.msg.keys_merged": "✅ {count} missing config keys were added automatically."
 }

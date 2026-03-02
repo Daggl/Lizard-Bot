@@ -14,7 +14,9 @@ and what values you can safely put into each config.
 - **Persistent bot data**: `data/` (for example `data/levels.json`)
 - **Assets (images/fonts)**: `assets/`
 
-If a config file is missing, run startup once (`start_all.py`) so the project can create defaults.
+Missing config files are created automatically on startup or when switching
+guilds.  Missing keys inside existing config files are merged in from the
+template so new features work immediately.
 
 ## 1) Quick Start
 
@@ -61,6 +63,12 @@ Use this tab to control rank card styling and leveling announcements.
 - **Messages**:
     - **Level-up message** (embed description)
     - **Achievement message**
+- **Rewards table**: Define which role is awarded at which level.
+  Each row has: Level, Role name, Role ID.
+  - **Pick...**: Select an existing role from the server.
+  - **Create**: Create a new role on the server.
+  - When a member reaches a reward level, the new role is **automatically assigned**
+    and any lower-level reward role is **automatically removed**.
 - Placeholder examples:
     - Level-up: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{level}`
     - Achievement: `{member_mention}`, `{member_name}`, `{member_display_name}`, `{member_id}`, `{guild_name}`, `{achievement_name}`
@@ -153,6 +161,8 @@ Use this tab when you want direct control over JSON values.
 - `freestuff.json` — free stuff channel/sources
 - `social_media.json` — social media feed config (Twitch, YouTube, Twitter/X, TikTok)
 - `welcome_dm.json` — welcome DM message/embed for new members
+- `membercount.json` — member count voice channel ID and name template
+- `features.json` — toggle individual features on/off per guild
 
 If you are unsure which key is required, compare with `data/config.example.json`.
 
@@ -233,8 +243,7 @@ Use these commands as the fastest per-feature smoke test:
 - Utility/Admin: `/testsay Hello world`, `/adminpanel` — validates admin embed send + status panel rendering.
 - Logs: `/testlog system Quick check` + real events — validates DB log write plus channel log pipelines.
 - Social Media: `/testsocials` — validates social media feed check for the guild.
-- Welcome DM: `/testwelcomedm` — sends a test welcome DM to yourself.
-
+- Welcome DM: `/testwelcomedm` — sends a test welcome DM to yourself.- Member Count: configured in the setup wizard or `membercount.json`
 ---
 
 ## Core

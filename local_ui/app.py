@@ -327,10 +327,11 @@ class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysCont
         self._init_timers()
 
     def _ensure_guild_configs_from_example(self, guild_id: str):
-        """Create missing config files for a guild from config.example.json.
+        """Create or update config files for a guild from config.example.json.
 
-        Reads ``data/config.example.json`` and creates any missing
-        ``{key}.json`` files into ``config/guilds/{guild_id}/``.
+        Reads ``data/config.example.json`` and for each section:
+        - creates the ``{key}.json`` file if missing
+        - merges any missing keys into existing files without overwriting
         """
         import json as _json
         import os as _os
@@ -355,23 +356,45 @@ class MainWindow(FeaturesControllerMixin, LevelingControllerMixin, BirthdaysCont
         if not isinstance(example, dict):
             return
 
-        # Check and create any missing config files
+        def _deep_merge(base, overlay):
+            merged = dict(overlay)
+            for k, v in base.items():
+                if k not in merged:
+                    merged[k] = v
+                elif isinstance(v, dict) and isinstance(merged[k], dict):
+                    merged[k] = _deep_merge(v, merged[k])
+            return merged
+
         created = 0
+        updated = 0
         for key, value in example.items():
             fname = f"{key}.json"
             fpath = _os.path.join(guild_dir, fname)
-            if _os.path.exists(fpath):
-                continue
-            try:
-                with open(fpath, "w", encoding="utf-8") as fh:
-                    _json.dump(value, fh, indent=2, ensure_ascii=False)
-                created += 1
-            except Exception:
-                pass
+            if not _os.path.exists(fpath):
+                try:
+                    with open(fpath, "w", encoding="utf-8") as fh:
+                        _json.dump(value, fh, indent=2, ensure_ascii=False)
+                    created += 1
+                except Exception:
+                    pass
+            elif isinstance(value, dict) and value:
+                try:
+                    with open(fpath, "r", encoding="utf-8") as fh:
+                        existing = _json.load(fh)
+                    if not isinstance(existing, dict):
+                        existing = {}
+                    merged = _deep_merge(value, existing)
+                    if merged != existing:
+                        with open(fpath, "w", encoding="utf-8") as fh:
+                            _json.dump(merged, fh, indent=2, ensure_ascii=False)
+                        updated += 1
+                except Exception:
+                    pass
 
-        if created > 0:
+        total = created + updated
+        if total > 0:
             try:
-                self._set_status(f"Created {created} missing configs for guild {guild_id}")
+                self._set_status(f"Created {created} / updated {updated} configs for guild {guild_id}")
             except Exception:
                 pass
 

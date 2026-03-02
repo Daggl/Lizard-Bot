@@ -61,6 +61,26 @@ _WIZARD_FILE_TO_FEATURE = {
     "social_media": "socials",
 }
 
+
+def _get_nested(d: dict, dotted_key: str, default=""):
+    """Read a value from a nested dict using dot notation (e.g. TWITCH.CHANNEL_ID)."""
+    parts = dotted_key.split(".")
+    cur = d
+    for p in parts[:-1]:
+        cur = cur.get(p, {}) if isinstance(cur, dict) else {}
+    return cur.get(parts[-1], default) if isinstance(cur, dict) else default
+
+
+def _set_nested(d: dict, dotted_key: str, value):
+    """Set a value in a nested dict using dot notation (e.g. TWITCH.CHANNEL_ID)."""
+    parts = dotted_key.split(".")
+    cur = d
+    for p in parts[:-1]:
+        if p not in cur or not isinstance(cur[p], dict):
+            cur[p] = {}
+        cur = cur[p]
+    cur[parts[-1]] = value
+
 # Determine the default channel type for "Create" based on field key
 def _channel_type_for_key(key: str) -> str:
     key_upper = str(key).upper()
@@ -650,6 +670,8 @@ class SetupWizardDialog(QtWidgets.QDialog):
         for (file_name, key), (widget, field_type) in self._fields.items():
             if file_name == "__env__":
                 current = (self._env_values or {}).get(key, "")
+            elif "." in key:
+                current = _get_nested(self._cfg(file_name), key)
             else:
                 current = self._cfg(file_name).get(key, "")
             if current is None:
@@ -718,7 +740,12 @@ class SetupWizardDialog(QtWidgets.QDialog):
             else:
                 value = raw
 
-            updates.setdefault(file_name, {})[key] = value
+            if "." in key and file_name != "__env__":
+                # Nested key — build the nested dict structure
+                updates.setdefault(file_name, {})
+                _set_nested(updates[file_name], key, value)
+            else:
+                updates.setdefault(file_name, {})[key] = value
         return updates
 
     def _save_and_close(self):
@@ -821,7 +848,9 @@ class SetupWizardDialog(QtWidgets.QDialog):
                 "• TempVoice: Join-to-create Hub, Control Panel, Kategorie\n"
                 "• Tickets: Kategorie, Log Channel, Support Rolle\n"
                 "• Logging: Chat/Member/Mod/Server/Voice Log Channels\n"
-                "• Notifications: Free Stuff + Social Media Channels",
+                "• Member Count: Voice-Channel für Mitglieder-Anzeige\n"
+                "• Notifications: Free Stuff + Social Media Channels\n\n"
+                "Fehlende Config-Dateien und Keys werden automatisch erstellt.",
             )
 
         return (
