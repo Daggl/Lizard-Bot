@@ -1318,7 +1318,8 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
 
     desc = QtWidgets.QLabel(
         "Configure social media feeds. The bot checks every 5 minutes and posts\n"
-        "notifications to the configured Discord channels per source."
+        "notifications to the configured Discord channels per source.\n"
+        "Use the Channel Routes table to send specific creators to different channels."
     )
     desc.setWordWrap(True)
     desc.setStyleSheet("color: #9AA5B4; font-size: 12px; margin-bottom: 10px;")
@@ -1370,6 +1371,50 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
 
         return table
 
+    def _make_route_table(parent_layout):
+        """Create a 2-column table (Creator, Channel ID) for per-creator routing."""
+        lbl = QtWidgets.QLabel("Channel Routes (per-creator → channel):")
+        lbl.setStyleSheet("margin-top:6px;")
+        parent_layout.addWidget(lbl)
+
+        table = QtWidgets.QTableWidget(0, 2)
+        table.setHorizontalHeaderLabels(["Creator", "Channel ID"])
+        table.horizontalHeader().setStretchLastSection(True)
+        table.verticalHeader().setVisible(False)
+        table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        table.setMinimumHeight(70)
+        table.setMaximumHeight(130)
+
+        btn_row = QtWidgets.QHBoxLayout()
+        add_btn = QtWidgets.QPushButton("+ Add Route")
+        remove_btn = QtWidgets.QPushButton("\u2212 Remove Route")
+        add_btn.setFixedWidth(100)
+        remove_btn.setFixedWidth(110)
+        btn_row.addWidget(add_btn)
+        btn_row.addWidget(remove_btn)
+        btn_row.addStretch()
+
+        parent_layout.addWidget(table)
+        parent_layout.addLayout(btn_row)
+
+        def _on_add():
+            row = table.rowCount()
+            table.insertRow(row)
+            table.setItem(row, 0, QtWidgets.QTableWidgetItem(""))
+            table.setItem(row, 1, QtWidgets.QTableWidgetItem(""))
+            table.editItem(table.item(row, 0))
+
+        def _on_remove():
+            sel = table.currentRow()
+            if sel >= 0:
+                table.removeRow(sel)
+
+        add_btn.clicked.connect(_on_add)
+        remove_btn.clicked.connect(_on_remove)
+
+        return table
+
     # --- Twitch ---
     twitch_box = QtWidgets.QGroupBox("Twitch")
     twitch_vbox = QtWidgets.QVBoxLayout(twitch_box)
@@ -1394,6 +1439,7 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
 
     twitch_vbox.addWidget(QtWidgets.QLabel("Monitored Twitch Usernames:"))
     window.sm_twitch_usernames_table = _make_entry_table(twitch_vbox, "Username")
+    window.sm_twitch_routes_table = _make_route_table(twitch_vbox)
     scroll_layout.addWidget(twitch_box)
 
     # --- YouTube ---
@@ -1413,6 +1459,7 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
 
     yt_vbox.addWidget(QtWidgets.QLabel("Monitored YouTube Channel IDs:"))
     window.sm_youtube_ids_table = _make_entry_table(yt_vbox, "YouTube Channel ID (UCxxxx)")
+    window.sm_youtube_routes_table = _make_route_table(yt_vbox)
     scroll_layout.addWidget(yt_box)
 
     # --- Twitter/X ---
@@ -1436,6 +1483,7 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
 
     tw_vbox.addWidget(QtWidgets.QLabel("Monitored Twitter Usernames:"))
     window.sm_twitter_usernames_table = _make_entry_table(tw_vbox, "Username")
+    window.sm_twitter_routes_table = _make_route_table(tw_vbox)
     scroll_layout.addWidget(tw_box)
 
     # --- TikTok ---
@@ -1455,6 +1503,7 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
 
     tt_vbox.addWidget(QtWidgets.QLabel("Monitored TikTok Usernames (without @):"))
     window.sm_tiktok_usernames_table = _make_entry_table(tt_vbox, "Username")
+    window.sm_tiktok_routes_table = _make_route_table(tt_vbox)
     scroll_layout.addWidget(tt_box)
 
     scroll_layout.addStretch()

@@ -59,7 +59,11 @@ FEATURE_DEFS = {
     },
     "socials": {
         "label": "Social Media",
-        "desc": "Posts notifications for Twitch streams, YouTube uploads and other social media activity to configured channels.",
+        "desc": "Posts notifications for Twitch streams, YouTube uploads and other social media activity to configured channels. Supports per-creator channel routing.",
+    },
+    "welcome_dm": {
+        "label": "Welcome DM",
+        "desc": "Sends a configurable private message to newly joined members. Supports placeholders and optional embeds.",
     },
 }
 
@@ -67,7 +71,7 @@ FEATURE_DEFS = {
 FEATURE_ORDER = [
     "leveling", "achievements", "birthdays", "polls", "counting",
     "welcome", "tickets", "tempvoice", "music", "logging", "memes",
-    "membercount", "freestuff", "socials",
+    "membercount", "freestuff", "socials", "welcome_dm",
 ]
 
 
@@ -157,6 +161,7 @@ class FeaturesControllerMixin:
         "Birthdays": "birthdays",
         "Free Stuff": "freestuff",
         "Social Media": "socials",
+        "Welcome DM": "welcome_dm",
     }
 
     def _update_feature_tab_visibility(self, features: dict):

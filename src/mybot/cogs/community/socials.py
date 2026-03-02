@@ -224,8 +224,26 @@ async def _fetch_tiktok_latest(usernames: list[str]) -> list[dict]:
 # Cog
 # ---------------------------------------------------------------------------
 
+def _resolve_channel(bot, guild, default_ch_id: int, channel_map: dict, creator_key: str):
+    """Return the channel for a creator based on CHANNEL_MAP, falling back to default."""
+    override_id = channel_map.get(creator_key.lower())
+    if override_id:
+        try:
+            ch = bot.get_channel(int(override_id)) or guild.get_channel(int(override_id))
+            if ch:
+                return ch
+        except Exception:
+            pass
+    if default_ch_id:
+        return bot.get_channel(default_ch_id) or guild.get_channel(default_ch_id)
+    return None
+
+
 class SocialMedia(commands.Cog):
-    """Monitors social media and posts notifications to configured channels."""
+    """Monitors social media and posts notifications to configured channels.
+
+    Supports per-creator channel routing via CHANNEL_MAP in each source config.
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -274,8 +292,13 @@ class SocialMedia(commands.Cog):
                 continue
             enabled = bool(src.get("ENABLED", False))
             channel_id = src.get("CHANNEL_ID", 0)
+            channel_map = src.get("CHANNEL_MAP", {})
             icon = "✅" if enabled else "❌"
-            lines.append(f"{icon} **{source_name.title()}** — Channel: <#{channel_id}>" if channel_id else f"{icon} **{source_name.title()}** — Not configured")
+            base = f"{icon} **{source_name.title()}** — Channel: <#{channel_id}>" if channel_id else f"{icon} **{source_name.title()}** — Not configured"
+            if channel_map and isinstance(channel_map, dict):
+                overrides = len(channel_map)
+                base += f" (+{overrides} route{'s' if overrides != 1 else ''})"
+            lines.append(base)
 
         if not lines:
             lines.append("No social media sources configured.")
@@ -283,6 +306,98 @@ class SocialMedia(commands.Cog):
         embed = discord.Embed(
             title=translate("socials.sources.title", guild_id=guild_id,
                             default="📡 Social Media Sources"),
+            description="\n".join(lines),
+            color=discord.Color.purple(),
+        )
+        await ctx.send(embed=embed)
+
+    # ------------------------------------------------------------------
+    # /socialroute — manage per-creator channel routing
+    # ------------------------------------------------------------------
+
+    @commands.hybrid_command(
+        name="socialroute",
+        description="Route a creator's notifications to a specific channel.",
+    )
+    @app_commands.default_permissions(administrator=True)
+    @commands.has_permissions(administrator=True)
+    @app_commands.describe(
+        platform="Platform (twitch, youtube, tiktok, twitter)",
+        creator="Creator name or YouTube channel ID",
+        channel="Target Discord channel (omit to remove route)",
+    )
+    async def socialroute(
+        self,
+        ctx: commands.Context,
+        platform: str,
+        creator: str,
+        channel: discord.TextChannel | None = None,
+    ):
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        if guild_id is None:
+            await ctx.send("❌ Server-only command.")
+            return
+
+        platform_upper = platform.strip().upper()
+        if platform_upper not in ("TWITCH", "YOUTUBE", "TIKTOK", "TWITTER"):
+            await ctx.send("❌ Platform must be one of: twitch, youtube, tiktok, twitter")
+            return
+
+        from mybot.utils.paths import guild_data_path
+        from mybot.utils.jsonstore import safe_load_json, safe_save_json
+        cfg_path = guild_data_path(guild_id, "social_media.json")
+        if not cfg_path:
+            await ctx.send("❌ Could not resolve config path.")
+            return
+
+        cfg = safe_load_json(cfg_path, default={})
+        src = cfg.setdefault(platform_upper, {})
+        channel_map = src.setdefault("CHANNEL_MAP", {})
+
+        creator_key = creator.strip().lower()
+        if channel is None:
+            # Remove route
+            removed = channel_map.pop(creator_key, None)
+            if removed:
+                safe_save_json(cfg_path, cfg)
+                await ctx.send(f"🗑 Route für **{creator}** ({platform.title()}) entfernt. Nutzt jetzt den Standard-Channel.")
+            else:
+                await ctx.send(f"ℹ️ Kein Route-Override für **{creator}** ({platform.title()}) vorhanden.")
+        else:
+            channel_map[creator_key] = channel.id
+            safe_save_json(cfg_path, cfg)
+            await ctx.send(f"✅ **{creator}** ({platform.title()}) → {channel.mention}")
+
+    # ------------------------------------------------------------------
+    # /socialroutes — show all channel routes
+    # ------------------------------------------------------------------
+
+    @commands.hybrid_command(
+        name="socialroutes",
+        description="Show all per-creator channel routes.",
+    )
+    async def socialroutes(self, ctx: commands.Context):
+        guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+        cfg = _cfg(guild_id)
+
+        lines = []
+        for source_name in ("TWITCH", "YOUTUBE", "TIKTOK", "TWITTER"):
+            src = cfg.get(source_name, {})
+            if not isinstance(src, dict):
+                continue
+            channel_map = src.get("CHANNEL_MAP", {})
+            if not channel_map or not isinstance(channel_map, dict):
+                continue
+            lines.append(f"**{source_name.title()}:**")
+            for creator, ch_id in channel_map.items():
+                lines.append(f"  • {creator} → <#{ch_id}>")
+
+        if not lines:
+            lines.append("No per-creator channel routes configured.\nAll notifications use the default channels.")
+
+        embed = discord.Embed(
+            title=translate("socials.routes.title", guild_id=guild_id,
+                            default="📡 Social Media Routes"),
             description="\n".join(lines),
             color=discord.Color.purple(),
         )
@@ -317,63 +432,72 @@ class SocialMedia(commands.Cog):
         twitch_cfg = cfg.get("TWITCH", {})
         if isinstance(twitch_cfg, dict) and twitch_cfg.get("ENABLED"):
             ch_id = int(twitch_cfg.get("CHANNEL_ID", 0) or 0)
+            channel_map = twitch_cfg.get("CHANNEL_MAP", {}) or {}
             usernames = [u.strip() for u in str(twitch_cfg.get("USERNAMES", "")).split(",") if u.strip()]
             client_id = str(twitch_cfg.get("CLIENT_ID", "") or "")
             oauth_token = str(twitch_cfg.get("OAUTH_TOKEN", "") or "")
-            if ch_id and usernames and client_id and oauth_token:
-                channel = self.bot.get_channel(ch_id) or guild.get_channel(ch_id)
-                if channel:
-                    streams = await _fetch_twitch_streams(usernames, client_id, oauth_token)
-                    posted_set = set(posted_data.get("twitch", []))
-                    for stream in streams:
-                        sid = stream["id"]
-                        if sid in posted_set:
-                            continue
-                        embed = discord.Embed(
-                            title=f"🟣 {stream['username']} is LIVE!",
-                            description=f"**{stream['title']}**\n\nPlaying: {stream['game']}\n👁 {stream['viewers']} viewers",
-                            url=stream["url"],
-                            color=discord.Color.purple(),
-                            timestamp=datetime.now(timezone.utc),
-                        )
-                        if stream.get("thumbnail"):
-                            embed.set_image(url=stream["thumbnail"])
-                        try:
-                            await channel.send(embed=embed)
-                            posted_data.setdefault("twitch", []).append(sid)
-                            total_new += 1
-                        except Exception as exc:
-                            print(f"[SocialMedia] Twitch post failed: {exc}")
+            if (ch_id or channel_map) and usernames and client_id and oauth_token:
+                streams = await _fetch_twitch_streams(usernames, client_id, oauth_token)
+                posted_set = set(posted_data.get("twitch", []))
+                for stream in streams:
+                    sid = stream["id"]
+                    if sid in posted_set:
+                        continue
+                    target_ch = _resolve_channel(
+                        self.bot, guild, ch_id, channel_map,
+                        stream.get("username", "").lower(),
+                    )
+                    if not target_ch:
+                        continue
+                    embed = discord.Embed(
+                        title=f"🟣 {stream['username']} is LIVE!",
+                        description=f"**{stream['title']}**\n\nPlaying: {stream['game']}\n👁 {stream['viewers']} viewers",
+                        url=stream["url"],
+                        color=discord.Color.purple(),
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    if stream.get("thumbnail"):
+                        embed.set_image(url=stream["thumbnail"])
+                    try:
+                        await target_ch.send(embed=embed)
+                        posted_data.setdefault("twitch", []).append(sid)
+                        total_new += 1
+                    except Exception as exc:
+                        print(f"[SocialMedia] Twitch post failed: {exc}")
 
         # --- YouTube ---
         youtube_cfg = cfg.get("YOUTUBE", {})
         if isinstance(youtube_cfg, dict) and youtube_cfg.get("ENABLED"):
             ch_id = int(youtube_cfg.get("CHANNEL_ID", 0) or 0)
+            channel_map = youtube_cfg.get("CHANNEL_MAP", {}) or {}
             yt_channel_ids = [c.strip() for c in str(youtube_cfg.get("YOUTUBE_CHANNEL_IDS", "")).split(",") if c.strip()]
-            if ch_id and yt_channel_ids:
-                channel = self.bot.get_channel(ch_id) or guild.get_channel(ch_id)
-                if channel:
-                    videos = await _fetch_youtube_latest(yt_channel_ids)
-                    posted_set = set(posted_data.get("youtube", []))
-                    for video in videos:
-                        vid = video["id"]
-                        if vid in posted_set:
-                            continue
-                        embed = discord.Embed(
-                            title=f"🔴 {video['author']} uploaded a new video!",
-                            description=f"**{video['title']}**",
-                            url=video["url"],
-                            color=discord.Color.red(),
-                            timestamp=datetime.now(timezone.utc),
-                        )
-                        if video.get("thumbnail"):
-                            embed.set_image(url=video["thumbnail"])
-                        try:
-                            await channel.send(embed=embed)
-                            posted_data.setdefault("youtube", []).append(vid)
-                            total_new += 1
-                        except Exception as exc:
-                            print(f"[SocialMedia] YouTube post failed: {exc}")
+            if (ch_id or channel_map) and yt_channel_ids:
+                videos = await _fetch_youtube_latest(yt_channel_ids)
+                posted_set = set(posted_data.get("youtube", []))
+                for video in videos:
+                    vid = video["id"]
+                    if vid in posted_set:
+                        continue
+                    # For YouTube, the channel map key is the YT channel author name (lowercase)
+                    author_key = (video.get("author") or "").lower()
+                    target_ch = _resolve_channel(self.bot, guild, ch_id, channel_map, author_key)
+                    if not target_ch:
+                        continue
+                    embed = discord.Embed(
+                        title=f"🔴 {video['author']} uploaded a new video!",
+                        description=f"**{video['title']}**",
+                        url=video["url"],
+                        color=discord.Color.red(),
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    if video.get("thumbnail"):
+                        embed.set_image(url=video["thumbnail"])
+                    try:
+                        await target_ch.send(embed=embed)
+                        posted_data.setdefault("youtube", []).append(vid)
+                        total_new += 1
+                    except Exception as exc:
+                        print(f"[SocialMedia] YouTube post failed: {exc}")
 
         # --- Twitter/X ---
         twitter_cfg = cfg.get("TWITTER", {})
@@ -385,29 +509,34 @@ class SocialMedia(commands.Cog):
         tiktok_cfg = cfg.get("TIKTOK", {})
         if isinstance(tiktok_cfg, dict) and tiktok_cfg.get("ENABLED"):
             ch_id = int(tiktok_cfg.get("CHANNEL_ID", 0) or 0)
+            channel_map = tiktok_cfg.get("CHANNEL_MAP", {}) or {}
             usernames = [u.strip() for u in str(tiktok_cfg.get("USERNAMES", "")).split(",") if u.strip()]
-            if ch_id and usernames:
-                channel = self.bot.get_channel(ch_id) or guild.get_channel(ch_id)
-                if channel:
-                    videos = await _fetch_tiktok_latest(usernames)
-                    posted_set = set(posted_data.get("tiktok", []))
-                    for video in videos:
-                        vid = video["id"]
-                        if vid in posted_set:
-                            continue
-                        embed = discord.Embed(
-                            title=f"\U0001f3b5 {video['username']} posted a new TikTok!",
-                            description=f"**{video['title']}**",
-                            url=video["url"],
-                            color=discord.Color.from_rgb(0, 0, 0),
-                            timestamp=datetime.now(timezone.utc),
-                        )
-                        try:
-                            await channel.send(embed=embed)
-                            posted_data.setdefault("tiktok", []).append(vid)
-                            total_new += 1
-                        except Exception as exc:
-                            print(f"[SocialMedia] TikTok post failed: {exc}")
+            if (ch_id or channel_map) and usernames:
+                videos = await _fetch_tiktok_latest(usernames)
+                posted_set = set(posted_data.get("tiktok", []))
+                for video in videos:
+                    vid = video["id"]
+                    if vid in posted_set:
+                        continue
+                    target_ch = _resolve_channel(
+                        self.bot, guild, ch_id, channel_map,
+                        (video.get("username") or "").lower(),
+                    )
+                    if not target_ch:
+                        continue
+                    embed = discord.Embed(
+                        title=f"\U0001f3b5 {video['username']} posted a new TikTok!",
+                        description=f"**{video['title']}**",
+                        url=video["url"],
+                        color=discord.Color.from_rgb(0, 0, 0),
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    try:
+                        await target_ch.send(embed=embed)
+                        posted_data.setdefault("tiktok", []).append(vid)
+                        total_new += 1
+                    except Exception as exc:
+                        print(f"[SocialMedia] TikTok post failed: {exc}")
 
         # --- Custom webhooks/feeds ---
         custom_cfg = cfg.get("CUSTOM", {})

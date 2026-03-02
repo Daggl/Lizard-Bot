@@ -23,6 +23,7 @@ FEATURES = {
     "membercount":  "Member count display channel",
     "freestuff":    "Free stuff / game giveaway posts",
     "socials":      "Social media notifications (Twitch, YouTube, etc.)",
+    "welcome_dm":   "Welcome DM for new members",
 }
 
 # Mapping: Cog class name → feature key.
@@ -62,6 +63,8 @@ COG_FEATURE_MAP = {
     "FreeStuff":    "freestuff",
     # Social Media
     "SocialMedia":  "socials",
+    # Welcome DM
+    "WelcomeDM":    "welcome_dm",
 }
 
 

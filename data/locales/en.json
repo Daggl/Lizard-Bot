@@ -214,8 +214,20 @@
   "freestuff.msg.check_done": "✅ Check complete. {count} new item(s) posted.",
   "freestuff.sources.title": "🎁 Free Stuff Sources",
   "help.section.socials.title": "📡 Social Media",
-  "help.section.socials.body": "Get notified about Twitch streams, YouTube uploads and more!\n\n`/socialsources` → Show configured social media sources\n`/socialcheck` → Admin: manually check all feeds now",
+  "help.section.socials.body": "Get notified about Twitch streams, YouTube uploads and more!\nSupports per-creator channel routing.\n\n`/socialsources` → Show configured sources\n`/socialcheck` → Admin: manually check feeds\n`/socialroute` → Admin: route a creator to a specific channel\n`/socialroutes` → Show all channel routes",
   "socials.msg.checking": "🔍 Checking social media feeds...",
   "socials.msg.check_done": "✅ Check complete. {count} new notification(s) posted.",
-  "socials.sources.title": "📡 Social Media Sources"
+  "socials.sources.title": "📡 Social Media Sources",
+  "socials.route.set": "✅ **{creator}** ({platform}) → <#{channel_id}>",
+  "socials.route.removed": "✅ Route for **{creator}** ({platform}) removed. Using default channel.",
+  "socials.route.error.platform": "❌ Unknown platform. Use: twitch, youtube, twitter, tiktok",
+  "socials.routes.title": "📡 Social Media Channel Routes",
+  "socials.routes.none": "No per-creator routes configured. All creators use their default channel.",
+  "help.section.welcome_dm.title": "📨 Welcome DM",
+  "help.section.welcome_dm.body": "New members receive a private welcome message on join.\n\n`/setwelcomedm <message>` → Set the DM text\n`/testwelcomedm` → Test the DM on yourself\n`/welcomedminfo` → Show current config",
+  "welcome_dm.msg.set": "✅ Welcome DM message updated.",
+  "welcome_dm.msg.test_sent": "✅ Test DM sent. Check your DMs!",
+  "welcome_dm.error.not_configured": "❌ No welcome DM configured. Use `/setwelcomedm` or the UI.",
+  "welcome_dm.error.dm_blocked": "❌ Could not send DM — your DMs are disabled.",
+  "welcome_dm.info.title": "📨 Welcome DM Configuration"
 }

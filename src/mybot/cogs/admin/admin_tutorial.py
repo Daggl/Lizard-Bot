@@ -207,7 +207,21 @@ class AdminHelpView(discord.ui.View):
                 value=(
                     "`/socialcheck` ↳ Manually check all social media feeds\n"
                     "`/socialsources` ↳ Show configured social media sources\n"
+                    "`/socialroute <platform> <creator> [channel]` ↳ Route a creator to a specific channel\n"
+                    "`/socialroutes` ↳ Show all per-creator channel routes\n"
                     "↳ Sources are configured in the UI per guild"
+                ),
+                inline=False,
+            )
+
+        if _fe("welcome_dm"):
+            embed.add_field(
+                name="📨 Welcome DM",
+                value=(
+                    "`/setwelcomedm <message>` ↳ Set the welcome DM text\n"
+                    "`/testwelcomedm` ↳ Send a test DM to yourself\n"
+                    "`/welcomedminfo` ↳ Show current welcome DM config\n"
+                    "↳ Supports {user_name}, {guild_name}, {mention} placeholders"
                 ),
                 inline=False,
             )
@@ -315,6 +329,7 @@ class AdminHelpView(discord.ui.View):
             ("/testbirthdaypanel", "Posts the birthday overview panel for testing.", "birthdays"),
             ("/testfreestuff", "Triggers a manual free stuff check for the current guild.", "freestuff"),
             ("/testsocials", "Triggers a manual social media feed check for the current guild.", "socials"),
+            ("/testwelcomedm", "Sends a test welcome DM to yourself.", "welcome_dm"),
             ("/testpoll [seconds] [question]", "Starts a guided poll smoke test via the normal poll wizard.", "polls"),
             ("/testticketpanel", "Validates ticket system availability.", "tickets"),
             ("/testmusic", "Smoke-tests music voice pipeline (join + leave).", "music"),

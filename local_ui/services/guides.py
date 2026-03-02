@@ -93,16 +93,33 @@ Saved to: `config/freestuff.json`
 
 ## 6a) Social Media Tab
 
-Use this tab to configure social media notifications (Twitch, YouTube, Twitter/X).
+Use this tab to configure social media notifications (Twitch, YouTube, Twitter/X, TikTok).
 
 - **Per-source settings**: Each source has its own enable toggle, Discord channel, and credentials.
 - **Twitch**: Requires a Twitch App Client ID and OAuth Token. Monitors usernames for live streams.
 - **YouTube**: Uses public RSS feeds. Provide YouTube Channel IDs (UCxxxx format).
 - **Twitter/X**: Requires a Bearer Token (placeholder for future implementation).
+- **TikTok**: Monitors TikTok usernames for new posts via RSS.
+- **Channel Routes**: You can route individual creators to different Discord channels.
+  Use the Channel Routes table (Creator → Channel ID) or the `/socialroute` command.
 - The bot checks every 5 minutes automatically.
 - Use `/socialcheck` in Discord to manually trigger a check.
 
 Saved to: `config/social_media.json`
+
+## 6b) Welcome DM
+
+Use this feature to send a private message to newly joined members.
+
+- **Message**: Plain text DM sent to the new member.
+- **Embed**: Optional embed with title, description and color.
+- **Placeholders**: `{user_name}`, `{display_name}`, `{mention}`, `{user_id}`, `{guild_name}`, `{member_count}`
+- **Commands**:
+  - `/setwelcomedm <message>` — set the DM text
+  - `/testwelcomedm` — send a test DM to yourself
+  - `/welcomedminfo` — show current config
+
+Saved to: `config/welcome_dm.json`
 
 ## 5) Configs Tab (manual JSON editing)
 
@@ -134,7 +151,8 @@ Use this tab when you want direct control over JSON values.
 - `count.json` — counting game channel
 - `birthdays.json` — birthday channel/settings
 - `freestuff.json` — free stuff channel/sources
-- `social_media.json` — social media feed config (Twitch, YouTube, Twitter/X)
+- `social_media.json` — social media feed config (Twitch, YouTube, Twitter/X, TikTok)
+- `welcome_dm.json` — welcome DM message/embed for new members
 
 If you are unsure which key is required, compare with `data/config.example.json`.
 
@@ -215,6 +233,7 @@ Use these commands as the fastest per-feature smoke test:
 - Utility/Admin: `/testsay Hello world`, `/adminpanel` — validates admin embed send + status panel rendering.
 - Logs: `/testlog system Quick check` + real events — validates DB log write plus channel log pipelines.
 - Social Media: `/testsocials` — validates social media feed check for the guild.
+- Welcome DM: `/testwelcomedm` — sends a test welcome DM to yourself.
 
 ---
 
@@ -356,6 +375,35 @@ Use these commands as the fastest per-feature smoke test:
 ### `/socialsources`
 - **What it does:** Shows configured social media sources and their status.
 - **Usage:** `/socialsources`
+- **Permission:** Everyone
+
+### `/socialroute <platform> <creator> [channel]`
+- **What it does:** Routes a specific creator to a different Discord channel. Omit channel to remove the route.
+- **Usage:** `/socialroute twitch streamer123 #social-twitch-2`
+- **Permission:** Administrator
+
+### `/socialroutes`
+- **What it does:** Shows all per-creator channel routes across all platforms.
+- **Usage:** `/socialroutes`
+- **Permission:** Everyone
+
+---
+
+## Welcome DM
+
+### `/setwelcomedm <message>`
+- **What it does:** Sets the private welcome message sent to new members.
+- **Usage:** `/setwelcomedm Welcome {user_name} to {guild_name}!`
+- **Permission:** Administrator
+
+### `/testwelcomedm`
+- **What it does:** Sends a test welcome DM to yourself.
+- **Usage:** `/testwelcomedm`
+- **Permission:** Administrator
+
+### `/welcomedminfo`
+- **What it does:** Shows the current welcome DM configuration.
+- **Usage:** `/welcomedminfo`
 - **Permission:** Everyone
 
 ---
@@ -529,6 +577,7 @@ Use these commands as the fastest per-feature smoke test:
 - Birthday channel: `config/birthdays.json`
 - Free stuff channel/sources: `config/freestuff.json`
 - Social media feeds: `config/social_media.json`
+- Welcome DM: `config/welcome_dm.json`
 - Counter channel/settings: `config/count.json`
 
 If a command seems inactive, check:

@@ -74,6 +74,7 @@ DEFAULT_EXTENSIONS = [
     "mybot.cogs.community.membercount",
     "mybot.cogs.community.freestuff",
     "mybot.cogs.community.socials",
+    "mybot.cogs.welcome.welcome_dm",
 ]
 
 # ==========================================================

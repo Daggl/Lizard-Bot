@@ -340,6 +340,16 @@ class SetupWizardDialog(QtWidgets.QDialog):
             for file_name, key, label in visible:
                 is_role = (file_name, key) in _ROLE_KEYS
                 self._add_id_row(group_vbox, file_name, key, label, is_role=is_role)
+
+            # Add "Create additional Social channels" button to Notifications
+            if group_label == "Notifications":
+                extra_btn = QtWidgets.QPushButton("Create additional Social channels")
+                extra_btn.setToolTip(
+                    "Create extra Discord channels for per-creator social routing"
+                )
+                extra_btn.clicked.connect(self._on_create_additional_social_channel)
+                group_vbox.addWidget(extra_btn)
+
             scroll_layout.addWidget(group_box)
 
         scroll_layout.addStretch()
@@ -562,6 +572,64 @@ class SetupWizardDialog(QtWidgets.QDialog):
         QtWidgets.QMessageBox.information(
             self, "Create Role",
             f"✅ Rolle '{role_name}' erstellt (ID: {role_id})",
+        )
+
+    def _on_create_additional_social_channel(self):
+        """Create an extra social-media channel and store its ID in CHANNEL_MAP."""
+        if not self._guild_id:
+            QtWidgets.QMessageBox.warning(
+                self, "Create Channel",
+                "Keine aktive Guild. Bitte zuerst eine Guild im Dashboard auswählen.",
+            )
+            return
+
+        platforms = ["Twitch", "YouTube", "Twitter / X", "TikTok"]
+        platform, ok = QtWidgets.QInputDialog.getItem(
+            self, "Platform",
+            "Für welche Plattform soll der Channel erstellt werden?",
+            platforms, 0, False,
+        )
+        if not ok or not platform:
+            return
+
+        default_name = f"social-{platform.lower().replace(' / ', '-').replace(' ', '-')}-2"
+        name, ok2 = QtWidgets.QInputDialog.getText(
+            self, "Create Channel",
+            f"Channel-Name für '{platform}':",
+            text=default_name,
+        )
+        if not ok2 or not name.strip():
+            return
+
+        try:
+            resp = send_cmd({
+                "action": "create_channel",
+                "guild_id": str(self._guild_id),
+                "channel_name": name.strip(),
+                "channel_type": "text",
+            }, timeout=10.0)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Create Channel", f"Fehler: {exc}")
+            return
+
+        if not resp.get("ok"):
+            QtWidgets.QMessageBox.warning(
+                self, "Create Channel",
+                f"Channel konnte nicht erstellt werden:\n{resp.get('error', resp)}",
+            )
+            return
+
+        ch_data = resp.get("channel", {})
+        ch_id = ch_data.get("id")
+        ch_name = ch_data.get("name", name.strip())
+
+        self._snapshot_cache = None  # invalidate
+
+        QtWidgets.QMessageBox.information(
+            self, "Create Channel",
+            f"✅ Channel '{ch_name}' erstellt (ID: {ch_id}).\n\n"
+            f"Du kannst jetzt im Social Media Tab einzelne Creator diesem Channel "
+            f"zuweisen (/socialroute {platform.lower().split()[0]} <creator> <channel>).",
         )
 
     def _load_env_values(self):

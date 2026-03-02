@@ -214,8 +214,20 @@
   "freestuff.msg.check_done": "✅ Prüfung abgeschlossen. {count} neue(s) Angebot(e) gepostet.",
   "freestuff.sources.title": "🎁 Gratis-Quellen",
   "help.section.socials.title": "📡 Social Media",
-  "help.section.socials.body": "Erhalte Benachrichtigungen über Twitch-Streams, YouTube-Uploads und mehr!\n\n`/socialsources` → Zeigt konfigurierte Social-Media-Quellen\n`/socialcheck` → Admin: alle Feeds jetzt manuell prüfen",
+  "help.section.socials.body": "Erhalte Benachrichtigungen über Twitch-Streams, YouTube-Uploads und mehr!\nUnterstützt pro-Creator-Channel-Routing.\n\n`/socialsources` → Konfigurierte Quellen anzeigen\n`/socialcheck` → Admin: Feeds manuell prüfen\n`/socialroute` → Admin: Creator einem bestimmten Channel zuweisen\n`/socialroutes` → Alle Channel-Routes anzeigen",
   "socials.msg.checking": "🔍 Prüfe Social-Media-Feeds...",
   "socials.msg.check_done": "✅ Prüfung abgeschlossen. {count} neue Benachrichtigung(en) gepostet.",
-  "socials.sources.title": "📡 Social-Media-Quellen"
+  "socials.sources.title": "📡 Social-Media-Quellen",
+  "socials.route.set": "✅ **{creator}** ({platform}) → <#{channel_id}>",
+  "socials.route.removed": "✅ Route für **{creator}** ({platform}) entfernt. Standard-Channel wird verwendet.",
+  "socials.route.error.platform": "❌ Unbekannte Plattform. Verwende: twitch, youtube, twitter, tiktok",
+  "socials.routes.title": "📡 Social-Media-Channel-Routes",
+  "socials.routes.none": "Keine pro-Creator-Routes konfiguriert. Alle Creator nutzen den Standard-Channel.",
+  "help.section.welcome_dm.title": "📨 Willkommens-DM",
+  "help.section.welcome_dm.body": "Neue Mitglieder erhalten beim Beitritt eine private Willkommensnachricht.\n\n`/setwelcomedm <nachricht>` → DM-Text festlegen\n`/testwelcomedm` → Test-DM an dich selbst\n`/welcomedminfo` → Aktuelle Konfiguration anzeigen",
+  "welcome_dm.msg.set": "✅ Willkommens-DM aktualisiert.",
+  "welcome_dm.msg.test_sent": "✅ Test-DM gesendet. Prüfe deine Direktnachrichten!",
+  "welcome_dm.error.not_configured": "❌ Keine Willkommens-DM konfiguriert. Nutze `/setwelcomedm` oder die UI.",
+  "welcome_dm.error.dm_blocked": "❌ DM konnte nicht gesendet werden — Direktnachrichten sind deaktiviert.",
+  "welcome_dm.info.title": "📨 Willkommens-DM Konfiguration"
 }

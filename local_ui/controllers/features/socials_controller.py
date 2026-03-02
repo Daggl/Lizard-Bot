@@ -29,6 +29,30 @@ def _populate_table_from_csv(table: QtWidgets.QTableWidget, csv_value: str):
         table.setItem(i, 0, QtWidgets.QTableWidgetItem(entry))
 
 
+def _read_route_table(table: QtWidgets.QTableWidget) -> dict:
+    """Read a 2-column (Creator, Channel ID) route table into a dict."""
+    routes = {}
+    for row in range(table.rowCount()):
+        creator_item = table.item(row, 0)
+        channel_item = table.item(row, 1)
+        if creator_item and channel_item:
+            creator = creator_item.text().strip().lower()
+            ch_raw = channel_item.text().strip()
+            if creator and ch_raw and ch_raw.isdigit():
+                routes[creator] = int(ch_raw)
+    return routes
+
+
+def _populate_route_table(table: QtWidgets.QTableWidget, channel_map: dict):
+    """Populate a 2-column route table from a dict {creator: channel_id}."""
+    if not isinstance(channel_map, dict):
+        channel_map = {}
+    table.setRowCount(len(channel_map))
+    for i, (creator, ch_id) in enumerate(channel_map.items()):
+        table.setItem(i, 0, QtWidgets.QTableWidgetItem(str(creator)))
+        table.setItem(i, 1, QtWidgets.QTableWidgetItem(str(ch_id)))
+
+
 class SocialsControllerMixin:
     """Mixin that adds Social Media config load/save to the main window."""
 
@@ -58,6 +82,8 @@ class SocialsControllerMixin:
                 self.sm_twitch_client_id.setText(str(twitch.get("CLIENT_ID", "") or ""))
             if hasattr(self, "sm_twitch_oauth") and not self.sm_twitch_oauth.hasFocus():
                 self.sm_twitch_oauth.setText(str(twitch.get("OAUTH_TOKEN", "") or ""))
+            if hasattr(self, "sm_twitch_routes_table") and not self.sm_twitch_routes_table.hasFocus():
+                _populate_route_table(self.sm_twitch_routes_table, twitch.get("CHANNEL_MAP", {}))
 
             # YouTube
             youtube = cfg.get("YOUTUBE", {}) if isinstance(cfg.get("YOUTUBE"), dict) else {}
@@ -68,6 +94,8 @@ class SocialsControllerMixin:
                 self.sm_youtube_channel_id.setText(cid if cid and cid != "0" else "")
             if hasattr(self, "sm_youtube_ids_table") and not self.sm_youtube_ids_table.hasFocus():
                 _populate_table_from_csv(self.sm_youtube_ids_table, youtube.get("YOUTUBE_CHANNEL_IDS", ""))
+            if hasattr(self, "sm_youtube_routes_table") and not self.sm_youtube_routes_table.hasFocus():
+                _populate_route_table(self.sm_youtube_routes_table, youtube.get("CHANNEL_MAP", {}))
 
             # Twitter/X
             twitter = cfg.get("TWITTER", {}) if isinstance(cfg.get("TWITTER"), dict) else {}
@@ -80,6 +108,8 @@ class SocialsControllerMixin:
                 self.sm_twitter_bearer.setText(str(twitter.get("BEARER_TOKEN", "") or ""))
             if hasattr(self, "sm_twitter_usernames_table") and not self.sm_twitter_usernames_table.hasFocus():
                 _populate_table_from_csv(self.sm_twitter_usernames_table, twitter.get("USERNAMES", ""))
+            if hasattr(self, "sm_twitter_routes_table") and not self.sm_twitter_routes_table.hasFocus():
+                _populate_route_table(self.sm_twitter_routes_table, twitter.get("CHANNEL_MAP", {}))
 
             # TikTok
             tiktok = cfg.get("TIKTOK", {}) if isinstance(cfg.get("TIKTOK"), dict) else {}
@@ -90,6 +120,8 @@ class SocialsControllerMixin:
                 self.sm_tiktok_channel_id.setText(cid if cid and cid != "0" else "")
             if hasattr(self, "sm_tiktok_usernames_table") and not self.sm_tiktok_usernames_table.hasFocus():
                 _populate_table_from_csv(self.sm_tiktok_usernames_table, tiktok.get("USERNAMES", ""))
+            if hasattr(self, "sm_tiktok_routes_table") and not self.sm_tiktok_routes_table.hasFocus():
+                _populate_route_table(self.sm_tiktok_routes_table, tiktok.get("CHANNEL_MAP", {}))
         except Exception:
             pass
 
@@ -154,22 +186,26 @@ class SocialsControllerMixin:
                     "USERNAMES": _read_table_entries(self.sm_twitch_usernames_table),
                     "CLIENT_ID": (self.sm_twitch_client_id.text() or "").strip(),
                     "OAUTH_TOKEN": (self.sm_twitch_oauth.text() or "").strip(),
+                    "CHANNEL_MAP": _read_route_table(self.sm_twitch_routes_table) if hasattr(self, "sm_twitch_routes_table") else {},
                 },
                 "YOUTUBE": {
                     "ENABLED": self.sm_youtube_enabled.isChecked(),
                     "CHANNEL_ID": youtube_cid,
                     "YOUTUBE_CHANNEL_IDS": _read_table_entries(self.sm_youtube_ids_table),
+                    "CHANNEL_MAP": _read_route_table(self.sm_youtube_routes_table) if hasattr(self, "sm_youtube_routes_table") else {},
                 },
                 "TWITTER": {
                     "ENABLED": self.sm_twitter_enabled.isChecked(),
                     "CHANNEL_ID": twitter_cid,
                     "BEARER_TOKEN": (self.sm_twitter_bearer.text() or "").strip(),
                     "USERNAMES": _read_table_entries(self.sm_twitter_usernames_table),
+                    "CHANNEL_MAP": _read_route_table(self.sm_twitter_routes_table) if hasattr(self, "sm_twitter_routes_table") else {},
                 },
                 "TIKTOK": {
                     "ENABLED": self.sm_tiktok_enabled.isChecked(),
                     "CHANNEL_ID": tiktok_cid,
                     "USERNAMES": _read_table_entries(self.sm_tiktok_usernames_table),
+                    "CHANNEL_MAP": _read_route_table(self.sm_tiktok_routes_table) if hasattr(self, "sm_tiktok_routes_table") else {},
                 },
                 "CUSTOM": {
                     "ENABLED": False,

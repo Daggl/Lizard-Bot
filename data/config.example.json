@@ -102,24 +102,40 @@
       "CHANNEL_ID": 0,
       "USERNAMES": "",
       "CLIENT_ID": "",
-      "OAUTH_TOKEN": ""
+      "OAUTH_TOKEN": "",
+      "CHANNEL_MAP": {}
     },
     "YOUTUBE": {
       "ENABLED": false,
       "CHANNEL_ID": 0,
-      "YOUTUBE_CHANNEL_IDS": ""
+      "YOUTUBE_CHANNEL_IDS": "",
+      "CHANNEL_MAP": {}
     },
     "TWITTER": {
       "ENABLED": false,
       "CHANNEL_ID": 0,
       "BEARER_TOKEN": "",
-      "USERNAMES": ""
+      "USERNAMES": "",
+      "CHANNEL_MAP": {}
+    },
+    "TIKTOK": {
+      "ENABLED": false,
+      "CHANNEL_ID": 0,
+      "USERNAMES": "",
+      "CHANNEL_MAP": {}
     },
     "CUSTOM": {
       "ENABLED": false,
       "CHANNEL_ID": 0,
       "FEED_URLS": ""
     }
+  },
+  "welcome_dm": {
+    "ENABLED": false,
+    "MESSAGE": "",
+    "EMBED_TITLE": "",
+    "EMBED_DESCRIPTION": "",
+    "EMBED_COLOR": "#5865F2"
   },
   "language": {
     "DEFAULT_LANGUAGE": "",
