@@ -225,7 +225,7 @@
   "socials.remove.notfound": "❌ **{creator}** ({platform}) not found in any channel.",
   "socials.channels.title": "📡 Social Media Channel Assignments",
   "socials.channels.none": "No channel assignments configured.",
-  "socials.error.platform": "❌ Unknown platform. Use: twitch, youtube, twitter, tiktok",
+  "socials.error.platform": "❌ Unknown platform. Use: twitch, youtube, twitter, tiktok, instagram",
   "help.section.welcome_dm.title": "📨 Welcome DM",
   "help.section.welcome_dm.body": "New members receive a private welcome message on join.\n\n`/setwelcomedm <message>` → Set the DM text\n`/testwelcomedm` → Test the DM on yourself\n`/welcomedminfo` → Show current config",
   "welcome_dm.msg.set": "✅ Welcome DM message updated.",

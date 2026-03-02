@@ -185,6 +185,10 @@ _CONFIG_DEFAULTS: dict[str, dict] = {
             "ENABLED": False,
             "CHANNELS": [],
         },
+        "INSTAGRAM": {
+            "ENABLED": False,
+            "CHANNELS": [],
+        },
         "CUSTOM": {
             "ENABLED": False,
             "FEED_URLS": "",

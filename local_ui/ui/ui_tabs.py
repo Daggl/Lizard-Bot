@@ -1515,6 +1515,9 @@ def build_socials_tab(window, tabs: QtWidgets.QTabWidget):
     # --- TikTok ---
     _build_platform("TikTok", "TIKTOK", [])
 
+    # --- Instagram ---
+    _build_platform("Instagram", "INSTAGRAM", [])
+
     scroll_layout.addStretch()
     scroll.setWidget(scroll_content)
     layout.addWidget(scroll, 1)

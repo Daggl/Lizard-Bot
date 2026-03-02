@@ -5,12 +5,13 @@ from PySide6 import QtWidgets
 from services.control_api_client import send_cmd
 
 # Platform mapping for social channels
-_SOCIAL_PLATFORMS = ["Twitch", "YouTube", "Twitter / X", "TikTok"]
+_SOCIAL_PLATFORMS = ["Twitch", "YouTube", "Twitter / X", "TikTok", "Instagram"]
 _PLATFORM_KEY_MAP = {
     "Twitch": "TWITCH",
     "YouTube": "YOUTUBE",
     "Twitter / X": "TWITTER",
     "TikTok": "TIKTOK",
+    "Instagram": "INSTAGRAM",
 }
 
 CHANNEL_FIELD_KEYS = [

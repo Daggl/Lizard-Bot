@@ -225,7 +225,7 @@
   "socials.remove.notfound": "❌ **{creator}** ({platform}) in keinem Channel gefunden.",
   "socials.channels.title": "📡 Social-Media-Channel-Zuordnungen",
   "socials.channels.none": "Keine Channel-Zuordnungen konfiguriert.",
-  "socials.error.platform": "❌ Unbekannte Plattform. Verwende: twitch, youtube, twitter, tiktok",
+  "socials.error.platform": "❌ Unbekannte Plattform. Verwende: twitch, youtube, twitter, tiktok, instagram",
   "help.section.welcome_dm.title": "📨 Willkommens-DM",
   "help.section.welcome_dm.body": "Neue Mitglieder erhalten beim Beitritt eine private Willkommensnachricht.\n\n`/setwelcomedm <nachricht>` → DM-Text festlegen\n`/testwelcomedm` → Test-DM an dich selbst\n`/welcomedminfo` → Aktuelle Konfiguration anzeigen",
   "welcome_dm.msg.set": "✅ Willkommens-DM aktualisiert.",

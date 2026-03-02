@@ -27,12 +27,13 @@ from mybot.utils.paths import guild_data_path
 # ---------------------------------------------------------------------------
 # Supported platforms
 # ---------------------------------------------------------------------------
-PLATFORMS = ("TWITCH", "YOUTUBE", "TWITTER", "TIKTOK")
+PLATFORMS = ("TWITCH", "YOUTUBE", "TWITTER", "TIKTOK", "INSTAGRAM")
 PLATFORM_CHOICES = [
     app_commands.Choice(name="Twitch", value="TWITCH"),
     app_commands.Choice(name="YouTube", value="YOUTUBE"),
     app_commands.Choice(name="Twitter / X", value="TWITTER"),
     app_commands.Choice(name="TikTok", value="TIKTOK"),
+    app_commands.Choice(name="Instagram", value="INSTAGRAM"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -86,15 +87,15 @@ def _creator_to_channel_id(platform_cfg: dict) -> dict[str, int]:
 def _load_posted(guild_id: int | str | None) -> dict:
     path = guild_data_path(guild_id, "social_media_data.json")
     if not path:
-        return {"twitch": [], "youtube": [], "twitter": [], "tiktok": [], "custom": []}
-    data = safe_load_json(path, default={"twitch": [], "youtube": [], "twitter": [], "tiktok": [], "custom": []})
+        return {"twitch": [], "youtube": [], "twitter": [], "tiktok": [], "instagram": [], "custom": []}
+    data = safe_load_json(path, default={"twitch": [], "youtube": [], "twitter": [], "tiktok": [], "instagram": [], "custom": []})
     return data
 
 
 def _save_posted(guild_id: int | str | None, data: dict):
     path = guild_data_path(guild_id, "social_media_data.json")
     if path:
-        for key in ("twitch", "youtube", "twitter", "tiktok", "custom"):
+        for key in ("twitch", "youtube", "twitter", "tiktok", "instagram", "custom"):
             if key in data and isinstance(data[key], list):
                 data[key] = data[key][-100:]
         safe_save_json(path, data)
@@ -245,6 +246,58 @@ async def _fetch_tiktok_latest(usernames: list[str]) -> list[dict]:
                             "username": username,
                             "title": f"New TikTok from @{username}",
                             "url": f"https://www.tiktok.com/@{username}/video/{vid}",
+                        })
+                        if len(seen) >= 5:
+                            break
+                except Exception:
+                    continue
+    except Exception:
+        traceback.print_exc()
+    return items
+
+
+async def _fetch_instagram_latest(usernames: list[str]) -> list[dict]:
+    """Fetch latest Instagram post IDs by parsing the public profile page."""
+    items = []
+    try:
+        async with aiohttp.ClientSession() as session:
+            for username in usernames[:10]:
+                username = username.strip().lstrip("@")
+                if not username:
+                    continue
+                url = f"https://www.instagram.com/{username}/"
+                try:
+                    headers = {
+                        "User-Agent": (
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/120.0.0.0 Safari/537.36"
+                        ),
+                        "Accept-Language": "en-US,en;q=0.9",
+                    }
+                    async with session.get(
+                        url,
+                        headers=headers,
+                        timeout=aiohttp.ClientTimeout(total=20),
+                        allow_redirects=True,
+                    ) as resp:
+                        if resp.status != 200:
+                            continue
+                        text = await resp.text()
+                    # Extract shortcodes from /p/<shortcode>/ links
+                    pattern = r'/p/([A-Za-z0-9_-]+)/'
+                    shortcodes = _re.findall(pattern, text)
+                    seen = set()
+                    for code in shortcodes:
+                        if code in seen:
+                            continue
+                        seen.add(code)
+                        items.append({
+                            "source": "instagram",
+                            "id": f"instagram:{code}",
+                            "username": username,
+                            "title": f"New post from @{username}",
+                            "url": f"https://www.instagram.com/p/{code}/",
                         })
                         if len(seen) >= 5:
                             break
@@ -672,6 +725,38 @@ class SocialMedia(commands.Cog):
                         total_new += 1
                     except Exception as exc:
                         print(f"[SocialMedia] TikTok post failed: {exc}")
+
+        # --- Instagram ---
+        instagram_cfg = cfg.get("INSTAGRAM", {})
+        if isinstance(instagram_cfg, dict) and instagram_cfg.get("ENABLED"):
+            creator_map = _creator_to_channel_id(instagram_cfg)
+            usernames = _all_creators(instagram_cfg)
+            if usernames:
+                posts = await _fetch_instagram_latest(usernames)
+                posted_set = set(posted_data.get("instagram", []))
+                for post in posts:
+                    pid = post["id"]
+                    if pid in posted_set:
+                        continue
+                    target_ch = _resolve_channel_for_creator(
+                        self.bot, guild, creator_map,
+                        (post.get("username") or "").lower(),
+                    )
+                    if not target_ch:
+                        continue
+                    embed = discord.Embed(
+                        title=f"\U0001f4f7 {post['username']} posted on Instagram!",
+                        description=f"**{post['title']}**",
+                        url=post["url"],
+                        color=discord.Color.from_rgb(225, 48, 108),
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    try:
+                        await target_ch.send(embed=embed)
+                        posted_data.setdefault("instagram", []).append(pid)
+                        total_new += 1
+                    except Exception as exc:
+                        print(f"[SocialMedia] Instagram post failed: {exc}")
 
         # --- Custom webhooks/feeds ---
         custom_cfg = cfg.get("CUSTOM", {})

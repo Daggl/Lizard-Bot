@@ -117,6 +117,10 @@
       "ENABLED": false,
       "CHANNELS": []
     },
+    "INSTAGRAM": {
+      "ENABLED": false,
+      "CHANNELS": []
+    },
     "CUSTOM": {
       "ENABLED": false,
       "FEED_URLS": "",

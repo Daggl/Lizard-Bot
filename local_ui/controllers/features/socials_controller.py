@@ -108,6 +108,7 @@ class SocialsControllerMixin:
         _load_platform("YOUTUBE", "sm_youtube", [])
         _load_platform("TWITTER", "sm_twitter", [])
         _load_platform("TIKTOK", "sm_tiktok", [])
+        _load_platform("INSTAGRAM", "sm_instagram", [])
 
     def _save_socials_config(self, data: dict):
         path = self._socials_config_path()
@@ -270,6 +271,10 @@ class SocialsControllerMixin:
                 "TIKTOK": {
                     "ENABLED": self.sm_tiktok_enabled.isChecked(),
                     "CHANNELS": _read_channel_cards(self.sm_tiktok_cards),
+                },
+                "INSTAGRAM": {
+                    "ENABLED": self.sm_instagram_enabled.isChecked(),
+                    "CHANNELS": _read_channel_cards(self.sm_instagram_cards),
                 },
                 "CUSTOM": {
                     "ENABLED": False,
